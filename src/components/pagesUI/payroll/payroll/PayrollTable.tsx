@@ -35,7 +35,7 @@ import {
 import { toast } from "sonner";
 import { useAuthState } from "react-firebase-hooks/auth";
 
-const PayrollTable = () => {
+const PayrollTable: React.FC = () => {
   const [user, authLoading] = useAuthState(auth);
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState<IPaylist | null>(null);
@@ -115,18 +115,43 @@ const PayrollTable = () => {
         );
         
         const snapshot = await getDocs(q);
-        const list: IPaylist[] = snapshot.docs.map((docSnap) => {
+        const list: IPaylist[] = snapshot.docs.map((docSnap): IPaylist => {
           const data = docSnap.data();
           return {
-            id: docSnap.id,
-            ...data,
-            // Convert Firestore Timestamps to Date objects or strings
-            createdAt: data.createdAt?.toDate?.() || data.createdAt,
-            updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
-            joiningDate: data.joiningDate?.toDate?.() || data.joiningDate,
+            // FIXED: Ensure id is always a string
+            id: docSnap.id, // Firestore doc ID is always a string
+            // Required fields with defaults
+            employeeId: data.employeeId || data.employeeUid || '',
+            employeeName: data.employeeName || 'Unknown Employee',
+            employeeImg: data.employeeImg || '/default-avatar.png',
+            designation: data.designation || 'N/A',
+            joiningDate: data.joiningDate?.toDate?.() || data.joiningDate || new Date(),
+            salaryMonthly: Number(data.salaryMonthly) || 0,
+            status: data.status || 'active',
+            // Optional fields
+            employeeUid: data.employeeUid || data.employeeId,
+            email: data.email || data.employeeEmail || '',
+            employeeEmail: data.employeeEmail || data.email,
+            companyId: data.companyId || companyId,
+            dearnessAllowance: Number(data.dearnessAllowance) || 0,
+            transportAllowance: Number(data.transportAllowance) || 0,
+            mobileAllowance: Number(data.mobileAllowance) || 0,
+            bonusAllowance: Number(data.bonusAllowance) || 0,
+            providentFund: Number(data.providentFund) || 0,
+            securityDeposit: Number(data.securityDeposit) || 0,
+            personalLoan: Number(data.personalLoan) || 0,
+            earlyLeaving: Number(data.earlyLeaving) || 0,
+            totalEarnings: Number(data.totalEarnings) || 0,
+            totalDeductions: Number(data.totalDeductions) || 0,
+            netPay: Number(data.netPay) || 0,
+            // Date fields
+            createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date(),
+            updatedAt: data.updatedAt?.toDate?.() || data.updatedAt || new Date(),
             employeeJoinDate: data.employeeJoinDate?.toDate?.() || data.employeeJoinDate,
+            // Additional optional fields that might exist
+            ...(data.others && { others: Number(data.others) }),
           };
-        }) as IPaylist[];
+        });
         
         console.log("Fetched payroll data:", list);
         setPayrollData(list);
@@ -180,18 +205,43 @@ const PayrollTable = () => {
         where("companyId", "==", companyId)
       );
       const snapshot = await getDocs(q);
-      const list: IPaylist[] = snapshot.docs.map((docSnap) => {
+      const list: IPaylist[] = snapshot.docs.map((docSnap): IPaylist => {
         const data = docSnap.data();
         return {
-          id: docSnap.id,
-          ...data,
-          // Convert Firestore Timestamps to Date objects or strings
-          createdAt: data.createdAt?.toDate?.() || data.createdAt,
-          updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
-          joiningDate: data.joiningDate?.toDate?.() || data.joiningDate,
+          // FIXED: Ensure id is always a string
+          id: docSnap.id, // Firestore doc ID is always a string
+          // Required fields with defaults
+          employeeId: data.employeeId || data.employeeUid || '',
+          employeeName: data.employeeName || 'Unknown Employee',
+          employeeImg: data.employeeImg || '/default-avatar.png',
+          designation: data.designation || 'N/A',
+          joiningDate: data.joiningDate?.toDate?.() || data.joiningDate || new Date(),
+          salaryMonthly: Number(data.salaryMonthly) || 0,
+          status: data.status || 'active',
+          // Optional fields
+          employeeUid: data.employeeUid || data.employeeId,
+          email: data.email || data.employeeEmail || '',
+          employeeEmail: data.employeeEmail || data.email,
+          companyId: data.companyId || companyId,
+          dearnessAllowance: Number(data.dearnessAllowance) || 0,
+          transportAllowance: Number(data.transportAllowance) || 0,
+          mobileAllowance: Number(data.mobileAllowance) || 0,
+          bonusAllowance: Number(data.bonusAllowance) || 0,
+          providentFund: Number(data.providentFund) || 0,
+          securityDeposit: Number(data.securityDeposit) || 0,
+          personalLoan: Number(data.personalLoan) || 0,
+          earlyLeaving: Number(data.earlyLeaving) || 0,
+          totalEarnings: Number(data.totalEarnings) || 0,
+          totalDeductions: Number(data.totalDeductions) || 0,
+          netPay: Number(data.netPay) || 0,
+          // Date fields
+          createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || data.updatedAt || new Date(),
           employeeJoinDate: data.employeeJoinDate?.toDate?.() || data.employeeJoinDate,
+          // Additional optional fields that might exist
+          ...(data.others && { others: Number(data.others) }),
         };
-      }) as IPaylist[];
+      });
       setPayrollData(list);
     } catch (err: any) {
       console.error("Error refreshing payroll data:", err);
@@ -292,33 +342,35 @@ const PayrollTable = () => {
       setLoading(false);
     }
   };
-  // Add this function inside the PayrollTable component, below handleEditSalary
-const handleMarkAsPaid = async (payrollId: string) => {
-  try {
-    setLoading(true);
-    const response = await fetch(`/api/payroll?id=${payrollId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        status: "paid",
-      }),
-    });
 
-    const result = await response.json();
+  // Mark payroll as paid
+  const handleMarkAsPaid = async (payrollId: string) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/payroll?id=${payrollId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "paid",
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(result.message || "Failed to mark payroll as paid");
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to mark payroll as paid");
+      }
+
+      toast.success("Payroll marked as paid successfully!");
+      await refreshPayrollData();
+    } catch (err: any) {
+      console.error("Error marking payroll as paid:", err);
+      toast.error("Error marking payroll as paid: " + err.message);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    toast.success("Payroll marked as paid successfully!");
-    await refreshPayrollData(); // This will re-fetch data and update the UI
-  } catch (err: any) {
-    console.error("Error marking payroll as paid:", err);
-    toast.error("Error marking payroll as paid: " + err.message);
-  } finally {
-    setLoading(false);
-  }
-};
   // Loading states
   if (authLoading) return <p className="p-4 text-center">Loading user data...</p>;
   if (!user) return <p className="p-4 text-center">Please sign in to view payroll data.</p>;
@@ -363,12 +415,13 @@ const handleMarkAsPaid = async (payrollId: string) => {
                           </TableCell>
                         ))}
                         <TableCell>Action</TableCell>
+                        <TableCell>Payment Status</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody className="table__body">
                       {paginatedRows.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={payListHeadCells.length + 1} align="center">
+                          <TableCell colSpan={payListHeadCells.length + 2} align="center">
                             No payroll data available.
                           </TableCell>
                         </TableRow>
@@ -422,8 +475,11 @@ const handleMarkAsPaid = async (payrollId: string) => {
                                     className="table__icon edit"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setEditData(row);
-                                      setModalOpen(true);
+                                      // FIXED: Only set editData if row.id exists (it always will now)
+                                      if (row.id) {
+                                        setEditData(row);
+                                        setModalOpen(true);
+                                      }
                                     }}
                                   >
                                     <i className="fa-sharp fa-light fa-pen"></i>
@@ -432,8 +488,11 @@ const handleMarkAsPaid = async (payrollId: string) => {
                                     className="removeBtn table__icon delete"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setDeleteId(row.id as string);
-                                      setModalDeleteOpen(true);
+                                      // FIXED: Only set deleteId if row.id exists
+                                      if (row.id) {
+                                        setDeleteId(row.id);
+                                        setModalDeleteOpen(true);
+                                      }
                                     }}
                                   >
                                     <i className="fa-regular fa-trash"></i>
@@ -441,14 +500,14 @@ const handleMarkAsPaid = async (payrollId: string) => {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                {/* The new "Pay" button */}
-                                {row.status !== 'paid' && (
+                                {/* The "Mark as Paid" button */}
+                                {row.status !== 'paid' && row.id && (
                                   <button
                                     type="button"
                                     className="btn btn-sm bg-green-500 hover:bg-green-600 text-white"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleMarkAsPaid(row.id as string);
+                                      handleMarkAsPaid(row.id!); // We know id exists here
                                     }}
                                   >
                                     Mark as Paid
@@ -459,37 +518,6 @@ const handleMarkAsPaid = async (payrollId: string) => {
                                   <span className="text-green-500 font-bold">Paid</span>
                                 )}
                               </TableCell>
-                              {/* <TableCell>
-                                <div className="flex items-center gap-[10px]">
-                                  <Link
-                                    href="/payroll/payroll-payslip"
-                                    className="table__icon download"
-                                  >
-                                    <i className="fa-regular fa-eye"></i>
-                                  </Link>
-                                  <button
-                                    type="button"
-                                    className="table__icon edit"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditData(row);
-                                      setModalOpen(true);
-                                    }}
-                                  >
-                                    <i className="fa-sharp fa-light fa-pen"></i>
-                                  </button>
-                                  <button
-                                    className="removeBtn table__icon delete"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDeleteId(row.id as string);
-                                      setModalDeleteOpen(true);
-                                    }}
-                                  >
-                                    <i className="fa-regular fa-trash"></i>
-                                  </button>
-                                </div>
-                              </TableCell> */}
                             </TableRow>
                           );
                         })

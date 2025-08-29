@@ -30,7 +30,8 @@ const LeadsTable = () => {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editData, setEditData] = useState<ILead | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string | null>(null); // ✅ Changed to string | null
+
   const {
     order,
     orderBy,
@@ -48,6 +49,15 @@ const LeadsTable = () => {
     handleChangeRowsPerPage,
     handleSearchChange,
   } = useMaterialTableHook<ILead | any>(leadsData, 10);
+
+  // ✅ Updated handleDelete function to work with string IDs
+  const handleDeleteLead = (id: string) => {
+    // Convert string back to number for the original handleDelete function
+    const numericId = parseInt(id, 10);
+    if (!isNaN(numericId)) {
+      handleDelete(numericId);
+    }
+  };
 
   return (
     <>
@@ -208,7 +218,8 @@ const LeadsTable = () => {
                                   className="removeBtn table__icon delete"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setDeleteId(index);
+                                    // ✅ Convert number to string for DeleteModal
+                                    setDeleteId(index.toString());
                                     setModalDeleteOpen(true);
                                   }}
                                 >
@@ -263,8 +274,9 @@ const LeadsTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={handleDeleteLead} // ✅ Use the wrapper function
           deleteId={deleteId}
+          collectionName="leads" // ✅ Optional: specify collection name
         />
       )}
     </>

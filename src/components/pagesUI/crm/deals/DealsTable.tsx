@@ -26,12 +26,14 @@ import EditDealsModal from "./EditDealsModal";
 import { dealData } from "@/data/crm/deal-data";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
+
 const DealsTable = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editData, setEditData] = useState<IDeal | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string | null>(null); // ✅ Changed to string | null
+
   const {
     order,
     orderBy,
@@ -49,6 +51,15 @@ const DealsTable = () => {
     handleChangeRowsPerPage,
     handleSearchChange,
   } = useMaterialTableHook<IDeal | any>(dealData, 10);
+
+  // ✅ Updated handleDelete function to work with string IDs
+  const handleDeleteDeal = (id: string) => {
+    // Convert string back to number for the original handleDelete function
+    const numericId = parseInt(id, 10);
+    if (!isNaN(numericId)) {
+      handleDelete(numericId);
+    }
+  };
 
   return (
     <>
@@ -187,7 +198,8 @@ const DealsTable = () => {
                                   className="removeBtn table__icon delete"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setDeleteId(index);
+                                    // ✅ Convert number to string for DeleteModal
+                                    setDeleteId(index.toString());
                                     setModalDeleteOpen(true);
                                   }}
                                 >
@@ -242,8 +254,9 @@ const DealsTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={handleDeleteDeal} // ✅ Use the wrapper function
           deleteId={deleteId}
+          collectionName="deals" // ✅ Optional: specify collection name
         />
       )}
     </>

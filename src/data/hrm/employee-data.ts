@@ -11,11 +11,18 @@ import { IEmployee } from "@/interface";
 const employeeData: IEmployee[] = [
   {
     id: 1,
+    uid: "uid-1",
+    fullName: "Naira Muskan",
+    email: "naira.muskan@example.com",
+    role: "admin",
+    companyId: "company-123",
+    createdBy: "system",
+    createdAt: new Date(),
     image: avatarImg1,
     name: "Naira Muskan",
     position: "Chief Executive Officer",
     phone: "+15551234567",
-    socialLinks: {
+    socialProfile: {
       facebook: "https://www.facebook.com",
       twitter: "https://x.com",
       linkedin: "https://www.linkedin.com",
@@ -25,11 +32,18 @@ const employeeData: IEmployee[] = [
   },
   {
     id: 2,
+    uid: "uid-2",
+    fullName: "Emily Johnson",
+    email: "emily.johnson@example.com",
+    role: "manager",
+    companyId: "company-123",
+    createdBy: "system",
+    createdAt: new Date(),
     image: avatarImg2,
     name: "Emily Johnson",
     position: "Chief Innovation Officer",
     phone: "+15551234567",
-    socialLinks: {
+    socialProfile: {
       facebook: "https://www.facebook.com",
       twitter: "https://x.com",
       linkedin: "https://www.linkedin.com",
@@ -39,11 +53,18 @@ const employeeData: IEmployee[] = [
   },
   {
     id: 3,
+    uid: "uid-3",
+    fullName: "Jessica Miller",
+    email: "jessica.miller@example.com",
+    role: "employee",
+    companyId: "company-123",
+    createdBy: "system",
+    createdAt: new Date(),
     image: avatarImg3,
     name: "Jessica Miller",
     position: "Product Manager",
     phone: "+15551234567",
-    socialLinks: {
+    socialProfile: {
       facebook: "https://www.facebook.com",
       twitter: "https://x.com",
       linkedin: "https://www.linkedin.com",
@@ -53,11 +74,18 @@ const employeeData: IEmployee[] = [
   },
   {
     id: 4,
+    uid: "uid-4",
+    fullName: "Jennifer Brown",
+    email: "jennifer.brown@example.com",
+    role: "employee",
+    companyId: "company-123",
+    createdBy: "system",
+    createdAt: new Date(),
     image: avatarImg4,
     name: "Jennifer Brown",
     position: "Engineering Project Manager",
     phone: "+15551234567",
-    socialLinks: {
+    socialProfile: {
       facebook: "https://www.facebook.com",
       twitter: "https://x.com",
       linkedin: "https://www.linkedin.com",
@@ -67,11 +95,18 @@ const employeeData: IEmployee[] = [
   },
   {
     id: 5,
+    uid: "uid-5",
+    fullName: "Sarah Martinez",
+    email: "sarah.martinez@example.com",
+    role: "employee",
+    companyId: "company-123",
+    createdBy: "system",
+    createdAt: new Date(),
     image: avatarImg5,
     name: "Sarah Martinez",
     position: "Software Developer",
     phone: "+15551234567",
-    socialLinks: {
+    socialProfile: {
       facebook: "https://www.facebook.com",
       twitter: "https://x.com",
       linkedin: "https://www.linkedin.com",
@@ -81,11 +116,18 @@ const employeeData: IEmployee[] = [
   },
   {
     id: 6,
+    uid: "uid-6",
+    fullName: "Amanda Taylor",
+    email: "amanda.taylor@example.com",
+    role: "manager",
+    companyId: "company-123",
+    createdBy: "system",
+    createdAt: new Date(),
     image: avatarImg6,
     name: "Amanda Taylor",
     position: "Technical Lead",
     phone: "+15551234567",
-    socialLinks: {
+    socialProfile: {
       facebook: "https://www.facebook.com",
       twitter: "https://x.com",
       linkedin: "https://www.linkedin.com",
@@ -95,11 +137,18 @@ const employeeData: IEmployee[] = [
   },
   {
     id: 7,
+    uid: "uid-7",
+    fullName: "Christopher Wilson",
+    email: "christopher.wilson@example.com",
+    role: "employee",
+    companyId: "company-123",
+    createdBy: "system",
+    createdAt: new Date(),
     image: avatarImg7,
     name: "Christopher Wilson",
     position: "Chief Architect",
     phone: "+15551234567",
-    socialLinks: {
+    socialProfile: {
       facebook: "https://www.facebook.com",
       twitter: "https://x.com",
       linkedin: "https://www.linkedin.com",
@@ -109,11 +158,18 @@ const employeeData: IEmployee[] = [
   },
   {
     id: 8,
+    uid: "uid-8",
+    fullName: "Matthew Clark",
+    email: "matthew.clark@example.com",
+    role: "employee",
+    companyId: "company-123",
+    createdBy: "system",
+    createdAt: new Date(),
     image: avatarImg8,
     name: "Matthew Clark",
     position: "Chief Digital Officer",
     phone: "+15551234567",
-    socialLinks: {
+    socialProfile: {
       facebook: "https://www.facebook.com",
       twitter: "https://x.com",
       linkedin: "https://www.linkedin.com",

@@ -31,7 +31,7 @@ const CompanyListTable = () => {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editData, setEditData] = useState<ILead | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string | null>(null); // ✅ Changed to string | null
 
   const handleCompanyDetails = (id: number) => {
     routes.push(`/company/company-details/${id}`);
@@ -54,6 +54,15 @@ const CompanyListTable = () => {
     handleChangeRowsPerPage,
     handleSearchChange,
   } = useMaterialTableHook<ICompany | any>(companyData, 10);
+
+  // ✅ Updated handleDelete function to work with string IDs
+  const handleDeleteCompany = (id: string) => {
+    // Convert string back to number for the original handleDelete function
+    const numericId = parseInt(id, 10);
+    if (!isNaN(numericId)) {
+      handleDelete(numericId);
+    }
+  };
 
   return (
     <>
@@ -237,7 +246,8 @@ const CompanyListTable = () => {
                                   className="removeBtn table__icon delete"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setDeleteId(index);
+                                    // ✅ Convert number to string for DeleteModal
+                                    setDeleteId(index.toString());
                                     setModalDeleteOpen(true);
                                   }}
                                 >
@@ -279,8 +289,9 @@ const CompanyListTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={handleDeleteCompany} // ✅ Use the wrapper function
           deleteId={deleteId}
+          collectionName="companies" // ✅ Optional: specify collection name
         />
       )}
     </>

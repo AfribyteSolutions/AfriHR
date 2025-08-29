@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import UpdatePassportModal from "./UpdatePassportModal";
 import Link from "next/link";
 import { IEmployee, IPassport } from "@/interface";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface propsType {
@@ -44,16 +44,29 @@ const Passport = ({ data }: propsType) => {
     return () => unsubscribe();
   }, [data?.uid]);
 
-  const formatDate = (date: Date | null | undefined) => {
+  // ✅ Updated function with proper typing for Firestore Timestamps
+  const formatDate = (date: Date | Timestamp | string | null | undefined): string => {
     if (!date) return "N/A";
+    
+    // Handle regular Date objects
     if (date instanceof Date) {
       return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
     }
+    
     // Handle Firestore Timestamp
-    if (typeof date.toDate === 'function') {
-      return date.toDate().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+    if (date && typeof date === 'object' && 'toDate' in date && typeof date.toDate === 'function') {
+      return (date as Timestamp).toDate().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
     }
-    return date;
+    
+    // Handle string dates
+    if (typeof date === 'string') {
+      const parsedDate = new Date(date);
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+    }
+    
+    return "N/A";
   };
 
   return (
@@ -94,14 +107,14 @@ const Passport = ({ data }: propsType) => {
                     <div className="title">Expiry Date:</div>
                     <div className="text">{formatDate(passport.expiryDate)}</div>
                   </li>
-                  <li>
+                  {/* <li>
                     <div className="title">Scan Copy:</div>
                     <div className="text">
                       {passport.scanCopyUrl ? (
                         <Link href={passport.scanCopyUrl} target="_blank">View Scan</Link>
                       ) : "N/A"}
                     </div>
-                  </li>
+                  </li> */}
                 </ul>
               ) : (
                 <div className="text-center py-6 text-gray-500">

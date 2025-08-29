@@ -1,19 +1,27 @@
 "use client";
 import React from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
-import { IPaylist } from "@/interface/table.interface";
+import { IPaylist } from "@/interface/payroll.interface";
 import { useForm } from "react-hook-form";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 import { employeeDropdownData } from "@/data/dropdown-data";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import { toast } from "sonner";
-import { paylistStatePropsType } from "@/interface/common.interface";
+
+// Define props interface to avoid importing from common.interface
+interface EditSalaryModalProps {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  editData: IPaylist | null;
+  onSave: (data: IPaylist) => void;
+}
 
 const EditSalaryModal = ({
   open,
   setOpen,
   editData,
-}: paylistStatePropsType) => {
+  onSave,
+}: EditSalaryModalProps) => {
   const {
     register,
     handleSubmit,
@@ -32,11 +40,10 @@ const EditSalaryModal = ({
     }
 
     try {
-      // ✅ Use API endpoint instead of direct Firestore update
+      // Calculate totals
       const payload = {
-        // Include all the fields that might be updated
         ...data,
-        // Calculate totals like the Add modal does
+        id: editData.id, // Ensure ID is preserved
         totalEarnings:
           (Number(data.salaryMonthly) || 0) +
           (Number(data.dearnessAllowance) || 0) +
@@ -66,22 +73,8 @@ const EditSalaryModal = ({
         updatedAt: new Date().toISOString(),
       };
 
-      console.log("Updating payroll with payload:", payload);
-
-      const response = await fetch(`/api/payroll?id=${editData.id}`, {
-        method: "PUT", // or "PATCH"
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to update payroll");
-      }
-
-      toast.success("Salary updated successfully!");
-      setTimeout(() => setOpen(false), 1000);
+      // Call the parent's onSave function
+      onSave(payload);
     } catch (error: any) {
       console.error("Error updating salary:", error);
       toast.error(
@@ -90,7 +83,6 @@ const EditSalaryModal = ({
       );
     }
   };
-  
 
   return (
     <Dialog open={open} onClose={handleToggle} fullWidth maxWidth="md">
@@ -115,7 +107,7 @@ const EditSalaryModal = ({
                   isRequired={false}
                   options={employeeDropdownData}
                   control={control}
-                  error={errors.employeeName}
+                  error={errors.employeeName as any}
                 />
               </div>
             </div>
@@ -132,7 +124,7 @@ const EditSalaryModal = ({
                       type="number"
                       required={false}
                       register={register("salaryMonthly")}
-                      error={errors.salaryMonthly}
+                      error={errors.salaryMonthly as any}
                     />
                   </div>
                   <div className="col-span-12 md:col-span-6">
@@ -142,7 +134,7 @@ const EditSalaryModal = ({
                       type="text"
                       required={false}
                       register={register("dearnessAllowance")}
-                      error={errors.dearnessAllowance}
+                      error={errors.dearnessAllowance as any}
                     />
                   </div>
                   <div className="col-span-12 md:col-span-6">
@@ -152,7 +144,7 @@ const EditSalaryModal = ({
                       type="text"
                       required={false}
                       register={register("transportAllowance")}
-                      error={errors.transportAllowance}
+                      error={errors.transportAllowance as any}
                     />
                   </div>
                   <div className="col-span-12 md:col-span-6">
@@ -162,7 +154,7 @@ const EditSalaryModal = ({
                       type="text"
                       required={false}
                       register={register("mobileAllowance")}
-                      error={errors.mobileAllowance}
+                      error={errors.mobileAllowance as any}
                     />
                   </div>
                   <div className="col-span-12 md:col-span-6">
@@ -172,19 +164,18 @@ const EditSalaryModal = ({
                       type="text"
                       required={false}
                       register={register("bonusAllowance")}
-                      error={errors.bonusAllowance}
+                      error={errors.bonusAllowance as any}
                     />
                   </div>
                   <div className="col-span-12 md:col-span-6">
-                  <InputField
-                    label="Others"
-                    id="others"
-                    type="text"
-                    required={false}
-                    register={register("others")}
-                    error={errors.others}
-                  />
-
+                    <InputField
+                      label="Others"
+                      id="others"
+                      type="text"
+                      required={false}
+                      register={register("others")}
+                      error={errors.others as any}
+                    />
                   </div>
                 </div>
               </div>
@@ -202,7 +193,7 @@ const EditSalaryModal = ({
                       type="text"
                       required={false}
                       register={register("providentFund")}
-                      error={errors.providentFund}
+                      error={errors.providentFund as any}
                     />
                   </div>
                   <div className="col-span-12 md:col-span-6">
@@ -212,7 +203,7 @@ const EditSalaryModal = ({
                       type="text"
                       required={false}
                       register={register("securityDeposit")}
-                      error={errors.securityDeposit}
+                      error={errors.securityDeposit as any}
                     />
                   </div>
                   <div className="col-span-12 md:col-span-6">
@@ -222,7 +213,7 @@ const EditSalaryModal = ({
                       type="text"
                       required={false}
                       register={register("personalLoan")}
-                      error={errors.personalLoan}
+                      error={errors.personalLoan as any}
                     />
                   </div>
                   <div className="col-span-12 md:col-span-6">
@@ -232,7 +223,7 @@ const EditSalaryModal = ({
                       type="text"
                       required={false}
                       register={register("earlyLeaving")}
-                      error={errors.earlyLeaving}
+                      error={errors.earlyLeaving as any}
                     />
                   </div>
                 </div>

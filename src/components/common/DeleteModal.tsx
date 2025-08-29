@@ -8,8 +8,8 @@ import { doc, deleteDoc } from "firebase/firestore";
 interface statePropsType {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  handleDeleteFunc: (id: string) => void; // ✅ now using string for Firestore doc IDs
-  deleteId: string | null; // ✅ null safety
+  handleDeleteFunc: ((id: string) => void) | ((id: number) => void); // ✅ Accept both string and number
+  deleteId: string | number | null; // ✅ Accept both string and number
   collectionName?: string; // optional: default to "payroll"
 }
 
@@ -23,15 +23,16 @@ const DeleteModal = ({
   const handleToggle = () => setOpen(!open);
 
   const handleDelete = async () => {
-    if (!deleteId) return;
+    if (deleteId === null || deleteId === undefined) return;
 
     try {
-      // ✅ Delete from Firestore
-      await deleteDoc(doc(db, collectionName, deleteId));
-
-      // ✅ Update UI via passed function
-      handleDeleteFunc(deleteId);
-
+      // ✅ Only attempt Firestore deletion if deleteId is a string (Firestore doc ID)
+      if (typeof deleteId === "string") {
+        await deleteDoc(doc(db, collectionName, deleteId));
+      }
+      
+      // ✅ Update UI via passed function - TypeScript will handle the type correctly
+      (handleDeleteFunc as any)(deleteId);
       setOpen(false); // Close modal
     } catch (error) {
       console.error("Error deleting document:", error);

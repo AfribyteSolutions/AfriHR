@@ -27,7 +27,7 @@ const ExpenseTable = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState<IExpese | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string | null>(null); // ✅ Changed to string | null
   const {
     order,
     orderBy,
@@ -44,6 +44,15 @@ const ExpenseTable = () => {
     handleChangeRowsPerPage,
     handleSearchChange,
   } = useMaterialTableHook<IExpese | any>(expenseData, 10);
+
+  // ✅ Updated handleDelete function to work with string IDs
+  const handleDeleteExpense = (id: string) => {
+    // Convert string back to number for the original handleDelete function
+    const numericId = parseInt(id, 10);
+    if (!isNaN(numericId)) {
+      handleDelete(numericId);
+    }
+  };
 
   return (
     <>
@@ -159,7 +168,8 @@ const ExpenseTable = () => {
                                   className="removeBtn table__icon delete"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setDeleteId(index);
+                                    // ✅ Convert number to string for DeleteModal
+                                    setDeleteId(index.toString());
                                     setModalDeleteOpen(true);
                                   }}
                                 >
@@ -207,7 +217,7 @@ const ExpenseTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={handleDeleteExpense} // ✅ Use the wrapper function
           deleteId={deleteId}
         />
       )}

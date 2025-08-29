@@ -9,7 +9,7 @@ const page = ({ params }: { params: { id: number } }) => {
     <>
       <MetaData pageTitle="Employee Details Dynamic">
         <Wrapper>
-          <EmployeeProfileMainArea id={id} />
+          <EmployeeProfileMainArea />
         </Wrapper>
       </MetaData>
     </>

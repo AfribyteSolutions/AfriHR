@@ -114,7 +114,6 @@ const UpdateSocialProfileModal = ({ open, setOpen, data, socialProfile }: PropsT
                     groupText="in/"
                     register={{ ...register("linkedin") }}
                     error={errors.linkedin}
-                    placeholder="your-profile-name"
                   />
                 </div>
                 <div className="col-span-12">
@@ -127,7 +126,6 @@ const UpdateSocialProfileModal = ({ open, setOpen, data, socialProfile }: PropsT
                     groupText="@"
                     register={{ ...register("twitter") }}
                     error={errors.twitter}
-                    placeholder="your-handle"
                   />
                 </div>
                 <div className="col-span-12">
@@ -140,7 +138,6 @@ const UpdateSocialProfileModal = ({ open, setOpen, data, socialProfile }: PropsT
                     groupText="fb.com/"
                     register={{ ...register("facebook") }}
                     error={errors.facebook}
-                    placeholder="your-username"
                   />
                 </div>
                 <div className="col-span-12">
@@ -153,7 +150,6 @@ const UpdateSocialProfileModal = ({ open, setOpen, data, socialProfile }: PropsT
                     groupText="@"
                     register={{ ...register("instagram") }}
                     error={errors.instagram}
-                    placeholder="your-handle"
                   />
                 </div>
                 <div className="col-span-12">
@@ -164,7 +160,6 @@ const UpdateSocialProfileModal = ({ open, setOpen, data, socialProfile }: PropsT
                     required={false}
                     register={{ ...register("whatsapp") }}
                     error={errors.whatsapp}
-                    placeholder="e.g., 1234567890"
                   />
                 </div>
               </div>

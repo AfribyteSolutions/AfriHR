@@ -182,7 +182,7 @@ export interface IPipeline {
 }
 // Define an interface for the paylist
 export interface IPaylist {
-  id: string;
+  id?: string;
   employeeId: string;
   employeeName: string;
   designation: string;
@@ -200,7 +200,7 @@ export interface IPaylist {
   salaryMonthly: number;
   status: "Paid" | "Unpaid";
   employeeImg?: StaticImageData;
-  others: string;
+  others?: string;
 }
 // Define an interface for the earning
 export interface IEarning {

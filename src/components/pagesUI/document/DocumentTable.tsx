@@ -27,7 +27,8 @@ const DocumentTable = () => {
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editData, setEditData] = useState<IDocument | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string | null>(null); // ✅ Changed to string | null
+
   const {
     order,
     orderBy,
@@ -44,6 +45,15 @@ const DocumentTable = () => {
     handleChangeRowsPerPage,
     handleSearchChange,
   } = useMaterialTableHook<IDocument | any>(documentsData, 10);
+
+  // ✅ Updated handleDelete function to work with string IDs
+  const handleDeleteDocument = (id: string) => {
+    // Convert string back to number for the original handleDelete function
+    const numericId = parseInt(id, 10);
+    if (!isNaN(numericId)) {
+      handleDelete(numericId);
+    }
+  };
 
   return (
     <>
@@ -134,7 +144,8 @@ const DocumentTable = () => {
                                 className="removeBtn table__icon delete"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setDeleteId(index);
+                                  // ✅ Convert number to string for DeleteModal
+                                  setDeleteId(index.toString());
                                   setModalDeleteOpen(true);
                                 }}
                               >
@@ -181,8 +192,9 @@ const DocumentTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={handleDeleteDocument} // ✅ Use the wrapper function
           deleteId={deleteId}
+          collectionName="documents" // ✅ Optional: specify collection name
         />
       )}
     </>

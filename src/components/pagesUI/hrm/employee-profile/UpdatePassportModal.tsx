@@ -8,7 +8,7 @@ import InputField from "@/components/elements/SharedInputs/InputField";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
-import { doc, updateDoc, setDoc } from "firebase/firestore";
+import { doc, updateDoc, setDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 
@@ -21,6 +21,30 @@ interface PropsType {
 
 const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
   const [loading, setLoading] = useState(false);
+
+  // ✅ Helper function to convert various date formats to Date object
+  const convertToDate = (date: any): Date | null => {
+    if (!date) return null;
+    
+    // Handle Date objects
+    if (date instanceof Date) {
+      return date;
+    }
+    
+    // Handle Firestore Timestamp
+    if (date && typeof date === 'object' && 'toDate' in date && typeof date.toDate === 'function') {
+      return (date as Timestamp).toDate();
+    }
+    
+    // Handle string dates
+    if (typeof date === 'string') {
+      const parsedDate = new Date(date);
+      return !isNaN(parsedDate.getTime()) ? parsedDate : null;
+    }
+    
+    return null;
+  };
+
   const { 
     register,
     handleSubmit,
@@ -30,9 +54,9 @@ const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
   } = useForm<IPassport>({
     defaultValues: {
       ...passport,
-      // Convert Firestore Timestamp to Date object for DatePicker
-      issueDate: passport?.issueDate?.toDate?.() || null,
-      expiryDate: passport?.expiryDate?.toDate?.() || null,
+      // ✅ Use the helper function to convert dates
+      issueDate: convertToDate(passport?.issueDate),
+      expiryDate: convertToDate(passport?.expiryDate),
     },
   });
 
@@ -42,8 +66,9 @@ const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
   useEffect(() => {
     reset({
       ...passport,
-      issueDate: passport?.issueDate?.toDate?.() || null,
-      expiryDate: passport?.expiryDate?.toDate?.() || null,
+      // ✅ Use the helper function to convert dates
+      issueDate: convertToDate(passport?.issueDate),
+      expiryDate: convertToDate(passport?.expiryDate),
     });
   }, [passport, reset]);
 
@@ -63,7 +88,7 @@ const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
           nationality: formData.nationality?.trim() || "",
           issueDate: formData.issueDate || null,
           expiryDate: formData.expiryDate || null,
-          scanCopyUrl: formData.scanCopyUrl || "",
+          // scanCopyUrl: formData.scanCopyUrl || "",
         },
         updatedAt: new Date(),
       });
@@ -149,7 +174,7 @@ const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
                       render={({ field }) => (
                         <DatePicker
                           id="issueDate"
-                          selected={field.value}
+                          selected={convertToDate(field.value)}  
                           onChange={(date) => field.onChange(date)}
                           showYearDropdown
                           showMonthDropdown
@@ -175,7 +200,7 @@ const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
                       render={({ field }) => (
                         <DatePicker
                           id="expiryDate"
-                          selected={field.value}
+                          selected={convertToDate(field.value)}  
                           onChange={(date) => field.onChange(date)}
                           showYearDropdown
                           showMonthDropdown

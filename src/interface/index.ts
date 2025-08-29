@@ -9,6 +9,7 @@ export * from "./employeeClient.interface";
 export * from "./team.interface";
 export * from "./form.props";
 export * from "./event.interface";
+import type { StaticImageData } from "next/image";
 
 // src/interface/index.ts or src/types/user.ts
 
@@ -48,15 +49,21 @@ export interface IEmergencyContact {
   
   export interface IPassport {
     passportNumber: string;
-    issueDate: string;
-    expiryDate: string;
+    issueDate: Date | string | null; // ✅ Allow multiple date types
+    expiryDate: Date | string | null; // ✅ Allow multiple date types
     nationality: string;
+    scanCopyUrl?: string; // ✅ Add optional scan copy URL
   }
   
   export interface ISocialProfile {
     linkedin?: string;
     github?: string;
     twitter?: string;
+    instagram?: string;
+    facebook?: string;
+    whatsapp?: string;
+    youtube?: string;   // 👈 added
+    website?: string;  
     // Add more social links as needed
   }
   
@@ -70,8 +77,10 @@ export interface IEmergencyContact {
   
   // The main user/employee profile interface
   export interface IEmployee {
+    id?: number; // 👈 Add this line
     uid: string; // <--- ADDED THIS LINE to the interface
     fullName: string;
+    name: string;
     email: string;
     phone?: string;
     position?: string;
@@ -84,6 +93,7 @@ export interface IEmergencyContact {
     managerId?: string | null; // UID of their manager
     photoURL?: string | null; // URL of their profile picture
     designation?: string;
+    image?: StaticImageData | string; // Allow both types
   
     // Personal Info details (often directly on the top level)
     birthday?: string; // e.g., "YYYY-MM-DD"
@@ -106,4 +116,5 @@ export interface IEmergencyContact {
   
     // Permissions
     sidebarAddons?: ISidebarAddons;
+    
   }

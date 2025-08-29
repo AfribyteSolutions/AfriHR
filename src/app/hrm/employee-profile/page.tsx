@@ -8,7 +8,7 @@ const page = () => {
     <>
       <MetaData pageTitle="Employee Profile">
         <Wrapper>
-          <EmployeeProfileMainArea id={1} />
+          <EmployeeProfileMainArea />
         </Wrapper>
       </MetaData>
     </>

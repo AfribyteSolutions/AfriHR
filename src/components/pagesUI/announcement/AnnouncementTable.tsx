@@ -23,7 +23,8 @@ const AnnouncementTable = () => {
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editData, setEditData] = useState<IAnnouncement | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string | null>(null); // Changed to string | null
+
   const {
     order,
     orderBy,
@@ -40,6 +41,12 @@ const AnnouncementTable = () => {
     handleChangeRowsPerPage,
     handleSearchChange,
   } = useMaterialTableHook<IAnnouncement | any>(announcementData, 10);
+
+  // Wrapper function to handle the type conversion
+  const handleDeleteWrapper = (id: string) => {
+    const numericId = parseInt(id, 10);
+    handleDelete(numericId);
+  };
 
   return (
     <>
@@ -120,7 +127,7 @@ const AnnouncementTable = () => {
                                 className="removeBtn table__icon delete"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setDeleteId(index);
+                                  setDeleteId(index.toString()); // Convert to string
                                   setModalDeleteOpen(true);
                                 }}
                               >
@@ -167,7 +174,7 @@ const AnnouncementTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={handleDeleteWrapper} // Use the wrapper function
           deleteId={deleteId}
         />
       )}

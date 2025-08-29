@@ -262,3 +262,4 @@ export interface AppContextType {
   setUserRole: (role: string | null) => void;
   setCompanyId: (id: string | null) => void; // ✅ add setter
 }
+

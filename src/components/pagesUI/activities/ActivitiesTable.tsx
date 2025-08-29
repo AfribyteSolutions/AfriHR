@@ -23,12 +23,14 @@ import EditActivityModal from "./EditActivityModal";
 import ActivityDetailsModal from "./ActivityDetailsModal";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
+
 const ActivitiesTable = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editData, setEditData] = useState<IActivity | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string | null>(null); // Changed to string | null
+
   const {
     order,
     orderBy,
@@ -45,6 +47,12 @@ const ActivitiesTable = () => {
     handleChangeRowsPerPage,
     handleSearchChange,
   } = useMaterialTableHook<IActivity | any>(activityData, 10);
+
+  // Wrapper function to handle the type conversion
+  const handleDeleteWrapper = (id: string) => {
+    const numericId = parseInt(id, 10);
+    handleDelete(numericId);
+  };
 
   return (
     <>
@@ -168,7 +176,7 @@ const ActivitiesTable = () => {
                                   className="removeBtn table__icon delete"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setDeleteId(index);
+                                    setDeleteId(index.toString()); // Convert to string
                                     setModalDeleteOpen(true);
                                   }}
                                 >
@@ -223,7 +231,7 @@ const ActivitiesTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={handleDeleteWrapper} // Use the wrapper function
           deleteId={deleteId}
         />
       )}
