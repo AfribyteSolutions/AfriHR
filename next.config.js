@@ -15,6 +15,21 @@ const nextConfig = {
       },
     ],
   },
+  
+  // ✅ Firebase Admin configuration to prevent build errors
+  experimental: {
+    serverComponentsExternalPackages: ['firebase-admin'],
+  },
+  
+  // ✅ Webpack configuration for Firebase Admin
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Externalize firebase-admin to prevent bundling issues
+      config.externals.push('firebase-admin');
+    }
+    return config;
+  },
+  
   // ✅ Keep your rewrites for subdomains
   async rewrites() {
     return [
