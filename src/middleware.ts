@@ -52,9 +52,9 @@ export function middleware(req: NextRequest) {
     const userRole = req.cookies.get('role')?.value || req.cookies.get('userRole')?.value;
 
     if (!userRole || !requiredRoles.includes(userRole)) {
-      const signInUrl = new URL('/auth/signin-basic', req.url);
-      signInUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(signInUrl);
+      const signUpUrl = new URL('/auth/signup-basic', req.url); // 👈 force redirect to signup
+      signUpUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(signUpUrl);
     }
   }
 
