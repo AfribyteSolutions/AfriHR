@@ -15,14 +15,15 @@
 // lib/firebase-admin.ts
 // lib/firebase-admin.ts
 // lib/firebase-admin.ts
-import admin from "firebase-admin";
+// lib/firebase-admin.ts
+import * as admin from "firebase-admin";
 
 if (!admin.apps.length) {
   try {
     const firebaseAdminKey = process.env.FIREBASE_ADMIN_KEY;
 
     if (!firebaseAdminKey) {
-      console.warn("FIREBASE_ADMIN_KEY not found. Firebase Admin will not be initialized.");
+      console.warn("⚠️ FIREBASE_ADMIN_KEY not found. Firebase Admin not initialized.");
     } else {
       const serviceAccount = JSON.parse(firebaseAdminKey);
 
@@ -36,13 +37,14 @@ if (!admin.apps.length) {
         storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
       });
 
-      console.log("Firebase Admin initialized successfully");
+      console.log("✅ Firebase Admin initialized successfully");
     }
   } catch (error) {
-    console.error("Failed to initialize Firebase Admin:", error);
+    console.error("❌ Failed to initialize Firebase Admin:", error);
   }
 }
 
+// Export ready-to-use services
 export { admin };
 export const db = admin.firestore();
 export const auth = admin.auth();

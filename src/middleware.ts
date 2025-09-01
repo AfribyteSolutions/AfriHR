@@ -35,7 +35,12 @@ export function middleware(req: NextRequest) {
     });
   }
 
-  // ✅ Check protected routes
+  // ✅ If in development, skip auth checks completely
+  if (process.env.NODE_ENV === "development") {
+    return res;
+  }
+
+  // ✅ Check protected routes only in production
   let requiredRoles: string[] | undefined;
   protectedRoutes.forEach((roles, pattern) => {
     if (pattern.test(pathname)) {
