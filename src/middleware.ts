@@ -1,8 +1,8 @@
+// ===== 5. UPDATED MIDDLEWARE (if needed) =====
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getSubdomain } from '@/lib/getSubdomain';
 
-// Pre-compiled route protections
 const protectedRoutes = new Map<RegExp, string[]>([
   [/^\/super-admin/, ['super-admin']],
   [/^\/dashboard\/hrm-dashboard/, ['admin', 'manager', 'super-admin']],
@@ -13,8 +13,7 @@ const protectedRoutes = new Map<RegExp, string[]>([
 
 export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
-
-  // ✅ Skip API routes and static files
+  
   if (pathname.startsWith('/api') || pathname.startsWith('/_next/') || pathname.includes('.')) {
     return NextResponse.next();
   }
@@ -23,7 +22,9 @@ export function middleware(req: NextRequest) {
   const subdomain = getSubdomain(hostname);
   const res = NextResponse.next();
 
-  // ✅ Only set cookie if changed
+  console.log("🔧 Middleware: hostname =", hostname, "subdomain =", subdomain);
+
+  // Set subdomain cookie
   const existingSubdomain = req.cookies.get('subdomain')?.value;
   if (existingSubdomain !== subdomain) {
     res.cookies.set("subdomain", subdomain || "the-media-consult", {
@@ -31,16 +32,17 @@ export function middleware(req: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
+      // ✅ Set domain for cookie sharing across subdomains
+      domain: process.env.NODE_ENV === 'production' ? '.afrihrm.com' : undefined,
       maxAge: 60 * 60 * 24 * 7
     });
   }
 
-  // ✅ If in development, skip auth checks completely
   if (process.env.NODE_ENV === "development") {
     return res;
   }
 
-  // ✅ Check protected routes only in production
+  // Protected routes check
   let requiredRoles: string[] | undefined;
   protectedRoutes.forEach((roles, pattern) => {
     if (pattern.test(pathname)) {
@@ -50,9 +52,9 @@ export function middleware(req: NextRequest) {
 
   if (requiredRoles) {
     const userRole = req.cookies.get('role')?.value || req.cookies.get('userRole')?.value;
-
     if (!userRole || !requiredRoles.includes(userRole)) {
-      const signUpUrl = new URL('/auth/signup-basic', req.url); // 👈 force redirect to signup
+      // ✅ Maintain subdomain in redirect
+      const signUpUrl = new URL('/auth/signup-basic', req.url);
       signUpUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(signUpUrl);
     }
@@ -60,14 +62,3 @@ export function middleware(req: NextRequest) {
 
   return res;
 }
-
-export const config = {
-  matcher: [
-    '/super-admin/:path*',
-    '/dashboard/hrm-dashboard/:path*',
-    '/dashboard/employee-dashboard/:path*',
-    '/dashboard/payroll/:path*',
-    '/dashboard/company/:path*',
-    '/dashboard/:path*'
-  ]
-};
