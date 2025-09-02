@@ -5,14 +5,13 @@ import ReduxProvider from "@/redux/provider";
 import { DirectionProvider } from "@/hooks/useDirection";
 import Setting from "@/common/setting/Setting";
 import { Toaster } from "sonner";
-import { AuthUserProvider } from '@/context/UserAuthContext'; // Import your AuthUserProvider
+import { AuthUserProvider } from '@/context/UserAuthContext';
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  
   return (
     <>
       <html lang="en">
@@ -24,18 +23,23 @@ export default function RootLayout({
             name="viewport"
             content="width=device-width, initial-scale=1, shrink-to-fit=no"
           />
-          <link rel="icon" href="/favicon.ico" />
+          
+          {/* ✅ Enhanced favicon configuration */}
+          <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" />
+          <link rel="shortcut icon" type="image/x-icon" href="/assets/images/favicon.ico" />
+          <link rel="apple-touch-icon" href="/assets/images/favicon.ico" />
+          <meta name="msapplication-TileImage" content="/assets/images/favicon.ico" />
+          
           <link
             rel="stylesheet"
             href="https://fonts.googleapis.com/icon?family=Material+Icons"
           />
         </head>
-
         <body suppressHydrationWarning={true} className="body-area">
           <ReduxProvider>
             <AppProvider>
               <DirectionProvider>
-                <AuthUserProvider> {/* Wrap your children with AuthUserProvider */}
+                <AuthUserProvider>
                   {children}
                 </AuthUserProvider>
                 <Setting />
