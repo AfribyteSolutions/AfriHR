@@ -47,12 +47,11 @@ export interface IEmergencyContact {
     swiftCode?: string;
   }
   
-  export interface IPassport {
-    passportNumber: string;
-    issueDate: Date | string | null; // ✅ Allow multiple date types
-    expiryDate: Date | string | null; // ✅ Allow multiple date types
-    nationality: string;
-    scanCopyUrl?: string; // ✅ Add optional scan copy URL
+  export interface INationalCard {
+    cardNumber: string; // ✅ Renamed from passportNumber
+    issueDate: Date | string | null;
+    expiryDate: Date | string | null;
+    scanCopyUrl?: string;
   }
   
   export interface ISocialProfile {
@@ -108,7 +107,7 @@ export interface IEmergencyContact {
     };
     bankAccount?: IBankAccount;
     socialProfile?: ISocialProfile;
-    passport?: IPassport;
+    nationalCard?: INationalCard;
   
     // Arrays for lists of items
     education?: IEducation[];

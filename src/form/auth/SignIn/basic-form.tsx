@@ -13,12 +13,16 @@ import { ISignInForm } from "@/interface";
 
 const SignInBasicForm = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // ✅ Added loading state
   const { register, handleSubmit, formState: { errors } } = useForm<ISignInForm>();
   const router = useRouter();
 
   const togglePasswordVisibility = () => setIsPasswordVisible(!isPasswordVisible);
 
   const onSubmit = async (data: ISignInForm) => {
+    // ✅ Set loading to true at the start
+    setIsLoading(true);
+
     try {
       console.log("🔐 Starting sign-in process...");
       
@@ -148,6 +152,9 @@ const SignInBasicForm = () => {
         default:
           toast.error("Something went wrong. Please try again.");
       }
+    } finally {
+      // ✅ Set loading to false at the end of the process
+      setIsLoading(false);
     }
   };
 
@@ -197,8 +204,12 @@ const SignInBasicForm = () => {
       </div>
 
       <div className="mb-4">
-        <button className="btn btn-primary w-full" type="submit">
-          Sign in
+        <button
+          className="btn btn-primary w-full"
+          type="submit"
+          disabled={isLoading} // ✅ Disable the button when loading
+        >
+          {isLoading ? "Signing in..." : "Sign in"} {/* ✅ Dynamic button text */}
         </button>
       </div>
     </form>

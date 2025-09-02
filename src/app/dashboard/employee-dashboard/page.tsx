@@ -1,16 +1,17 @@
+// app/dashboard/employee-dashboard/page.tsx
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import EmplyeeDashboardMainArea from "@/components/pagesUI/dashboard/employee-dashboard/EmplyeeDashboardMainArea";
 import MetaData from "@/hooks/useMetaData";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { getCompanyBySubdomain } from "@/lib/firestore";
 import { Company } from "@/types/company";
 import React from "react";
-import Image from "next/image"; // ✅ import Image
+import Image from "next/image";
 
 const EmployeeDashboardMain = async () => {
-  const cookieStore = cookies();
-  const subdomain = cookieStore.get("subdomain")?.value;
-
+  const headersList = headers();
+  const subdomain = headersList.get("x-subdomain");
+  
   const company: Company | null = subdomain
     ? await getCompanyBySubdomain(subdomain)
     : null;

@@ -1,15 +1,16 @@
+// app/dashboard/crm-dashboard/page.tsx
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import CrmDashboardMainArea from "@/components/pagesUI/dashboard/crm-dashboard/CrmDashboardMainArea";
 import MetaData from "@/hooks/useMetaData";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { getCompanyBySubdomain } from "@/lib/firestore";
-import { Company } from "@/types/company"; // ✅ import type
+import { Company } from "@/types/company";
 import React from "react";
-import Image from "next/image"; // ✅ import Image
+import Image from "next/image";
 
 export default async function CrmDashboardMain() {
-  const cookieStore = cookies();
-  const subdomain = cookieStore.get("subdomain")?.value;
+  const headersList = headers();
+  const subdomain = headersList.get("x-subdomain");
   
   const company: Company | null = subdomain
     ? await getCompanyBySubdomain(subdomain)
@@ -28,7 +29,7 @@ export default async function CrmDashboardMain() {
       <MetaData pageTitle={`CRM Dashboard - ${company.name ?? "Unknown Company"}`}>
         <Wrapper>
         <div className="flex items-center gap-4 p-4 border-b border-gray-200 mb-4">
-            {/* ✅ Render logo if available */}
+            {/* Render logo if available */}
             {company.branding?.logoUrl && (
               <Image
                 src={company.branding.logoUrl}

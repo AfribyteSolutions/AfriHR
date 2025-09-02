@@ -1,4 +1,5 @@
-// components/recruitment/types.ts
+// components/recruitment/types.ts (Updated)
+
 export type Stage =
   | "application"
   | "screening"
@@ -6,6 +7,14 @@ export type Stage =
   | "offer"
   | "hired"
   | "rejected";
+
+export interface Comment {
+  id: string;
+  author: string;
+  message: string;
+  timestamp: Date;
+  stage: Stage;
+}
 
 export interface Applicant {
   id: string;
@@ -15,4 +24,9 @@ export interface Applicant {
   phone: string;
   position: string;
   stage: Stage;
+  appliedDate: Date;
+  cvFile?: File;
+  cvUrl?: string;
+  comments: Comment[];
+  source: 'internal' | 'external';
 }

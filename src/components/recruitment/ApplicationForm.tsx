@@ -1,5 +1,7 @@
+"use client";
+
 import React, { useState } from "react";
-import type { Applicant } from "@/types/recruit";
+import type { Applicant, Stage } from "@/types/recruit"; // Assuming 'types/recruit' has the full Applicant type
 
 interface ApplicationFormProps {
   onAddApplicant: (applicant: Omit<Applicant, "id" | "stage">) => void;
@@ -24,7 +26,16 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({ onAddApplicant }) => 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.firstName || !formData.lastName || !formData.email) return;
-    onAddApplicant(formData);
+
+    // ✅ Fix: Create a complete applicant object with all required properties
+    const newApplicant = {
+      ...formData,
+      appliedDate: new Date(),
+      comments: [],
+      source: "internal" as "internal" | "external", // Set a default value
+    };
+
+    onAddApplicant(newApplicant);
     setFormData({ firstName: "", lastName: "", email: "", phone: "", position: "" });
   };
 

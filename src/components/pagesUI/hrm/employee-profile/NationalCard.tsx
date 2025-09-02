@@ -1,8 +1,8 @@
+// components/employee/NationalCard.tsx
 "use client";
 import React, { useState, useEffect } from "react";
-import UpdatePassportModal from "./UpdatePassportModal";
-import Link from "next/link";
-import { IEmployee, IPassport } from "@/interface";
+import UpdateNationalCardModal from "./UpdateNationalCardModal.tsx";
+import { IEmployee, INationalCard } from "@/interface";
 import { doc, onSnapshot, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -10,12 +10,12 @@ interface propsType {
   data: IEmployee | any;
 }
 
-const Passport = ({ data }: propsType) => {
+const NationalCard = ({ data }: propsType) => {
   const [modalOpen, setModalOpen] = useState(false);
-  const [passport, setPassport] = useState<IPassport | null>(null);
+  const [nationalCard, setNationalCard] = useState<INationalCard | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch passport data from the 'users' collection
+  // Fetch national card data from the 'users' collection
   useEffect(() => {
     if (!data?.uid) {
       setLoading(false);
@@ -29,14 +29,14 @@ const Passport = ({ data }: propsType) => {
       (docSnap) => {
         if (docSnap.exists()) {
           const userData = docSnap.data();
-          setPassport(userData.passport || null);
+          setNationalCard(userData.nationalCard || null);
         } else {
-          setPassport(null);
+          setNationalCard(null);
         }
         setLoading(false);
       },
       (error) => {
-        console.error("Error fetching passport information:", error);
+        console.error("Error fetching national card information:", error);
         setLoading(false);
       }
     );
@@ -44,7 +44,7 @@ const Passport = ({ data }: propsType) => {
     return () => unsubscribe();
   }, [data?.uid]);
 
-  // ✅ Updated function with proper typing for Firestore Timestamps
+  // Updated function with proper typing for Firestore Timestamps
   const formatDate = (date: Date | Timestamp | string | null | undefined): string => {
     if (!date) return "N/A";
     
@@ -75,7 +75,7 @@ const Passport = ({ data }: propsType) => {
         <div className="card__wrapper">
           <div className="employee__profile-single-box relative">
             <div className="card__title-wrap flex align-center justify-between mb-[15px]">
-              <h5 className="card__heading-title">Passport Information</h5>
+              <h5 className="card__heading-title">National Card Information</h5>
               <button
                 onClick={() => setModalOpen(true)}
                 className="edit-icon"
@@ -87,44 +87,32 @@ const Passport = ({ data }: propsType) => {
               {loading ? (
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">Loading passport info...</p>
+                  <p className="mt-2 text-gray-600">Loading national card info...</p>
                 </div>
-              ) : passport ? (
+              ) : nationalCard ? (
                 <ul className="personal-info">
                   <li>
-                    <div className="title">Passport Number:</div>
-                    <div className="text">{passport.passportNumber || "N/A"}</div>
-                  </li>
-                  <li>
-                    <div className="title">Nationality:</div>
-                    <div className="text">{passport.nationality || "N/A"}</div>
+                    <div className="title">Card Number:</div>
+                    <div className="text">{nationalCard.cardNumber || "N/A"}</div>
                   </li>
                   <li>
                     <div className="title">Issue Date:</div>
-                    <div className="text">{formatDate(passport.issueDate)}</div>
+                    <div className="text">{formatDate(nationalCard.issueDate)}</div>
                   </li>
                   <li>
                     <div className="title">Expiry Date:</div>
-                    <div className="text">{formatDate(passport.expiryDate)}</div>
+                    <div className="text">{formatDate(nationalCard.expiryDate)}</div>
                   </li>
-                  {/* <li>
-                    <div className="title">Scan Copy:</div>
-                    <div className="text">
-                      {passport.scanCopyUrl ? (
-                        <Link href={passport.scanCopyUrl} target="_blank">View Scan</Link>
-                      ) : "N/A"}
-                    </div>
-                  </li> */}
                 </ul>
               ) : (
                 <div className="text-center py-6 text-gray-500">
-                  <i className="fa-solid fa-passport text-2xl mb-2"></i>
-                  <p>No passport information added yet</p>
+                  <i className="fa-solid fa-id-card text-2xl mb-2"></i>
+                  <p>No national card information added yet</p>
                   <button 
                     className="btn btn-sm btn-primary mt-2"
                     onClick={() => setModalOpen(true)}
                   >
-                    Add Passport
+                    Add National Card
                   </button>
                 </div>
               )}
@@ -134,15 +122,15 @@ const Passport = ({ data }: propsType) => {
       </div>
 
       {modalOpen && (
-        <UpdatePassportModal 
+        <UpdateNationalCardModal 
           open={modalOpen} 
           setOpen={setModalOpen}
           data={data}
-          passport={passport}
+          nationalCard={nationalCard}
         />
       )}
     </>
   );
 };
 
-export default Passport;
+export default NationalCard;

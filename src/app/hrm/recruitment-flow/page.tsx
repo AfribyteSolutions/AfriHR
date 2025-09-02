@@ -1,10 +1,10 @@
+// pages/recruitment/RecruitmentFlow.tsx (Updated)
 "use client";
 
 import React, { useState } from "react";
 import RecruitmentDashboard from "@/components/recruitment/RecruitmentDashboard";
 import ApplicantDetail from "@/components/recruitment/ApplicantDetail";
-import StageColumn from "@/components/recruitment/StageColumn";
-import type { Applicant, Stage } from "@/types/recruit";
+import type { Applicant, Stage } from "@/types/recruit"; // Import from the updated file
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
 
@@ -21,18 +21,22 @@ const RecruitmentFlow: React.FC = () => {
     "rejected",
   ];
 
-  const handleAddApplicant = (applicant: Omit<Applicant, "id" | "stage">) => {
+  const handleAddApplicant = (applicant: Omit<Applicant, "id" | "stage" | "appliedDate" | "comments" | "source">, source: "internal" | "external") => {
     setApplicants((prev) => [
-      ...prev,
       {
         ...applicant,
         id: Date.now().toString(),
         stage: "application",
+        appliedDate: new Date(),
+        comments: [],
+        source,
       },
+      ...prev,
     ]);
   };
 
-  const handleSelectApplicant = (applicant: Applicant) => {
+  // ✅ Correctly updated handleSelectApplicant to accept Applicant | null
+  const handleSelectApplicant = (applicant: Applicant | null) => {
     setSelectedApplicant(applicant);
   };
 
@@ -51,26 +55,17 @@ const RecruitmentFlow: React.FC = () => {
     <MetaData pageTitle="Recruitment">
       <Wrapper>
         <div className="flex gap-4">
-          {/* Dashboard with stages */}
           <div className="w-full">
-            <RecruitmentDashboard>
-              <div className="flex gap-4 overflow-x-auto">
-                {stages.map((stage) => (
-                  <StageColumn
-                    key={stage}
-                    stage={stage}
-                    applicants={applicants.filter(
-                      (applicant) => applicant.stage === stage
-                    )}
-                    onSelectApplicant={handleSelectApplicant}
-                    onMoveApplicant={handleMoveApplicant}
-                  />
-                ))}
-              </div>
-            </RecruitmentDashboard>
+            <RecruitmentDashboard
+              applicants={applicants}
+              stages={stages}
+              onAddApplicant={handleAddApplicant}
+              onMoveApplicant={handleMoveApplicant}
+              selectedApplicant={selectedApplicant}
+              onSelectApplicant={handleSelectApplicant}
+            />
           </div>
 
-          {/* Applicant Detail */}
           {selectedApplicant && (
             <div className="w-full md:w-1/4">
               <h2 className="font-bold mb-2">Applicant Detail</h2>

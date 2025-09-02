@@ -9,7 +9,7 @@ import EducationQualification from "./EducationQualification";
 import ExperienceDetails from "./ExperienceDetails";
 import BankAccount from "./BankAccount";
 import SocialProfile from "./SocialProfile";
-import Passport from "./Passport";
+import Passport from "./NationalCard";
 import { IEmployee } from "@/interface";
 
 // Create a separate component that uses useSearchParams

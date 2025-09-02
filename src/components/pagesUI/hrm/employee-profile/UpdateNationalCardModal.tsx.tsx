@@ -1,28 +1,27 @@
+// components/employee/UpdateNationalCardModal.tsx
 "use client";
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
-import { countriesData } from "@/data/country-data";
 import { useForm, Controller } from "react-hook-form";
-import { IPassport, IEmployee } from "@/interface";
+import { IEmployee, INationalCard } from "@/interface";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
 import { doc, updateDoc, setDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 
 interface PropsType {
   open: boolean;
   setOpen: (open: boolean) => void;
   data: IEmployee;
-  passport: IPassport | null;
+  nationalCard: INationalCard | null;
 }
 
-const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
+const UpdateNationalCardModal = ({ open, setOpen, data, nationalCard }: PropsType) => {
   const [loading, setLoading] = useState(false);
 
-  // ✅ Helper function to convert various date formats to Date object
+  // Helper function to convert various date formats to Date object
   const convertToDate = (date: any): Date | null => {
     if (!date) return null;
     
@@ -51,28 +50,28 @@ const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
     control,
     formState: { errors, isSubmitting },
     reset,
-  } = useForm<IPassport>({
+  } = useForm<INationalCard>({
     defaultValues: {
-      ...passport,
-      // ✅ Use the helper function to convert dates
-      issueDate: convertToDate(passport?.issueDate),
-      expiryDate: convertToDate(passport?.expiryDate),
+      ...nationalCard,
+      // Use the helper function to convert dates
+      issueDate: convertToDate(nationalCard?.issueDate),
+      expiryDate: convertToDate(nationalCard?.expiryDate),
     },
   });
 
   const handleToggle = () => setOpen(!open);
 
-  // Reset form when passport prop changes
+  // Reset form when nationalCard prop changes
   useEffect(() => {
     reset({
-      ...passport,
-      // ✅ Use the helper function to convert dates
-      issueDate: convertToDate(passport?.issueDate),
-      expiryDate: convertToDate(passport?.expiryDate),
+      ...nationalCard,
+      // Use the helper function to convert dates
+      issueDate: convertToDate(nationalCard?.issueDate),
+      expiryDate: convertToDate(nationalCard?.expiryDate),
     });
-  }, [passport, reset]);
+  }, [nationalCard, reset]);
 
-  const onSubmit = async (formData: IPassport) => { 
+  const onSubmit = async (formData: INationalCard) => { 
     try {
       setLoading(true);
 
@@ -82,36 +81,45 @@ const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
       
       const userRef = doc(db, "users", data.uid);
 
+      // ✅ Fix: Convert Date objects to Firestore Timestamp before updating
+      const nationalCardData = {
+        cardNumber: formData.cardNumber?.trim() || "",
+        issueDate: formData.issueDate instanceof Date ? Timestamp.fromDate(formData.issueDate) : null,
+        expiryDate: formData.expiryDate instanceof Date ? Timestamp.fromDate(formData.expiryDate) : null,
+      };
+
       await updateDoc(userRef, {
-        passport: {
-          passportNumber: formData.passportNumber?.trim() || "",
-          nationality: formData.nationality?.trim() || "",
-          issueDate: formData.issueDate || null,
-          expiryDate: formData.expiryDate || null,
-          // scanCopyUrl: formData.scanCopyUrl || "",
-        },
+        nationalCard: nationalCardData,
         updatedAt: new Date(),
       });
       
-      toast.success("Passport information updated successfully!");
+      toast.success("National card information updated successfully!");
       
       setTimeout(() => {
         setOpen(false);
       }, 1500);
 
     } catch (error: any) {
-      console.error("Error updating passport:", error);
+      console.error("Error updating national card:", error);
       if (error.code === 'permission-denied') {
         toast.error("Permission denied. You may not have access to update this information.");
       } else if (error.code === 'not-found') {
-        // If the user document doesn't exist, we can create it
+        // If the user document doesn't exist, create it
         const userRef = doc(db, "users", data.uid);
+
+        // ✅ Fix: Use Timestamp for initial creation as well
+        const nationalCardData = {
+          cardNumber: formData.cardNumber?.trim() || "",
+          issueDate: formData.issueDate instanceof Date ? Timestamp.fromDate(formData.issueDate) : null,
+          expiryDate: formData.expiryDate instanceof Date ? Timestamp.fromDate(formData.expiryDate) : null,
+        };
+
         await setDoc(userRef, {
             ...data,
-            passport: formData,
+            nationalCard: nationalCardData,
             updatedAt: new Date(),
         }, { merge: true });
-        toast.success("Passport information updated successfully!");
+        toast.success("National card information updated successfully!");
         setOpen(false);
       } else {
         toast.error(`Update failed: ${error.message}`);
@@ -131,7 +139,7 @@ const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
         }}>
         <DialogTitle>
           <div className="flex justify-between">
-            <h5 className="modal-title">Passport Information</h5>
+            <h5 className="modal-title">National Card Information</h5>
             <button
               onClick={handleToggle}
               type="button"
@@ -147,22 +155,12 @@ const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
               <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0 gap-y-6 items-center justify-center">
                 <div className="col-span-12">
                   <InputField
-                    label="Passport Number"
-                    id="passportNumber"
+                    label="Card Number"
+                    id="cardNumber"
                     type="text"
                     required={false}
-                    register={register("passportNumber")}
-                    error={errors.passportNumber}
-                  />
-                </div>
-                <div className="col-span-12">
-                  <SelectBox
-                    id="nationality"
-                    label="Nationality"
-                    isRequired={false}
-                    options={countriesData}
-                    control={control}
-                    error={errors.nationality}
+                    register={register("cardNumber")}
+                    error={errors.cardNumber}
                   />
                 </div>
                 <div className="col-span-12">
@@ -242,4 +240,4 @@ const UpdatePassportModal = ({ open, setOpen, data, passport }: PropsType) => {
   );
 };
 
-export default UpdatePassportModal;
+export default UpdateNationalCardModal;
