@@ -3,19 +3,18 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getSubdomain } from '@/lib/getSubdomain';
 
+// A single set of protected routes
 const protectedRoutes = new Map<RegExp, string[]>([
   [/^\/super-admin/, ['super-admin']],
   [/^\/dashboard\/hrm-dashboard/, ['admin', 'manager', 'super-admin']],
   [/^\/dashboard\/employee-dashboard/, ['employee', 'manager', 'admin', 'super-admin']],
   [/^\/dashboard\/payroll/, ['admin', 'manager', 'super-admin']],
   [/^\/dashboard\/company/, ['admin', 'super-admin']],
-  // Add the root route as protected
-  [/^\/$/, ['employee', 'manager', 'admin', 'super-admin']]
 ]);
 
 // Routes that should be accessible without authentication
 const publicRoutes = [
-  '/auth/signin',
+  '/auth/signin-basic',
   '/auth/signup-basic',
   '/auth/signup-advance', 
   '/auth/reset-password-basic',
@@ -23,7 +22,8 @@ const publicRoutes = [
   '/onboarding',
   '/pricing',
   '/about',
-  '/contact'
+  '/contact',
+  '/' // The root route is a public page that will redirect
 ];
 
 export function middleware(req: NextRequest) {
@@ -55,9 +55,14 @@ export function middleware(req: NextRequest) {
     });
   }
 
-  // ✅ Allow access to localhost in development
-  if (isLocalhost && process.env.NODE_ENV === "development") {
+  // ✅ Allow access to localhost
+  if (isLocalhost) {
     return res;
+  }
+  
+  // ✅ Redirect root to sign-in page
+  if (pathname === '/' && process.env.NODE_ENV === 'production') {
+    return NextResponse.redirect(new URL('/auth/signin-basic', req.url));
   }
 
   // ✅ Allow public routes without authentication
@@ -72,8 +77,8 @@ export function middleware(req: NextRequest) {
   const userRole = req.cookies.get('role')?.value || req.cookies.get('userRole')?.value;
 
   // ✅ Redirect unauthenticated users to sign-in
-  if (!authToken && !userRole) {
-    console.log("🚫 No auth token found, redirecting to sign-in");
+  if (!authToken || !userRole) {
+    console.log("🚫 No auth token or role found, redirecting to sign-in");
     const signInUrl = new URL('/auth/signin', req.url);
     if (pathname !== '/') {
       signInUrl.searchParams.set('redirect', pathname);
@@ -102,13 +107,6 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
-}
+};
