@@ -303,23 +303,6 @@ const HRMSidebar = () => {
               ))}
             </ul>
           </nav>
-
-          <div
-            className="sidebar__thumb sidebar-bg"
-            style={{ backgroundImage: `url(${sidebarImg.src})` }}
-          >
-            <div className="sidebar__thumb-content">
-              <p className="sidebar__thumb-title">
-                Upgrade to PRO to get access all Features!
-              </p>
-              <Link
-                href="/pro"
-                className="btn btn-white-primary rounded-[50rem] w-full"
-              >
-                Get Pro Now!
-              </Link>
-            </div>
-          </div>
         </div>
       </div>
 

@@ -38,9 +38,10 @@ export function middleware(req: NextRequest) {
   const subdomain = getSubdomain(hostname);
   const isLocalhost = hostname.includes('localhost') || hostname.includes('127.0.0.1');
   
-  console.log("🔧 Middleware: hostname =", hostname, "subdomain =", subdomain, "isLocalhost =", isLocalhost);
-
   const res = NextResponse.next();
+
+  // Set subdomain as a request header for server components
+  res.headers.set('x-subdomain', subdomain || '');
 
   // Set subdomain cookie
   const existingSubdomain = req.cookies.get('subdomain')?.value;
@@ -55,38 +56,38 @@ export function middleware(req: NextRequest) {
     });
   }
 
-  // ✅ Allow access to localhost
+  // Allow access to localhost
   if (isLocalhost) {
     return res;
   }
   
-  // ✅ Redirect root to sign-in page
+  // Redirect root to sign-in page
   if (pathname === '/' && process.env.NODE_ENV === 'production') {
     return NextResponse.redirect(new URL('/auth/signin-basic', req.url));
   }
 
-  // ✅ Allow public routes without authentication
+  // Allow public routes without authentication
   if (publicRoutes.some(route => pathname.startsWith(route))) {
     return res;
   }
 
-  // ✅ Check if user is authenticated
+  // Check if user is authenticated
   const authToken = req.cookies.get('authToken')?.value || 
                    req.cookies.get('session')?.value || 
                    req.cookies.get('token')?.value;
   const userRole = req.cookies.get('role')?.value || req.cookies.get('userRole')?.value;
 
-  // ✅ Redirect unauthenticated users to sign-in
+  // Redirect unauthenticated users to sign-in
   if (!authToken || !userRole) {
     console.log("🚫 No auth token or role found, redirecting to sign-in");
-    const signInUrl = new URL('/auth/signin', req.url);
+    const signInUrl = new URL('/auth/signin-basic', req.url); // Adjusted to signin-basic
     if (pathname !== '/') {
       signInUrl.searchParams.set('redirect', pathname);
     }
     return NextResponse.redirect(signInUrl);
   }
 
-  // ✅ Check protected routes
+  // Check protected routes
   let requiredRoles: string[] | undefined;
   protectedRoutes.forEach((roles, pattern) => {
     if (pattern.test(pathname)) {
@@ -96,7 +97,7 @@ export function middleware(req: NextRequest) {
 
   if (requiredRoles && userRole && !requiredRoles.includes(userRole)) {
     console.log("🚫 Insufficient permissions, redirecting to sign-in");
-    const signInUrl = new URL('/auth/signin', req.url);
+    const signInUrl = new URL('/auth/signin-basic', req.url); // Adjusted to signin-basic
     signInUrl.searchParams.set('redirect', pathname);
     signInUrl.searchParams.set('error', 'insufficient_permissions');
     return NextResponse.redirect(signInUrl);
