@@ -84,7 +84,7 @@ const AddNewEmployeeModal = ({ open, setOpen }: statePropsType) => {
         branchName: f.branchName,
       },
       socialProfile: undefined,
-      passport: undefined,
+      nationalCard: undefined,
       education: [],
       experience: [],
       sidebarAddons: undefined,
