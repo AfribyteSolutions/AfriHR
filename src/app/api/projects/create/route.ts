@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
       description,
       thumbnail,
       attachedFiles,
+      coordinator,
+      teamLeader,
     } = body;
 
     // Validate required fields
@@ -77,6 +79,8 @@ export async function POST(req: NextRequest) {
       description: description || "",
       thumbnail: thumbnail || null,
       attachedFiles: attachedFiles || [],
+      coordinator: coordinator || uid, // default to creator
+      teamLeader: teamLeader || uid, // default to creator
       companyId,
       createdBy: uid,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),

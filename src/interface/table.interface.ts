@@ -153,7 +153,7 @@ export interface IDeal {
   owner: string;
   phone: string;
   chances: string;
-  description?:string;
+  description?: string;
   status: "Won" | "Open" | "Lost";
 }
 // Define an interface for the deal statistic
@@ -420,4 +420,6 @@ export interface ICreateProject {
   deadline: string;
   priority: string;
   status: string;
+  coordinator?: string;
+  teamLeader?: string;
 }

@@ -11,6 +11,7 @@ import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { auth } from "@/lib/firebase";
 import { useAuthUserContext } from "@/context/UserAuthContext";
+import { useRouter } from "next/navigation";
 const ProjectCreateForm: React.FC = () => {
   const editorRef = useRef<any>(null);
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(
@@ -18,7 +19,9 @@ const ProjectCreateForm: React.FC = () => {
   );
   const [selectEndDate, setSelectEndDate] = useState<Date | null>(new Date());
   const [loading, setLoading] = useState(false);
+  const [employees, setEmployees] = useState<any[]>([]);
   const { user } = useAuthUserContext();
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -50,6 +53,8 @@ const ProjectCreateForm: React.FC = () => {
         priority: data.priority,
         status: data.status,
         description,
+        coordinator: data.coordinator || user.uid,
+        teamLeader: data.teamLeader || user.uid,
         // thumbnail and attachedFiles not implemented yet
       };
 
@@ -66,7 +71,7 @@ const ProjectCreateForm: React.FC = () => {
 
       if (result.success) {
         alert("Project created successfully!");
-        // Reset form or redirect
+        router.push("/project");
       } else {
         alert(`Error: ${result.message}`);
       }
@@ -77,6 +82,36 @@ const ProjectCreateForm: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Fetch employees
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      if (!user?.companyId) return;
+
+      try {
+        const idToken = await auth.currentUser?.getIdToken();
+        if (!idToken) return;
+
+        const response = await fetch(
+          `/api/company-employees?companyId=${user.companyId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+            },
+          },
+        );
+
+        const result = await response.json();
+        if (result.success) {
+          setEmployees(result.employees);
+        }
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+      }
+    };
+
+    fetchEmployees();
+  }, [user]);
 
   //file handle
   useEffect(() => {
@@ -187,6 +222,32 @@ const ProjectCreateForm: React.FC = () => {
                         options={projectStatus}
                         control={control}
                         error={errors.status}
+                      />
+                    </div>
+                    {/* Coordinator */}
+                    <div className="col-span-12 md:col-span-12 xl:col-span-6">
+                      <SelectBox
+                        id="coordinator"
+                        label="Coordinator"
+                        options={employees.map((emp) => ({
+                          value: emp.uid,
+                          label: emp.fullName,
+                        }))}
+                        control={control}
+                        error={errors.coordinator}
+                      />
+                    </div>
+                    {/* Team Leader */}
+                    <div className="col-span-12 md:col-span-12 xl:col-span-6">
+                      <SelectBox
+                        id="teamLeader"
+                        label="Team Leader"
+                        options={employees.map((emp) => ({
+                          value: emp.uid,
+                          label: emp.fullName,
+                        }))}
+                        control={control}
+                        error={errors.teamLeader}
                       />
                     </div>
 
