@@ -27,6 +27,17 @@ const WorkProgress = ({ project }: WorkProgressProps) => {
     "progress-warning",
   ];
 
+  // Calculate total progress as average of all indicators
+  const totalProgress =
+    progressIndicators.length > 0
+      ? Math.round(
+          progressIndicators.reduce(
+            (sum, indicator) => sum + indicator.progress,
+            0,
+          ) / progressIndicators.length,
+        )
+      : 0;
+
   useEffect(() => {
     if (project?.id) {
       fetchProgressIndicators();
@@ -80,7 +91,19 @@ const WorkProgress = ({ project }: WorkProgressProps) => {
         alert("Progress indicator added successfully!");
         setNewIndicator({ title: "", color: "progress-primary" });
         setShowAddForm(false);
-        fetchProgressIndicators();
+        await fetchProgressIndicators();
+        // Recalculate total progress after adding indicator
+        const updatedIndicators = await getUpdatedIndicators();
+        const newTotalProgress =
+          updatedIndicators.length > 0
+            ? Math.round(
+                updatedIndicators.reduce(
+                  (sum, indicator) => sum + indicator.progress,
+                  0,
+                ) / updatedIndicators.length,
+              )
+            : 0;
+        await updateProjectTotalProgress(newTotalProgress);
       } else {
         alert(`Error: ${result.message}`);
       }
@@ -115,7 +138,22 @@ const WorkProgress = ({ project }: WorkProgressProps) => {
 
       const result = await response.json();
       if (result.success) {
-        fetchProgressIndicators();
+        // Update local state first
+        const updatedIndicators = progressIndicators.map((indicator) =>
+          indicator.id === indicatorId ? { ...indicator, progress } : indicator,
+        );
+        setProgressIndicators(updatedIndicators);
+
+        // Calculate new total progress
+        const newTotalProgress = Math.round(
+          updatedIndicators.reduce(
+            (sum, indicator) => sum + indicator.progress,
+            0,
+          ) / updatedIndicators.length,
+        );
+
+        // Update project total progress
+        await updateProjectTotalProgress(newTotalProgress);
       } else {
         alert(`Error: ${result.message}`);
       }
@@ -124,6 +162,51 @@ const WorkProgress = ({ project }: WorkProgressProps) => {
       alert("Failed to update progress");
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const updateProjectTotalProgress = async (totalProgress: number) => {
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return;
+
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ totalProgress }),
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        console.error("Error updating project total progress:", result.message);
+      }
+    } catch (error) {
+      console.error("Error updating project total progress:", error);
+    }
+  };
+
+  const getUpdatedIndicators = async () => {
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return [];
+
+      const response = await fetch(
+        `/api/projects/${project.id}/progress-indicators`,
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        },
+      );
+
+      const result = await response.json();
+      return result.success ? result.progressIndicators : [];
+    } catch (error) {
+      console.error("Error fetching updated indicators:", error);
+      return [];
     }
   };
 
@@ -153,7 +236,19 @@ const WorkProgress = ({ project }: WorkProgressProps) => {
       const result = await response.json();
       if (result.success) {
         alert("Progress indicator deleted successfully!");
-        fetchProgressIndicators();
+        await fetchProgressIndicators();
+        // Recalculate total progress after deleting indicator
+        const updatedIndicators = await getUpdatedIndicators();
+        const newTotalProgress =
+          updatedIndicators.length > 0
+            ? Math.round(
+                updatedIndicators.reduce(
+                  (sum, indicator) => sum + indicator.progress,
+                  0,
+                ) / updatedIndicators.length,
+              )
+            : 0;
+        await updateProjectTotalProgress(newTotalProgress);
       } else {
         alert(`Error: ${result.message}`);
       }
@@ -179,12 +274,20 @@ const WorkProgress = ({ project }: WorkProgressProps) => {
       <div className="card__wrapper">
         <div className="card__title-wrap mb-[20px] flex justify-between items-center">
           <h5 className="card__heading-title">Work Progress</h5>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="btn btn-primary btn-sm"
-          >
-            {showAddForm ? "Cancel" : "Add Indicator"}
-          </button>
+          <div className="flex items-center gap-4">
+            <div className="text-sm">
+              <span className="font-medium">Total Progress: </span>
+              <span className="text-lg font-bold text-primary">
+                {totalProgress}%
+              </span>
+            </div>
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="btn btn-primary btn-sm"
+            >
+              {showAddForm ? "Cancel" : "Add Indicator"}
+            </button>
+          </div>
         </div>
 
         {showAddForm && (
