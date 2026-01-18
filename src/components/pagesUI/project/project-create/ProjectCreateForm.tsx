@@ -9,12 +9,16 @@ import InputField from "@/components/elements/SharedInputs/InputField";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
+import { auth } from "@/lib/firebase";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 const ProjectCreateForm: React.FC = () => {
   const editorRef = useRef<any>(null);
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(
-    new Date()
+    new Date(),
   );
   const [selectEndDate, setSelectEndDate] = useState<Date | null>(new Date());
+  const [loading, setLoading] = useState(false);
+  const { user } = useAuthUserContext();
   const {
     register,
     handleSubmit,
@@ -23,7 +27,56 @@ const ProjectCreateForm: React.FC = () => {
     formState: { errors },
   } = useForm<ICreateProject>();
 
-  const onSubmit = async (data: ICreateProject) => {};
+  const onSubmit = async (data: ICreateProject) => {
+    if (!user) {
+      alert("You must be logged in to create a project");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        alert("Authentication failed");
+        return;
+      }
+
+      const description = editorRef.current?.getContent() || "";
+
+      const payload = {
+        projectName: data.projectName,
+        startDate: selectStartDate?.toISOString().split("T")[0], // YYYY-MM-DD
+        deadline: selectEndDate?.toISOString().split("T")[0],
+        priority: data.priority,
+        status: data.status,
+        description,
+        // thumbnail and attachedFiles not implemented yet
+      };
+
+      const response = await fetch("/api/projects/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert("Project created successfully!");
+        // Reset form or redirect
+      } else {
+        alert(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Error creating project:", error);
+      alert("An error occurred while creating the project");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   //file handle
   useEffect(() => {
@@ -222,8 +275,12 @@ const ProjectCreateForm: React.FC = () => {
 
           <div className="col-span-12 flex justify-center items-center">
             <div className="submit__btn text-center mb-[20px]">
-              <button className="btn btn-primary" type="submit">
-                Submit
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? "Creating..." : "Submit"}
               </button>
             </div>
           </div>
