@@ -160,10 +160,10 @@ const AppInvoicePreviewMainArea: React.FC<AppInvoicePreviewMainAreaProps> = ({
                       alt="payslip logo"
                     />
                   </div>
-                  <p className="mb-[5px]">100 Terminal, Fort Lauderdale,</p>
-                  <p className="mb-[5px]">Miami 33315, United States</p>
-                  <p className="mb-[5px]">name@manez.com</p>
-                  <p className="mb-[5px]">+1(800) 642 7676</p>
+                  {/* Company information should come from company settings/API */}
+                  <p className="mb-[5px] text-muted">
+                    Company information not available
+                  </p>
                 </div>
                 <div>
                   <div className="mb-2.5">
@@ -249,6 +249,7 @@ const AppInvoicePreviewMainArea: React.FC<AppInvoicePreviewMainAreaProps> = ({
                 discountAmount={invoice.discountAmount}
                 taxAmount={invoice.taxAmount}
                 total={invoice.total}
+                notes={invoice.notes}
               />
               <div className="invoice-line"></div>
               <div className="invoice__payment-details">

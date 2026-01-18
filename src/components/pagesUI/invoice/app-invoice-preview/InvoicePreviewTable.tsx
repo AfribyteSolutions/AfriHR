@@ -19,6 +19,7 @@ interface InvoicePreviewTableProps {
   discountAmount: number;
   taxAmount: number;
   total: number;
+  notes?: string;
 }
 
 const InvoicePreviewTable: React.FC<InvoicePreviewTableProps> = ({
@@ -31,6 +32,7 @@ const InvoicePreviewTable: React.FC<InvoicePreviewTableProps> = ({
   discountAmount,
   taxAmount,
   total,
+  notes,
 }) => {
   return (
     <>
@@ -68,29 +70,13 @@ const InvoicePreviewTable: React.FC<InvoicePreviewTableProps> = ({
                 <td className="text-start">${item.amount.toFixed(2)}</td>
               </tr>
             ))}
-            <tr>
-              <th scope="row">04</th>
-              <td className="text-start">
-                <span className="font-semibold">
-                  12 Cup Programmable Drip Coffee Maker
-                </span>
-                <p className="text-muted mb-0">
-                  Color:Black, Programmable, Removable Tank, Auto Clean
-                  Function, Water Filter.
-                </p>
-              </td>
-              <td>$119.50</td>
-              <td>01</td>
-              <td className="text-start">$119.50</td>
-            </tr>
             <tr className="invoice-line">
               <td colSpan={4} className="text-start">
                 <div className="form__input-title">
                   <label className="font-semibold">Notes:</label>
                 </div>
                 <span className="text-muted">
-                  It was delightful collaborating with you. We look forward to
-                  being considered for the next order. Thank you!
+                  {notes || "No notes provided."}
                 </span>
               </td>
               <td colSpan={2} className="p-0 text-end">
