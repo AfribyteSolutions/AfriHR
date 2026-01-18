@@ -1,6 +1,11 @@
 import React from "react";
 
-const ProjectMilestones = () => {
+interface ProjectMilestonesProps {
+  project?: any;
+}
+
+const ProjectMilestones = ({ project }: ProjectMilestonesProps) => {
+  // For now, use dummy milestones, but could be made dynamic
   return (
     <>
       <div className="card__wrapper">
@@ -13,36 +18,30 @@ const ProjectMilestones = () => {
               <span className="milestone__icon">
                 <i className="fa-solid fa-flag-checkered"></i>
               </span>
-              <p>Initial Planning Complete</p>
-              <span className="milestone__date">Jan 15, 2024</span>
+              <p>Project Started</p>
+              <span className="milestone__date">
+                {project
+                  ? new Date(project.startDate).toLocaleDateString()
+                  : "N/A"}
+              </span>
             </div>
             <div className="milestone__item d-flex align-items-center">
               <span className="milestone__icon">
                 <i className="fa-solid fa-code"></i>
               </span>
-              <p>Development Phase Started</p>
-              <span className="milestone__date">Feb 01, 2024</span>
-            </div>
-            <div className="milestone__item d-flex align-items-center">
-              <span className="milestone__icon">
-                <i className="fa-solid fa-pencil-ruler"></i>
-              </span>
-              <p>Design Prototypes Approved</p>
-              <span className="milestone__date">Mar 10, 2024</span>
-            </div>
-            <div className="milestone__item d-flex align-items-center">
-              <span className="milestone__icon">
-                <i className="fa-solid fa-bug"></i>
-              </span>
-              <p>Beta Testing Begins</p>
-              <span className="milestone__date">May 20, 2024</span>
+              <p>Development Phase</p>
+              <span className="milestone__date">In Progress</span>
             </div>
             <div className="milestone__item d-flex align-items-center">
               <span className="milestone__icon">
                 <i className="fa-solid fa-rocket"></i>
               </span>
-              <p>Project Launch</p>
-              <span className="milestone__date">Aug 15, 2024</span>
+              <p>Project Deadline</p>
+              <span className="milestone__date">
+                {project
+                  ? new Date(project.deadline).toLocaleDateString()
+                  : "N/A"}
+              </span>
             </div>
           </div>
         </div>

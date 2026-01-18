@@ -4,7 +4,16 @@ import projectImg from "../../../../../public/assets/images/user/client6.png";
 import ProjectSummary from "./ProjectSummary";
 import Documents from "./Documents";
 import TeamDiscussions from "./TeamDiscussions";
-const LeftContent = () => {
+
+interface LeftContentProps {
+  project?: any;
+}
+
+const LeftContent = ({ project }: LeftContentProps) => {
+  if (!project) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <>
       <div className="col-span-12 md:col-span-8 lg:col-span-8">
@@ -14,23 +23,27 @@ const LeftContent = () => {
               <div className="project__details-top flex flex-wrap items-center gap-[10px]">
                 <Image
                   priority
-                  src={projectImg}
+                  src={project.thumbnail || projectImg}
                   alt="image"
                   className="w-[60px] rounded-[50%]"
                 />
                 <div className="project__details-title">
-                  <h4 className="mb-[8px]">
-                    Laravel Education App Development
-                  </h4>
+                  <h4 className="mb-[8px]">{project.projectName}</h4>
                   <div className="project__details-meta flex flex-wrap items-center gap-[5px]">
-                    <span className="block">Bdevs Limited</span>
                     <span className="block">
-                      <span className="font-semibold">Create Date:</span> May
-                      16, 2024
+                      Coordinator: {project.coordinatorName}
                     </span>
                     <span className="block">
-                      <span className="font-semibold">Deadline:</span> Aug 15,
-                      2025
+                      <span className="font-semibold">Team Leader:</span>{" "}
+                      {project.teamLeaderName}
+                    </span>
+                    <span className="block">
+                      <span className="font-semibold">Start Date:</span>{" "}
+                      {new Date(project.startDate).toLocaleDateString()}
+                    </span>
+                    <span className="block">
+                      <span className="font-semibold">Deadline:</span>{" "}
+                      {new Date(project.deadline).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
@@ -38,9 +51,9 @@ const LeftContent = () => {
             </div>
           </div>
         </div>
-        <ProjectSummary />
-        <Documents />
-        <TeamDiscussions />
+        <ProjectSummary project={project} />
+        <Documents project={project} />
+        <TeamDiscussions project={project} />
       </div>
     </>
   );

@@ -1,7 +1,12 @@
 import { Box, LinearProgress, Typography } from "@mui/material";
 import React from "react";
 
-const WorkProgress = () => {
+interface WorkProgressProps {
+  project?: any;
+}
+
+const WorkProgress = ({ project }: WorkProgressProps) => {
+  // For now, use dummy data, but could be made dynamic based on project tasks
   const WorkProgressData = [
     {
       id: 1,
