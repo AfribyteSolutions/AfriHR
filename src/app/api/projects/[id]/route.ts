@@ -100,6 +100,12 @@ export async function GET(
         .map((doc) => doc.data()?.fullName || "Unknown");
     }
 
+    // Get discussions
+    let discussions: any[] = [];
+    if (projectData?.discussions && Array.isArray(projectData.discussions)) {
+      discussions = projectData.discussions;
+    }
+
     // Serialize the data
     const serializedProject = {
       id: projectDoc.id,
@@ -119,6 +125,7 @@ export async function GET(
       coordinatorName,
       teamLeaderName,
       memberNames,
+      discussions,
     };
 
     return NextResponse.json(
