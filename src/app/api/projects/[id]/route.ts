@@ -106,6 +106,15 @@ export async function GET(
       discussions = projectData.discussions;
     }
 
+    // Get progress indicators
+    let progressIndicators: any[] = [];
+    if (
+      projectData?.progressIndicators &&
+      Array.isArray(projectData.progressIndicators)
+    ) {
+      progressIndicators = projectData.progressIndicators;
+    }
+
     // Serialize the data
     const serializedProject = {
       id: projectDoc.id,
@@ -126,6 +135,7 @@ export async function GET(
       teamLeaderName,
       memberNames,
       discussions,
+      progressIndicators,
     };
 
     return NextResponse.json(

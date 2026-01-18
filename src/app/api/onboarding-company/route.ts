@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 import { db, admin, bucket } from "@/lib/firebase-admin";
 
 function generateSubdomain(companyName: string) {
-  return companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+  return companyName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
 }
 
 export async function POST(req: Request) {
@@ -45,27 +48,49 @@ export async function POST(req: Request) {
     ];
     for (const f of required) {
       if (!data?.[f]) {
-        return NextResponse.json({ success: false, message: `Missing required field: ${f}`, error: "validation_error" }, { status: 400 });
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Missing required field: ${f}`,
+            error: "validation_error",
+          },
+          { status: 400 },
+        );
       }
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(String(data.email))) {
-      return NextResponse.json({ success: false, message: "Invalid email format", error: "validation_error" }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid email format",
+          error: "validation_error",
+        },
+        { status: 400 },
+      );
     }
 
     // companySize can be string or number
     const companySize = Number(data.companySize);
     if (!Number.isFinite(companySize) || companySize < 1) {
       return NextResponse.json(
-        { success: false, message: "Company size must be a positive number", error: "validation_error" },
-        { status: 400 }
+        {
+          success: false,
+          message: "Company size must be a positive number",
+          error: "validation_error",
+        },
+        { status: 400 },
       );
     }
 
     if (!admin || !db || !bucket) {
       return NextResponse.json(
-        { success: false, message: "Server configuration error - Firebase not initialized", error: "config_error" },
-        { status: 500 }
+        {
+          success: false,
+          message: "Server configuration error - Firebase not initialized",
+          error: "config_error",
+        },
+        { status: 500 },
       );
     }
 
@@ -73,8 +98,12 @@ export async function POST(req: Request) {
     try {
       await admin.auth().getUserByEmail(data.email);
       return NextResponse.json(
-        { success: false, message: "An account with this email already exists", error: "auth/email-already-exists" },
-        { status: 409 }
+        {
+          success: false,
+          message: "An account with this email already exists",
+          error: "auth/email-already-exists",
+        },
+        { status: 409 },
       );
     } catch (e: any) {
       if (e.code !== "auth/user-not-found") {
@@ -87,7 +116,10 @@ export async function POST(req: Request) {
     const baseSub = generateSubdomain(data.companyName);
     let uniqueSub = baseSub;
     for (let n = 1; ; n++) {
-      const snap = await db.collection("companies").where("subdomain", "==", uniqueSub).get();
+      const snap = await db
+        .collection("companies")
+        .where("subdomain", "==", uniqueSub)
+        .get();
       if (snap.empty) break;
       if (n > 100) {
         throw new Error("Unable to generate unique subdomain");
@@ -132,8 +164,12 @@ export async function POST(req: Request) {
         console.error("⚠️ Logo upload failed:", e?.message || e);
         // Return error for logo upload issues
         return NextResponse.json(
-          { success: false, message: "Logo upload failed. Please try with a different image.", error: "storage_error" },
-          { status: 400 }
+          {
+            success: false,
+            message: "Logo upload failed. Please try with a different image.",
+            error: "storage_error",
+          },
+          { status: 400 },
         );
       }
     }
@@ -147,13 +183,18 @@ export async function POST(req: Request) {
         emailVerified: false,
       });
       createdUser = created;
-      await admin.auth().setCustomUserClaims(createdUser.uid, { role: "admin", companyRole: "owner" });
+      await admin
+        .auth()
+        .setCustomUserClaims(createdUser.uid, {
+          role: "admin",
+          companyRole: "owner",
+        });
     } catch (e: any) {
       console.error("User creation failed:", e);
       if (e.code?.startsWith("auth/")) {
         return NextResponse.json(
           { success: false, message: e.message, error: e.code },
-          { status: 400 }
+          { status: 400 },
         );
       }
       throw e;
@@ -162,7 +203,7 @@ export async function POST(req: Request) {
     // --- create company ---
     const now = new Date();
     const isoNow = now.toISOString(); // Convert to ISO string for serialization
-    
+
     try {
       createdCompanyRef = await db.collection("companies").add({
         name: data.companyName,
@@ -170,9 +211,9 @@ export async function POST(req: Request) {
         companySize,
         country: data.country,
         address: data.address,
-        branding: { 
-          primaryColor: data.primaryColor || "#3b82f6", 
-          logoUrl 
+        branding: {
+          primaryColor: data.primaryColor || "#3b82f6",
+          logoUrl,
         },
         plan: "trial",
         trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -183,6 +224,50 @@ export async function POST(req: Request) {
         adminEmail: data.email,
         subdomain: uniqueSub,
         ownerId: createdUser.uid,
+        progressIndicators: [
+          {
+            id: "planning",
+            title: "Project Planning",
+            color: "progress-primary",
+            createdAt: now,
+            createdBy: createdUser.uid,
+          },
+          {
+            id: "analysis",
+            title: "Requirement Analysis",
+            color: "progress-secondary",
+            createdAt: now,
+            createdBy: createdUser.uid,
+          },
+          {
+            id: "design",
+            title: "Design & Prototyping",
+            color: "progress-success",
+            createdAt: now,
+            createdBy: createdUser.uid,
+          },
+          {
+            id: "development",
+            title: "Development",
+            color: "progress-danger",
+            createdAt: now,
+            createdBy: createdUser.uid,
+          },
+          {
+            id: "testing",
+            title: "Testing",
+            color: "progress-info",
+            createdAt: now,
+            createdBy: createdUser.uid,
+          },
+          {
+            id: "deployment",
+            title: "Deployment",
+            color: "progress-warning",
+            createdAt: now,
+            createdBy: createdUser.uid,
+          },
+        ],
         settings: {
           allowEmployeeRegistration: true,
           requireApprovalForLeave: true,
@@ -197,60 +282,75 @@ export async function POST(req: Request) {
         try {
           await admin.auth().deleteUser(createdUser.uid);
         } catch (cleanupError) {
-          console.error("Failed to cleanup user after company creation failure:", cleanupError);
+          console.error(
+            "Failed to cleanup user after company creation failure:",
+            cleanupError,
+          );
         }
       }
       return NextResponse.json(
-        { success: false, message: "Failed to create company. Please try again.", error: "firestore_error" },
-        { status: 500 }
+        {
+          success: false,
+          message: "Failed to create company. Please try again.",
+          error: "firestore_error",
+        },
+        { status: 500 },
       );
     }
 
     // ancillary docs (best-effort - don't fail the main flow)
     const promises = [
       // Employee record
-      db.collection("employees").add({
-        companyId: createdCompanyRef.id,
-        userId: createdUser.uid,
-        email: data.email,
-        fullName: data.fullName,
-        role: "admin",
-        position: data.position,
-        department: data.department,
-        permissions: ["full_access"],
-        createdAt: now,
-        updatedAt: now,
-        isActive: true,
-        firstLogin: true,
-        lastLogin: null,
-        employeeId: `EMP-${Date.now()}`,
-        hireDate: new Date().toISOString().split("T")[0],
-        status: "active",
-      }).catch((e) => console.warn("employees add failed:", e)),
-
-      // User profile record
-      db.collection("users")
-        .doc(createdUser.uid)
-        .set({
-          name: data.fullName,
+      db
+        .collection("employees")
+        .add({
+          companyId: createdCompanyRef.id,
+          userId: createdUser.uid,
           email: data.email,
+          fullName: data.fullName,
           role: "admin",
           position: data.position,
           department: data.department,
-          companyId: createdCompanyRef.id,
-          secretCode: data.secretCode || "",
+          permissions: ["full_access"],
           createdAt: now,
           updatedAt: now,
           isActive: true,
-          preferences: { 
-            theme: "light", 
-            notifications: { email: true, push: true } 
+          firstLogin: true,
+          lastLogin: null,
+          employeeId: `EMP-${Date.now()}`,
+          hireDate: new Date().toISOString().split("T")[0],
+          status: "active",
+        })
+        .catch((e) => console.warn("employees add failed:", e)),
+
+      // User profile record
+      db
+        .collection("users")
+        .doc(createdUser.uid)
+        .set(
+          {
+            name: data.fullName,
+            email: data.email,
+            role: "admin",
+            position: data.position,
+            department: data.department,
+            companyId: createdCompanyRef.id,
+            secretCode: data.secretCode || "",
+            createdAt: now,
+            updatedAt: now,
+            isActive: true,
+            preferences: {
+              theme: "light",
+              notifications: { email: true, push: true },
+            },
           },
-        }, { merge: true })
+          { merge: true },
+        )
         .catch((e) => console.warn("users set failed:", e)),
 
       // Department record
-      db.collection("companies")
+      db
+        .collection("companies")
         .doc(createdCompanyRef.id)
         .collection("departments")
         .add({
@@ -261,7 +361,7 @@ export async function POST(req: Request) {
           isActive: true,
           employeeCount: 1,
         })
-        .catch((e) => console.warn("department add failed:", e))
+        .catch((e) => console.warn("department add failed:", e)),
     ];
 
     // Wait for all ancillary operations to complete (but don't fail if they don't)
@@ -276,10 +376,9 @@ export async function POST(req: Request) {
       logoUrl: logoUrl,
       message: "Company onboarding completed successfully",
     });
-
   } catch (error: any) {
     console.error("💥 Critical onboarding error:", error);
-    
+
     // Cleanup on failure
     if (createdUser && !createdCompanyRef) {
       try {
@@ -300,9 +399,13 @@ export async function POST(req: Request) {
       errorCode = error.code;
     } else if (error?.message?.includes("subdomain")) {
       status = 400;
-      message = "Failed to generate unique company subdomain. Please try a different company name.";
+      message =
+        "Failed to generate unique company subdomain. Please try a different company name.";
       errorCode = "subdomain_error";
-    } else if (error?.message?.includes("Firebase") || error?.message?.includes("firestore")) {
+    } else if (
+      error?.message?.includes("Firebase") ||
+      error?.message?.includes("firestore")
+    ) {
       status = 500;
       message = "Database connection error. Please try again.";
       errorCode = "firestore_error";
@@ -318,11 +421,11 @@ export async function POST(req: Request) {
             originalError: String(error?.message || error),
             code: error?.code,
             name: error?.name,
-            stack: error?.stack?.split('\n').slice(0, 5).join('\n') // First 5 lines of stack
-          }
-        })
+            stack: error?.stack?.split("\n").slice(0, 5).join("\n"), // First 5 lines of stack
+          },
+        }),
       },
-      { status }
+      { status },
     );
   }
 }
