@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read/write their own data
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Specific rules for invoices collection
+    match /invoices/{invoiceId} {
+      allow read, write: if request.auth != null;
+      allow create: if request.auth != null &&
+        request.resource.data.keys().hasAll(['invoiceNumber', 'date', 'billingAddress']) &&
+        request.resource.data.invoiceNumber is string &&
+        request.resource.data.date is string;
+    }
+
+    // Allow users to read/write their own user data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow reading company data
+    match /companies/{companyId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Allow reading/writing employee data
+    match /employees/{employeeId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Allow reading/writing payroll data
+    match /payroll/{payrollId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Allow reading/writing project data
+    match /projects/{projectId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

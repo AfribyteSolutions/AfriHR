@@ -2,8 +2,17 @@
 import { BpRadio } from "@/components/elements/forms/form-basic-input/Radio";
 import { FormControlLabel, RadioGroup, Tab, Tabs } from "@mui/material";
 import React, { useState } from "react";
+import { IPaymentMethod } from "@/interface/invoice.interface";
 
-const InvoiceCardInfo = () => {
+interface InvoiceCardInfoProps {
+  paymentMethod: IPaymentMethod;
+  onPaymentMethodChange: (paymentMethod: IPaymentMethod) => void;
+}
+
+const InvoiceCardInfo: React.FC<InvoiceCardInfoProps> = ({
+  paymentMethod,
+  onPaymentMethodChange,
+}) => {
   const [selectedValue, setSelectedValue] = useState("primary");
   const [value, setValue] = useState<number>(0);
 
@@ -12,7 +21,19 @@ const InvoiceCardInfo = () => {
     setValue(newValue);
     // Sync selectedValue based on the tab index
     const tabValues = ["primary", "secondary", "info"];
-    setSelectedValue(tabValues[newValue]);
+    const newSelectedValue = tabValues[newValue];
+    setSelectedValue(newSelectedValue);
+
+    // Update payment method type
+    const typeMap = {
+      primary: "bank",
+      secondary: "paypal",
+      info: "cash",
+    } as const;
+    onPaymentMethodChange({
+      ...paymentMethod,
+      type: typeMap[newSelectedValue as keyof typeof typeMap],
+    });
   };
 
   // Handle radio button change
@@ -21,7 +42,29 @@ const InvoiceCardInfo = () => {
     setSelectedValue(newSelectedValue);
     // Sync tab index based on the selected radio value
     const tabValues = ["primary", "secondary", "info"];
-    setValue(tabValues.indexOf(newSelectedValue));
+    const newValue = tabValues.indexOf(newSelectedValue);
+    setValue(newValue);
+
+    // Update payment method type
+    const typeMap = {
+      primary: "bank",
+      secondary: "paypal",
+      info: "cash",
+    } as const;
+    onPaymentMethodChange({
+      ...paymentMethod,
+      type: typeMap[newSelectedValue as keyof typeof typeMap],
+    });
+  };
+
+  const handleCardFieldChange = (
+    field: keyof IPaymentMethod,
+    value: string,
+  ) => {
+    onPaymentMethodChange({
+      ...paymentMethod,
+      [field]: value,
+    });
   };
 
   return (
@@ -100,6 +143,10 @@ const InvoiceCardInfo = () => {
                             id="cardname"
                             type="text"
                             placeholder="Card Holder Name"
+                            value={paymentMethod.cardName || ""}
+                            onChange={(e) =>
+                              handleCardFieldChange("cardName", e.target.value)
+                            }
                           />
                         </div>
                       </div>
@@ -116,6 +163,13 @@ const InvoiceCardInfo = () => {
                             id="creditCard"
                             name="creditCard"
                             placeholder="XXXX XXXX XXXX XXXX"
+                            value={paymentMethod.cardNumber || ""}
+                            onChange={(e) =>
+                              handleCardFieldChange(
+                                "cardNumber",
+                                e.target.value,
+                              )
+                            }
                           />
                           <div className="credit-card__logo">
                             <i
@@ -140,7 +194,11 @@ const InvoiceCardInfo = () => {
                           className="form-control"
                           id="cardmmyy"
                           placeholder="MM/YY"
-                          type="tel"
+                          type="text"
+                          value={paymentMethod.expiryDate || ""}
+                          onChange={(e) =>
+                            handleCardFieldChange("expiryDate", e.target.value)
+                          }
                         />
                       </div>
                     </div>
@@ -156,6 +214,10 @@ const InvoiceCardInfo = () => {
                           id="cvvcode"
                           type="text"
                           placeholder="XXX"
+                          value={paymentMethod.cvv || ""}
+                          onChange={(e) =>
+                            handleCardFieldChange("cvv", e.target.value)
+                          }
                         />
                       </div>
                     </div>
@@ -177,6 +239,10 @@ const InvoiceCardInfo = () => {
                         id="cardname2"
                         type="text"
                         placeholder="Name, email or mobile number"
+                        value={paymentMethod.paypalEmail || ""}
+                        onChange={(e) =>
+                          handleCardFieldChange("paypalEmail", e.target.value)
+                        }
                       />
                     </div>
                   </div>

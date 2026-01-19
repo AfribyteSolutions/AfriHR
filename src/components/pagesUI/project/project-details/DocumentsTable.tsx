@@ -17,6 +17,10 @@ import { projectDocumentsData } from "@/data/projects/documents-data";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
 
+interface DocumentsTableProps {
+  project?: any;
+}
+
 const headCells = [
   {
     id: "File Name",
@@ -44,9 +48,14 @@ const headCells = [
   },
 ];
 
-const DocumentsTable = () => {
+const DocumentsTable = ({ project }: DocumentsTableProps) => {
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number>(0);
+  const [uploading, setUploading] = useState(false);
+
+  // Use project documents or empty array
+  const documentsData = project?.attachedFiles || [];
+
   const {
     order,
     orderBy,
@@ -62,11 +71,67 @@ const DocumentsTable = () => {
     handleChangePage,
     handleChangeRowsPerPage,
     handleSearchChange,
-  } = useMaterialTableHook<IPDocument | any>(projectDocumentsData, 5);
+  } = useMaterialTableHook<IPDocument | any>(documentsData, 5);
+
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files || files.length === 0 || !project) return;
+
+    setUploading(true);
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return;
+
+      const formData = new FormData();
+      Array.from(files).forEach((file) => {
+        formData.append("files", file);
+      });
+
+      const response = await fetch(`/api/projects/${project.id}/documents`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert("Documents uploaded successfully!");
+        // Refresh project data if needed
+        window.location.reload(); // Simple refresh for now
+      } else {
+        alert(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Error uploading documents:", error);
+      alert("Failed to upload documents");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <>
       <div className="manaz-common-mat-list w-full table__wrapper table-responsive">
+        {/* Upload Section */}
+        <div className="mb-4">
+          <h6 className="mb-2">Upload Documents</h6>
+          <input
+            type="file"
+            multiple
+            onChange={handleFileUpload}
+            disabled={uploading}
+            className="form-control"
+            accept=".pdf,.doc,.docx,.txt,.zip,.rar,.jpg,.jpeg,.png"
+          />
+          {uploading && (
+            <p className="text-sm text-blue-500 mt-1">Uploading...</p>
+          )}
+        </div>
+
         <TableControls
           rowsPerPage={rowsPerPage}
           searchQuery={searchQuery}
@@ -157,7 +222,7 @@ const DocumentsTable = () => {
           <Box>
             {`Showing ${(page - 1) * rowsPerPage + 1} to ${Math.min(
               page * rowsPerPage,
-              filteredRows.length
+              filteredRows.length,
             )} of ${filteredRows.length} entries`}
           </Box>
           <Pagination

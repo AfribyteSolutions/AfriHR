@@ -3,14 +3,18 @@ import AssignedTeam from "./AssignedTeam";
 import WorkProgress from "./WorkProgress";
 import ProjectMilestones from "./ProjectMilestones";
 
-const RightContent = () => {
+interface RightContentProps {
+  project?: any;
+}
+
+const RightContent = ({ project }: RightContentProps) => {
   return (
     <>
       <div className="col-span-12 md:col-span-4 lg:col-span-4">
         <div className="position-sticky">
-          <AssignedTeam />
-          <WorkProgress />
-          <ProjectMilestones />
+          <AssignedTeam project={project} />
+          <WorkProgress project={project} />
+          <ProjectMilestones project={project} />
         </div>
       </div>
     </>

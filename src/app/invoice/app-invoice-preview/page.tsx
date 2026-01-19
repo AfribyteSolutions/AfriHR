@@ -3,12 +3,19 @@ import AppInvoicePreviewMainArea from "@/components/pagesUI/invoice/app-invoice-
 import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
-const InvoicePreviewMain = () => {
+interface InvoicePreviewPageProps {
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+const InvoicePreviewMain = ({ searchParams }: InvoicePreviewPageProps) => {
+  const invoiceId =
+    typeof searchParams.id === "string" ? searchParams.id : null;
+
   return (
     <>
       <MetaData pageTitle="invoice preview">
         <Wrapper>
-          <AppInvoicePreviewMainArea/>
+          <AppInvoicePreviewMainArea invoiceId={invoiceId} />
         </Wrapper>
       </MetaData>
     </>
