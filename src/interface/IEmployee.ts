@@ -1,4 +1,4 @@
-// interface/IEmployee.ts
+// interface/Is
 export interface IEmployee {
     id: string; // or number, depending on your DB
     name: string;

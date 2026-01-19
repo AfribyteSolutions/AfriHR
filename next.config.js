@@ -1,4 +1,3 @@
-// ===== 3. UPDATED next.config.js =====
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -15,15 +14,23 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
-    serverComponentsExternalPackages: ['firebase-admin'],
-  },
+  // Keeps these out of the client-side bundle
+  serverExternalPackages: ['firebase-admin', '@react-pdf/renderer'],
+  
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals.push('firebase-admin');
     }
+
+    // ✅ THE FINAL FIX: Force resolve bidi-js to the correct file
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'bidi-js': require.resolve('bidi-js/dist/bidi.js'),
+    };
+
     return config;
   },
+
   async rewrites() {
     return [
       {
@@ -31,7 +38,7 @@ const nextConfig = {
         has: [
           {
             type: 'host',
-            value: ':subdomain.afrihrm.com' // ✅ Fixed: correct domain
+            value: ':subdomain.afrihrm.com'
           }
         ],
         destination: '/:path*',
