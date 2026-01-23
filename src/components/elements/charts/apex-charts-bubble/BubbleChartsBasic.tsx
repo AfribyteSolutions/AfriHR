@@ -1,86 +1,89 @@
 "use client";
-import React, { useLayoutEffect, useState } from 'react';
-import { ApexOptions } from 'apexcharts';
-import dynamic from 'next/dynamic';
 
-const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
+import React from "react";
+import dynamic from "next/dynamic";
+import { ApexOptions } from "apexcharts";
 
-// Define generateData function to create random bubble chart data
-const generateData = (baseTime: number, count: number, range: { min: number; max: number }) => {
-    const series = [];
-    for (let i = 0; i < count; i++) {
-        const x = baseTime + i * 86400000;
-        const y = Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
-        const z = Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
-        series.push([x, y, z]);
-    }
-    return series;
+const Chart = dynamic(() => import("react-apexcharts"), {
+  ssr: false,
+});
+
+const generateData = (
+  baseTime: number,
+  count: number,
+  range: { min: number; max: number }
+) => {
+  const series: [number, number, number][] = [];
+
+  for (let i = 0; i < count; i++) {
+    const x = baseTime + i * 86400000;
+    const y =
+      Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+    const z =
+      Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+
+    series.push([x, y, z]);
+  }
+
+  return series;
 };
 
-const BubbleChartsBasic = () => {
-    const [isMounted, setIsMounted] = useState(false);
+const BubbleChart3D = () => {
+  const options: ApexOptions = {
+    chart: {
+      height: 350,
+      type: "bubble",
+      toolbar: { show: true },
+    },
+    plotOptions: {
+      bubble: {
+        zScaling: true,
+      },
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    fill: {
+      opacity: 0.9,
+    },
+    title: {
+      text: "3D Bubble Chart",
+    },
+    xaxis: {
+      tickAmount: 12,
+      type: "category",
+    },
+    yaxis: {
+      max: 70,
+    },
+    legend: {
+      show: true,
+    },
+  };
 
-    useLayoutEffect(() => {
-        setIsMounted(true);
-    }, []);
+  const series = [
+    {
+      name: "3D Bubble 1",
+      data: generateData(Date.now(), 20, { min: 10, max: 60 }),
+    },
+    {
+      name: "3D Bubble 2",
+      data: generateData(Date.now(), 20, { min: 10, max: 60 }),
+    },
+    {
+      name: "3D Bubble 3",
+      data: generateData(Date.now(), 20, { min: 10, max: 60 }),
+    },
+  ];
 
-    // Define options for the Apex chart
-    const options: ApexOptions = {
-        series: [
-            {
-                name: 'Bubble1',
-                data: generateData(new Date('11 Feb 2017 GMT').getTime(), 20, { min: 10, max: 60 })
-            },
-            {
-                name: 'Bubble2',
-                data: generateData(new Date('11 Feb 2017 GMT').getTime(), 20, { min: 10, max: 60 })
-            },
-            {
-                name: 'Bubble3',
-                data: generateData(new Date('11 Feb 2017 GMT').getTime(), 20, { min: 10, max: 60 })
-            },
-            {
-                name: 'Bubble4',
-                data: generateData(new Date('11 Feb 2017 GMT').getTime(), 20, { min: 10, max: 60 })
-            }
-        ],
-        chart: {
-            height: 350,
-            type: 'bubble',
-            foreColor: 'var(--clr-chart-1)',
-            toolbar: {
-                show: true
-            }
-        },
-        dataLabels: {
-            enabled: false
-        },
-        fill: {
-            opacity: 0.8
-        },
-        title: {
-            text: 'Simple Bubble Chart'
-        },
-        xaxis: {
-            tickAmount: 12,
-            type: 'category',
-        },
-        yaxis: {
-            max: 70
-        },
-        legend: {
-            show: true,
-            labels: {
-                colors: 'var(--clr-chart-1)'
-            },
-        }
-    };
-
-    return isMounted ? (
-        <Chart options={options} series={options.series} type="bubble" height={350} />
-    ) : (
-        <div>Loading...</div>
-    );
+  return (
+    <Chart
+      options={options}
+      series={series}
+      type="bubble"
+      height={350}
+    />
+  );
 };
 
-export default BubbleChartsBasic;
+export default BubbleChart3D;

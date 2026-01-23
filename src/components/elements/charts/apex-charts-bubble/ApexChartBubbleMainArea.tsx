@@ -1,62 +1,88 @@
-"use client"
-import Breadcrumb from '@/common/Breadcrumb/breadcrumb';
-import React from 'react';
-import BubbleChartsBasic from './BubbleChartsBasic';
-import CustomDropdown from '@/components/dropdown/CustomDropdown';
-import { dropdownItems } from '@/data/dropdown-data';
-import Link from 'next/link';
-import BubbleChart3D from './BubbleChart3D';
+"use client";
 
-const ApexChartBubbleMainArea = () => {
-    return (
-        <>
-            <div className="app__slide-wrapper">
-                <Breadcrumb breadTitle='Bubble' subTitle='Home' />
+import React from "react";
+import dynamic from "next/dynamic";
+import { ApexOptions } from "apexcharts";
 
-                <div className="grid grid-cols-12">
-                    <div className="col-span-12">
-                        <div className="card__wrapper style_two">
-                            <div className="card__title-wrap flex items-center justify-between mb-[25px]">
-                                <h5 className="card__heading-title">Bubble Charts</h5>
-                            </div>
-                            <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0">
-                                <div className="col-span-12 xxl:col-span-6">
-                                    <div className="chart-common mb-[20px]">
-                                        <div className="card__wrapper style_two">
-                                            <div className="card__title-wrap flex items-center justify-between">
-                                                <h5 className="card__heading-title">Simple</h5>
-                                                <CustomDropdown items={dropdownItems} />
-                                            </div>
-                                            <div className="card__content">
-                                                <div className="card__line-chart">
-                                                    <BubbleChartsBasic />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-span-12 xxl:col-span-6">
-                                    <div className="chart-common mb-[20px]">
-                                        <div className="card__wrapper style_two">
-                                            <div className="card__title-wrap flex items-center justify-between">
-                                                <h5 className="card__heading-title">3D Bubble</h5>
-                                                <CustomDropdown items={dropdownItems} />
-                                            </div>
-                                            <div className="card__content">
-                                                <div className="card__line-chart">
-                                                  <BubbleChart3D/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </>
-    );
+const Chart = dynamic(() => import("react-apexcharts"), {
+  ssr: false,
+});
+
+const generateData = (
+  baseTime: number,
+  count: number,
+  range: { min: number; max: number }
+) => {
+  const series: [number, number, number][] = [];
+
+  for (let i = 0; i < count; i++) {
+    const x = baseTime + i * 86400000;
+    const y =
+      Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+    const z =
+      Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+
+    series.push([x, y, z]);
+  }
+
+  return series;
 };
 
-export default ApexChartBubbleMainArea;
+const BubbleChartsBasic = () => {
+  const options: ApexOptions = {
+    chart: {
+      height: 350,
+      type: "bubble",
+      toolbar: { show: true },
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    fill: {
+      opacity: 0.8,
+    },
+    title: {
+      text: "Simple Bubble Chart",
+    },
+    xaxis: {
+      tickAmount: 12,
+      type: "category",
+    },
+    yaxis: {
+      max: 70,
+    },
+    legend: {
+      show: true,
+    },
+  };
+
+  const series = [
+    {
+      name: "Bubble 1",
+      data: generateData(Date.now(), 20, { min: 10, max: 60 }),
+    },
+    {
+      name: "Bubble 2",
+      data: generateData(Date.now(), 20, { min: 10, max: 60 }),
+    },
+    {
+      name: "Bubble 3",
+      data: generateData(Date.now(), 20, { min: 10, max: 60 }),
+    },
+    {
+      name: "Bubble 4",
+      data: generateData(Date.now(), 20, { min: 10, max: 60 }),
+    },
+  ];
+
+  return (
+    <Chart
+      options={options}
+      series={series}
+      type="bubble"
+      height={350}
+    />
+  );
+};
+
+export default BubbleChartsBasic;

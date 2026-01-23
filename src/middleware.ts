@@ -1,4 +1,3 @@
-// middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getSubdomain } from '@/lib/getSubdomain';
@@ -28,7 +27,7 @@ const publicRoutes = [
 
 export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
-  
+
   // Skip middleware for API routes, Next.js internals, and static files
   if (pathname.startsWith('/api') || pathname.startsWith('/_next/') || pathname.includes('.')) {
     return NextResponse.next();
@@ -37,7 +36,7 @@ export function middleware(req: NextRequest) {
   const hostname = req.headers.get('host') || '';
   const subdomain = getSubdomain(hostname);
   const isLocalhost = hostname.includes('localhost') || hostname.includes('127.0.0.1');
-  
+
   const res = NextResponse.next();
 
   // Set subdomain as a request header for server components
@@ -56,12 +55,12 @@ export function middleware(req: NextRequest) {
     });
   }
 
-  // Allow access to localhost
-  if (isLocalhost) {
+  // Allow access to localhost (for development)
+  if (isLocalhost && pathname === '/') {
     return res;
   }
-  
-  // Redirect root to sign-in page
+
+  // Redirect root to sign-in page in production
   if (pathname === '/' && process.env.NODE_ENV === 'production') {
     return NextResponse.redirect(new URL('/auth/signin-basic', req.url));
   }
@@ -71,16 +70,43 @@ export function middleware(req: NextRequest) {
     return res;
   }
 
-  // Check if user is authenticated
+  // Check if user is authenticated - check multiple cookie names for compatibility
   const authToken = req.cookies.get('authToken')?.value || 
-                   req.cookies.get('session')?.value || 
-                   req.cookies.get('token')?.value;
-  const userRole = req.cookies.get('role')?.value || req.cookies.get('userRole')?.value;
+                    req.cookies.get('session')?.value || 
+                    req.cookies.get('token')?.value;
+  
+  const userRole = req.cookies.get('role')?.value || 
+                   req.cookies.get('userRole')?.value;
+
+  // Check session timeout
+  const lastActivity = req.cookies.get('lastActivity')?.value;
+  if (lastActivity) {
+    const timeSinceActivity = Date.now() - parseInt(lastActivity);
+    const timeoutDuration = 30 * 60 * 1000; // 30 minutes
+
+    if (timeSinceActivity > timeoutDuration) {
+      console.log("⏰ Session expired due to inactivity");
+      const signInUrl = new URL('/auth/signin-basic', req.url);
+      signInUrl.searchParams.set('error', 'session_expired');
+      signInUrl.searchParams.set('message', 'Your session has expired. Please sign in again.');
+      
+      // Clear cookies
+      const response = NextResponse.redirect(signInUrl);
+      response.cookies.delete('authToken');
+      response.cookies.delete('session');
+      response.cookies.delete('token');
+      response.cookies.delete('role');
+      response.cookies.delete('userRole');
+      response.cookies.delete('lastActivity');
+      
+      return response;
+    }
+  }
 
   // Redirect unauthenticated users to sign-in
   if (!authToken || !userRole) {
     console.log("🚫 No auth token or role found, redirecting to sign-in");
-    const signInUrl = new URL('/auth/signin-basic', req.url); // Adjusted to signin-basic
+    const signInUrl = new URL('/auth/signin-basic', req.url);
     if (pathname !== '/') {
       signInUrl.searchParams.set('redirect', pathname);
     }
@@ -97,11 +123,20 @@ export function middleware(req: NextRequest) {
 
   if (requiredRoles && userRole && !requiredRoles.includes(userRole)) {
     console.log("🚫 Insufficient permissions, redirecting to sign-in");
-    const signInUrl = new URL('/auth/signin-basic', req.url); // Adjusted to signin-basic
+    const signInUrl = new URL('/auth/signin-basic', req.url);
     signInUrl.searchParams.set('redirect', pathname);
     signInUrl.searchParams.set('error', 'insufficient_permissions');
     return NextResponse.redirect(signInUrl);
   }
+
+  // Update lastActivity cookie on each request to protected routes
+  res.cookies.set('lastActivity', Date.now().toString(), {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 30
+  });
 
   return res;
 }

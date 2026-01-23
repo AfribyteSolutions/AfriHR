@@ -45,6 +45,6 @@
     "src/data/featureData.ts",
     "src/hooks/ratings-hooks.js",
     "src/components/pagesUI/project/project-create/ProjectDescription.jsx"
-  ],
+, "src/scripts/addTestNotification.js"  ],
   "exclude": ["node_modules"]
 }

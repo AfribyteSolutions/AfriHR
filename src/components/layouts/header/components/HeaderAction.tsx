@@ -1,13 +1,9 @@
 "use client"
 import Link from 'next/link';
 import React, { useState } from 'react';
-import EmailNotification from './EmailNotification';
 import Notification from './Notification';
 import HeaderUserProfile from './HeaderUserProfile';
 import EnglishFlag from '@/svg/header-svg/EnglishFlag';
-import ArabicFlag from '@/svg/header-svg/ArabicFlag';
-import ChineseFlag from '@/svg/header-svg/ChineseFlag';
-import GermanFlag from '@/svg/header-svg/GermanFlag';
 import FrenchFlag from '@/svg/header-svg/FrenchFlag';
 import WorldSvg from '@/svg/header-svg/WorldSvg';
 import ZoomScreen from '@/svg/header-svg/ZoomScreen';
@@ -106,36 +102,6 @@ const HeaderAction = () => {
                                     <li>
                                         <Link className="lang__item" href="#">
                                             <div className="lang__icon">
-                                                <ArabicFlag/>
-                                            </div>
-                                            <div className="lang__country">
-                                                <span>لعربية</span>
-                                            </div>
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link className="lang__item" href="#">
-                                            <div className="lang__icon">
-                                               <ChineseFlag/>
-                                            </div>
-                                            <div className="lang__country">
-                                                <span>简体中文</span>
-                                            </div>
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link className="lang__item" href="#">
-                                            <div className="lang__icon">
-                                              <GermanFlag/>
-                                            </div>
-                                            <div className="lang__country">
-                                                <span>Deutsch</span>
-                                            </div>
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link className="lang__item" href="#">
-                                            <div className="lang__icon">
                                               <FrenchFlag/>
                                             </div>
                                             <div className="lang__country">
@@ -157,7 +123,6 @@ const HeaderAction = () => {
                             </div>
                         </button>
                     </li>
-                    <EmailNotification handleShowNotificationEmail={handleShowNotificationEmail} isOpenEmail={isOpenEmail}/>
                     <Notification handleShowNotification={handleShowNotification} isOpenNotification={isOpenNotification}/>
                 </ul>
             </div>
