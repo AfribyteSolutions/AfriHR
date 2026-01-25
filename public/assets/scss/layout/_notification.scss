@@ -134,6 +134,9 @@
 // offcanvas ovarlay
 .body__overlay{
 	@apply hidden fixed w-full h-full z-[8] top-0 start-0 end-0;
+	&.overlay-open {
+		@apply block;
+	}
 }
 .lang-enable,
 .email-enable,

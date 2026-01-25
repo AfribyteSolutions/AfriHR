@@ -1,12 +1,15 @@
 "use client";
 import Image from "next/image";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import logoLight from "../../../../../public/assets/images/logo/logo.svg";
 import darkLogo from "../../../../../public/assets/images/logo/logo-white.svg";
 import Link from "next/link";
 import Breadcrumb from "@/common/Breadcrumb/breadcrumb";
 import InvoicePreviewTable from "./InvoicePreviewTable";
 import { toast } from "react-hot-toast";
+import { useReactToPrint } from "react-to-print";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 interface InvoiceData {
   id: string;
@@ -65,6 +68,8 @@ const AppInvoicePreviewMainArea: React.FC<AppInvoicePreviewMainAreaProps> = ({
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const invoiceRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -93,6 +98,56 @@ const AppInvoicePreviewMainArea: React.FC<AppInvoicePreviewMainAreaProps> = ({
 
     fetchInvoice();
   }, [invoiceId]);
+
+  const handleDownloadPDF = async () => {
+    if (!invoiceRef.current || !invoice) return;
+
+    try {
+      setIsDownloading(true);
+      toast.loading("Generating PDF...");
+
+      // Create canvas from the invoice element
+      const canvas = await html2canvas(invoiceRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`invoice-${invoice.invoiceNumber}.pdf`);
+      toast.dismiss();
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.dismiss();
+      toast.error("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -143,7 +198,7 @@ const AppInvoicePreviewMainArea: React.FC<AppInvoicePreviewMainAreaProps> = ({
         <Breadcrumb breadTitle="Invoice Preview" subTitle="Home" />
         <div className="grid grid-cols-12 justify-center">
           <div className="col-span-12">
-            <div className="card__wrapper">
+            <div className="card__wrapper" ref={invoiceRef}>
               <div className="flex justify-between xl:flex-row sm:flex-row flex-col">
                 <div className="mb-[5px]">
                   <div className="invoice__logo mb-5">
@@ -298,14 +353,15 @@ const AppInvoicePreviewMainArea: React.FC<AppInvoicePreviewMainAreaProps> = ({
                 <button type="submit" className="btn btn-success">
                   <i className="fa-sharp fa-light fa-floppy-disk"></i> Save
                 </button>
-                <Link
+                <button
+                  type="button"
                   className="btn btn-warning"
-                  href="assets/pdf/invoice-print-version.pdf"
-                  download="invoice-print-version.pdf"
+                  onClick={handleDownloadPDF}
+                  disabled={isDownloading}
                 >
                   <i className="fa-sharp fa-thin fa-file-arrow-down"></i>{" "}
-                  Download
-                </Link>
+                  {isDownloading ? "Generating..." : "Download"}
+                </button>
                 <button type="submit" className="btn btn-primary">
                   <i className="fa-light fa-paper-plane"></i> Send
                 </button>

@@ -7,6 +7,12 @@ import AddExpenseModal from "./AddExpenseModal";
 
 const ExpenseMainArea = () => {
   const [modalOpen, setModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleExpenseAdded = () => {
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
   return (
     <>
       <div className="app__slide-wrapper">
@@ -34,12 +40,12 @@ const ExpenseMainArea = () => {
           </div>
         </div>
         <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0">
-          <ExpenseSummary />
-          <ExpenseTable />
+          <ExpenseSummary key={`summary-${refreshTrigger}`} />
+          <ExpenseTable key={`table-${refreshTrigger}`} />
         </div>
       </div>
 
-      {modalOpen && <AddExpenseModal open={modalOpen} setOpen={setModalOpen} />}
+      {modalOpen && <AddExpenseModal open={modalOpen} setOpen={setModalOpen} onSuccess={handleExpenseAdded} />}
     </>
   );
 };

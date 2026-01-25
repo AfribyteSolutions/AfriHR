@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Box from "@mui/material/Box";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -18,16 +18,21 @@ import Image from "next/image";
 import { IExpese } from "@/interface/table.interface";
 import { expenseHeadCells } from "@/data/table-head-cell/table-head";
 import { useTableStatusHook } from "@/hooks/use-condition-class";
-import { expenseData } from "@/data/expense-data";
 import UpdateExpenseModal from "./UpdateExpenseModal";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
+import { useAuthUserContext } from "@/context/UserAuthContext";
+import { toast } from "sonner";
 
 const ExpenseTable = () => {
+  const { user } = useAuthUserContext();
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState<IExpese | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null); // ✅ Changed to string | null
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [expenses, setExpenses] = useState<IExpese[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const {
     order,
     orderBy,
@@ -43,14 +48,67 @@ const ExpenseTable = () => {
     handleChangePage,
     handleChangeRowsPerPage,
     handleSearchChange,
-  } = useMaterialTableHook<IExpese | any>(expenseData, 10);
+  } = useMaterialTableHook<IExpese | any>(expenses, 10);
 
-  // ✅ Updated handleDelete function to work with string IDs
-  const handleDeleteExpense = (id: string) => {
-    // Convert string back to number for the original handleDelete function
-    const numericId = parseInt(id, 10);
-    if (!isNaN(numericId)) {
-      handleDelete(numericId);
+  // Fetch expenses from API
+  useEffect(() => {
+    const fetchExpenses = async () => {
+      if (!user?.companyId) return;
+
+      try {
+        const response = await fetch(`/api/expense?companyId=${user.companyId}`);
+        const result = await response.json();
+
+        if (result.success) {
+          setExpenses(result.expenses);
+        } else {
+          toast.error(result.error || "Failed to fetch expenses");
+        }
+      } catch (error) {
+        console.error("Error fetching expenses:", error);
+        toast.error("Failed to load expenses");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExpenses();
+  }, [user?.companyId]);
+
+  // Delete expense
+  const handleDeleteExpense = async (id: string) => {
+    try {
+      const response = await fetch(`/api/expense?id=${id}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Expense deleted successfully");
+        setExpenses(expenses.filter((expense) => expense.id !== id));
+        setModalDeleteOpen(false);
+      } else {
+        toast.error(result.error || "Failed to delete expense");
+      }
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      toast.error("Failed to delete expense");
+    }
+  };
+
+  // Refresh expenses after update/add
+  const refreshExpenses = async () => {
+    if (!user?.companyId) return;
+
+    try {
+      const response = await fetch(`/api/expense?companyId=${user.companyId}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setExpenses(result.expenses);
+      }
+    } catch (error) {
+      console.error("Error refreshing expenses:", error);
     }
   };
 

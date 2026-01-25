@@ -24,7 +24,7 @@ const relatedSearchTerms = [
 ];
 
 const DashboardHeader = () => {
-  const { sidebarHandle } = useGlobalContext();
+  const { sidebarHandle, isCollapse } = useGlobalContext();
   // Get user data and loading state directly from the AuthUserContext
   const { user: authUser, loading: loadingAuthUser } = useAuthUserContext(); 
   const [searchQuery, setSearchQuery] = useState("");
@@ -176,7 +176,10 @@ const DashboardHeader = () => {
           </div>
         </div>
       </div>
-      <div className="body__overlay"></div>
+      <div 
+        className={`body__overlay ${isCollapse ? "overlay-open" : ""}`}
+        onClick={sidebarHandle}
+      ></div>
       {/* -- App header area end -- */}
     </>
   );

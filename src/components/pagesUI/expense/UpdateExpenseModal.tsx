@@ -2,22 +2,28 @@
 import React, { useState } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { IExpese } from "@/interface/table.interface";
-import { expenseData } from "@/data/expense-data";
 import { useForm } from "react-hook-form";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 import { purchaseStatusOptions } from "@/data/dropdown-data";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
-import { expenseStatePropsType } from "@/interface/common.interface";
 import { toast } from "sonner";
-import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage";
+import { Timestamp } from "firebase/firestore";
+
+interface UpdateExpenseModalProps {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  editData: IExpese | null;
+  onSuccess?: () => void;
+}
 
 const UpdateExpenseModal = ({
   open,
   setOpen,
   editData,
-}: expenseStatePropsType) => {
+  onSuccess,
+}: UpdateExpenseModalProps) => {
   const [selectPurchaseDate, setSelectPurchaseDate] = useState<Date | null>(
     new Date()
   );
@@ -28,18 +34,49 @@ const UpdateExpenseModal = ({
     formState: { errors },
   } = useForm<IExpese>();
 
-  const [selectedTrainer, setSelectedTrainer] = useState<IExpese | null>(null);
   const handleToggle = () => setOpen(!open);
+  const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (data: IExpese) => {
+    if (!editData?.id) {
+      toast.error("Expense ID not found");
+      return;
+    }
+
     try {
-      toast.success("Expense Update successfully!");
-      setTimeout(() => setOpen(false), 2000);
+      setSubmitting(true);
+      const response = await fetch("/api/expense", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: editData.id,
+          invoiceNumber: data.invoiceNumber,
+          itemName: data.itemName,
+          purchaseDate: selectPurchaseDate
+            ? Timestamp.fromDate(selectPurchaseDate)
+            : editData.purchaseDate,
+          amount: data.amount,
+          status: data.status,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Expense updated successfully!");
+        if (onSuccess) onSuccess();
+        setTimeout(() => setOpen(false), 1000);
+      } else {
+        toast.error(result.error || "Failed to update expense");
+      }
     } catch (error: any) {
       toast.error(
-        error?.message ||
-          "An error occurred while updating the Expense. Please try again!"
+        error?.message || "An error occurred while updating the expense."
       );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -88,26 +125,15 @@ const UpdateExpenseModal = ({
                     </div>
 
                     <div className="col-span-12 md:col-span-6">
-                      <div className="from__input-box select-wrapper">
-                        <div className="form__input-title">
-                          <label htmlFor="lastname">Trainer Name</label>
-                        </div>
-                        <div className="relative">
-                          <div className="mz-default-select">
-                            <SelectWithImage
-                              data={expenseData}
-                              selectedValue={selectedTrainer}
-                              valueKey="purchasedBy"
-                              displayKey="purchasedBy"
-                              imageKey="employeeImg"
-                              placeholder="Select Owner"
-                              onChange={setSelectedTrainer}
-                              title={editData?.purchasedBy}
-                              image={editData?.employeeImg}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      <InputField
+                        label="Purchased By"
+                        id="purchasedBy"
+                        type="text"
+                        defaultValue={editData?.purchasedBy}
+                        disabled={true}
+                        register={register("purchasedBy")}
+                        error={errors.purchasedBy}
+                      />
                     </div>
 
                     <div className="col-span-12 md:col-span-6">
@@ -161,8 +187,12 @@ const UpdateExpenseModal = ({
               </div>
             </div>
             <div className="submit__btn text-center">
-              <button className="btn btn-primary" type="submit">
-                Submit
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={submitting}
+              >
+                {submitting ? "Updating..." : "Submit"}
               </button>
             </div>
           </form>
