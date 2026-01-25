@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firestore";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase-admin";
 
 // GET - Fetch expense summary for a company
 export async function GET(request: NextRequest) {
@@ -15,17 +14,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const expensesRef = collection(db, "expenses");
-    const q = query(expensesRef, where("companyId", "==", companyId));
-
-    const querySnapshot = await getDocs(q);
+    const snapshot = await db
+      .collection("expenses")
+      .where("companyId", "==", companyId)
+      .get();
     
     let totalExpense = 0;
     let totalPaid = 0;
     let totalUnpaid = 0;
     let totalReturned = 0;
 
-    querySnapshot.forEach((doc) => {
+    snapshot.forEach((doc) => {
       const data = doc.data();
       const amount = parseFloat(data.amount) || 0;
       

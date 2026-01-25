@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firestore";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  query,
-  where,
-  orderBy,
-  Timestamp,
-} from "firebase/firestore";
+import { db } from "@/lib/firebase-admin";
+import admin from "firebase-admin";
 
 // GET - Fetch all expenses for a company
 export async function GET(request: NextRequest) {
@@ -26,18 +15,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const expensesRef = collection(db, "expenses");
-    const q = query(
-      expensesRef,
-      where("companyId", "==", companyId),
-      orderBy("purchaseDate", "desc")
-    );
+    const snapshot = await db
+      .collection("expenses")
+      .where("companyId", "==", companyId)
+      .orderBy("purchaseDate", "desc")
+      .get();
 
-    const querySnapshot = await getDocs(q);
-    const expenses = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const expenses = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        purchaseDate: data.purchaseDate?.toDate?.().toISOString() || data.purchaseDate,
+        createdAt: data.createdAt?.toDate?.().toISOString() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
+      };
+    });
 
     return NextResponse.json({ success: true, expenses });
   } catch (error: any) {
@@ -75,22 +68,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const expensesRef = collection(db, "expenses");
     const newExpense = {
       companyId,
       invoiceNumber,
       itemName,
       purchasedBy: purchasedBy || "",
       purchasedById: purchasedById || "",
-      purchaseDate: purchaseDate || Timestamp.now(),
+      purchaseDate: purchaseDate || admin.firestore.FieldValue.serverTimestamp(),
       amount: parseFloat(amount),
       status: status || "Unpaid",
       employeeImg: employeeImg || "",
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    const docRef = await addDoc(expensesRef, newExpense);
+    const docRef = await db.collection("expenses").add(newExpense);
 
     return NextResponse.json({
       success: true,
@@ -118,10 +110,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const expenseRef = doc(db, "expenses", id);
-    await updateDoc(expenseRef, {
+    await db.collection("expenses").doc(id).update({
       ...updateData,
-      updatedAt: Timestamp.now(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     return NextResponse.json({
@@ -150,8 +141,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const expenseRef = doc(db, "expenses", id);
-    await deleteDoc(expenseRef);
+    await db.collection("expenses").doc(id).delete();
 
     return NextResponse.json({
       success: true,

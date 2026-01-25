@@ -10,7 +10,6 @@ import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
 import { useAuthUserContext } from "@/context/UserAuthContext";
-import { Timestamp } from "firebase/firestore";
 
 interface AddExpenseModalProps {
   open: boolean;
@@ -54,8 +53,8 @@ const AddExpenseModal = ({ open, setOpen, onSuccess }: AddExpenseModalProps) => 
           purchasedBy: user.fullName,
           purchasedById: user.id,
           purchaseDate: selectPurchaseDate
-            ? Timestamp.fromDate(selectPurchaseDate)
-            : Timestamp.now(),
+            ? selectPurchaseDate.toISOString()
+            : new Date().toISOString(),
           amount: data.amount,
           status: data.status || "Unpaid",
           employeeImg: user.photoURL || "",

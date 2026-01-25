@@ -9,7 +9,6 @@ import { purchaseStatusOptions } from "@/data/dropdown-data";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
-import { Timestamp } from "firebase/firestore";
 
 interface UpdateExpenseModalProps {
   open: boolean;
@@ -55,7 +54,7 @@ const UpdateExpenseModal = ({
           invoiceNumber: data.invoiceNumber,
           itemName: data.itemName,
           purchaseDate: selectPurchaseDate
-            ? Timestamp.fromDate(selectPurchaseDate)
+            ? selectPurchaseDate.toISOString()
             : editData.purchaseDate,
           amount: data.amount,
           status: data.status,
