@@ -8,76 +8,77 @@ const HomeMainArea: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white">
       {/* Navigation */}
-      <nav className="container mx-auto px-6 py-6">
+      <nav className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-emerald-600 rounded flex items-center justify-center">
               <span className="text-white font-bold text-xl">A</span>
             </div>
-            <span className="text-xl font-bold text-gray-900">AfriHR</span>
+            <span className="text-lg sm:text-xl font-bold text-gray-900">AfriHR</span>
           </div>
           
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-8">
             <div className="flex items-center gap-6">
               <button className="text-gray-700 hover:text-gray-900">Features</button>
               <button className="text-gray-700 hover:text-gray-900">Solutions</button>
               <button className="text-gray-700 hover:text-gray-900">Resources</button>
               <button className="text-gray-700 hover:text-gray-900">Careers</button>
-              <button className="text-gray-700 hover:text-gray-900">Pricing</button>
+              <Link href="/pricing" className="text-gray-700 hover:text-gray-900">Pricing</Link>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <Link href="/auth/signin-basic" className="text-gray-700 hover:text-gray-900">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Link href="/auth/signin-basic" className="text-gray-700 hover:text-gray-900 text-sm sm:text-base">
               Sign In
             </Link>
             <Link 
               href="/auth/signup-basic" 
-              className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 transition"
+              className="bg-emerald-600 text-white px-3 sm:px-6 py-2 rounded-lg hover:bg-emerald-700 transition text-sm sm:text-base"
             >
-              Start Free Trial
+              <span className="hidden sm:inline">Start Free Trial</span>
+              <span className="sm:hidden">Sign Up</span>
             </Link>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-6 py-20">
+      <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-20">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-block bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+          <div className="inline-block bg-emerald-100 text-emerald-700 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6">
             EMPOWERING AFRICAN BUSINESSES
           </div>
           
-          <h1 className="text-6xl font-bold text-gray-900 mb-6 leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight px-4">
             Transform Your HR Management With AfriHR
           </h1>
           
-          <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed px-4">
             Streamline Employee Management, Simplify Payroll, Enhance Productivity And Drive Growth With Africa&apos;s Leading HR Platform.
           </p>
 
-          <div className="flex items-center justify-center gap-4 mb-12">
-            <button className="bg-emerald-600 text-white px-8 py-3 rounded-lg hover:bg-emerald-700 transition font-medium">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12 px-4">
+            <button className="w-full sm:w-auto bg-emerald-600 text-white px-6 sm:px-8 py-3 rounded-lg hover:bg-emerald-700 transition font-medium">
               Get Started
             </button>
-            <button className="border-2 border-gray-300 text-gray-700 px-8 py-3 rounded-lg hover:border-gray-400 transition font-medium">
+            <button className="w-full sm:w-auto border-2 border-gray-300 text-gray-700 px-6 sm:px-8 py-3 rounded-lg hover:border-gray-400 transition font-medium">
               View Demo
             </button>
           </div>
 
           {/* Stats Badge */}
-          <div className="inline-block bg-white rounded-2xl shadow-lg p-6 mb-12">
-            <div className="flex items-center gap-8">
+          <div className="inline-block bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-8 sm:mb-12 mx-4">
+            <div className="flex items-center gap-4 sm:gap-8">
               <div>
-                <div className="text-3xl font-bold text-gray-900">95%</div>
-                <div className="text-sm text-gray-600">Of companies recommend AfriHR</div>
+                <div className="text-2xl sm:text-3xl font-bold text-gray-900">95%</div>
+                <div className="text-xs sm:text-sm text-gray-600">Of companies recommend AfriHR</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Charts Preview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto mt-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-5xl mx-auto mt-8 sm:mt-12 px-4">
           <div className="bg-white rounded-2xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <span className="text-gray-700 font-medium">Employee Productivity</span>
@@ -144,8 +145,8 @@ const HomeMainArea: React.FC = () => {
       </section>
 
       {/* Integration Icons */}
-      <section className="container mx-auto px-6 py-12">
-        <div className="flex items-center justify-center gap-8 flex-wrap opacity-60">
+      <section className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="flex items-center justify-center gap-4 sm:gap-8 flex-wrap opacity-60">
           <div className="w-12 h-12 flex items-center justify-center">
             <span className="text-3xl">🐦</span>
           </div>
@@ -177,39 +178,39 @@ const HomeMainArea: React.FC = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="container mx-auto px-6 py-20">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto text-center">
+      <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 max-w-4xl mx-auto text-center">
           <div>
-            <div className="text-4xl font-bold text-gray-900 mb-2">500+</div>
-            <div className="text-gray-600 text-sm">Companies</div>
+            <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">500+</div>
+            <div className="text-gray-600 text-xs sm:text-sm">Companies</div>
           </div>
           <div>
-            <div className="text-4xl font-bold text-gray-900 mb-2">98%</div>
-            <div className="text-gray-600 text-sm">Satisfaction</div>
+            <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">98%</div>
+            <div className="text-gray-600 text-xs sm:text-sm">Satisfaction</div>
           </div>
           <div>
-            <div className="text-4xl font-bold text-gray-900 mb-2">50K+</div>
-            <div className="text-gray-600 text-sm">Employees Managed</div>
+            <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">50K+</div>
+            <div className="text-gray-600 text-xs sm:text-sm">Employees Managed</div>
           </div>
           <div>
-            <div className="text-4xl font-bold text-gray-900 mb-2">24/7</div>
-            <div className="text-gray-600 text-sm">Support</div>
+            <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">24/7</div>
+            <div className="text-gray-600 text-xs sm:text-sm">Support</div>
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section className="container mx-auto px-6 py-20 bg-gray-50">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+      <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-20 bg-gray-50">
+        <div className="text-center mb-8 sm:mb-12 px-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
             Simple, Transparent Pricing
           </h2>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             Choose the perfect plan for your business. No hidden fees. Cancel anytime.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto px-4">
           {/* Starter Plan */}
           <div className="bg-white rounded-2xl shadow-lg p-8">
             <div className="mb-6">
@@ -314,43 +315,43 @@ const HomeMainArea: React.FC = () => {
       </section>
 
       {/* HR Analytics Section */}
-      <section className="container mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+      <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div className="text-center mb-8 sm:mb-12 px-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
             Powerful HR Analytics
           </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
             Get Real-Time Insights Into Your Workforce. Track Performance, Monitor Trends And Make Data-Driven Decisions.
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8">
-          <div className="flex items-center justify-between mb-8">
+        <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-4 sm:p-6 md:p-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
             <div>
-              <div className="text-sm text-gray-600 mb-2">Workforce Overview</div>
-              <div className="text-3xl font-bold text-gray-900">1,245</div>
-              <div className="text-sm text-emerald-600">Active Employees</div>
+              <div className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">Workforce Overview</div>
+              <div className="text-2xl sm:text-3xl font-bold text-gray-900">1,245</div>
+              <div className="text-xs sm:text-sm text-emerald-600">Active Employees</div>
             </div>
-            <div className="flex items-center gap-4">
-              <button className="text-sm text-gray-600 hover:text-gray-900">1M</button>
-              <button className="text-sm text-gray-600 hover:text-gray-900">3M</button>
-              <button className="text-sm text-emerald-600 font-medium">6M</button>
-              <button className="text-sm text-gray-600 hover:text-gray-900">1Y</button>
-              <button className="text-sm text-gray-600 hover:text-gray-900">All</button>
+            <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+              <button className="text-xs sm:text-sm text-gray-600 hover:text-gray-900">1M</button>
+              <button className="text-xs sm:text-sm text-gray-600 hover:text-gray-900">3M</button>
+              <button className="text-xs sm:text-sm text-emerald-600 font-medium">6M</button>
+              <button className="text-xs sm:text-sm text-gray-600 hover:text-gray-900">1Y</button>
+              <button className="text-xs sm:text-sm text-gray-600 hover:text-gray-900">All</button>
             </div>
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-4 sm:gap-8">
               <div>
-                <div className="text-sm text-gray-600">Retention</div>
-                <div className="text-emerald-600 text-sm font-bold">+8.2%</div>
+                <div className="text-xs sm:text-sm text-gray-600">Retention</div>
+                <div className="text-emerald-600 text-xs sm:text-sm font-bold">+8.2%</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Turnover</div>
-                <div className="text-gray-600 text-sm font-bold">3.1%</div>
+                <div className="text-xs sm:text-sm text-gray-600">Turnover</div>
+                <div className="text-gray-600 text-xs sm:text-sm font-bold">3.1%</div>
               </div>
             </div>
           </div>
 
-          <div className="h-48 bg-gray-50 rounded-lg flex items-end justify-around p-4">
+          <div className="h-32 sm:h-40 md:h-48 bg-gray-50 rounded-lg flex items-end justify-around p-2 sm:p-4">
             <div className="w-12 bg-emerald-200 rounded-t" style={{height: '60%'}}></div>
             <div className="w-12 bg-emerald-200 rounded-t" style={{height: '40%'}}></div>
             <div className="w-12 bg-emerald-400 rounded-t" style={{height: '80%'}}></div>
@@ -362,17 +363,17 @@ const HomeMainArea: React.FC = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="container mx-auto px-6 py-20 bg-gray-50">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+      <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-20 bg-gray-50">
+        <div className="text-center mb-8 sm:mb-12 px-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
             Trusted by African Businesses
           </h2>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             See what HR leaders across Africa are saying about AfriHR
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto px-4">
           <div className="bg-white rounded-2xl shadow-lg p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold">
@@ -421,19 +422,19 @@ const HomeMainArea: React.FC = () => {
       </section>
 
       {/* Final CTA Section */}
-      <section className="container mx-auto px-6 py-20">
-        <div className="bg-emerald-600 rounded-3xl p-12 text-center text-white">
-          <h2 className="text-4xl font-bold mb-4">
+      <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div className="bg-emerald-600 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 text-center text-white mx-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
             Ready to Transform Your HR Management?
           </h2>
-          <p className="text-emerald-100 mb-8 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-emerald-100 mb-6 sm:mb-8 max-w-2xl mx-auto px-4">
             Join hundreds of African businesses using AfriHR to streamline operations, boost productivity, and empower their workforce.
           </p>
-          <div className="flex items-center justify-center gap-4">
-            <Link href="/auth/signup-basic" className="bg-white text-emerald-600 px-8 py-3 rounded-lg hover:bg-gray-100 transition font-medium">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4">
+            <Link href="/auth/signup-basic" className="w-full sm:w-auto bg-white text-emerald-600 px-6 sm:px-8 py-3 rounded-lg hover:bg-gray-100 transition font-medium">
               Start Free Trial
             </Link>
-            <button className="border-2 border-white text-white px-8 py-3 rounded-lg hover:bg-emerald-700 transition font-medium">
+            <button className="w-full sm:w-auto border-2 border-white text-white px-6 sm:px-8 py-3 rounded-lg hover:bg-emerald-700 transition font-medium">
               Schedule Demo
             </button>
           </div>
@@ -441,8 +442,8 @@ const HomeMainArea: React.FC = () => {
       </section>
 
       {/* Footer */}
-      <footer className="container mx-auto px-6 py-12 border-t border-gray-200">
-        <div className="text-center text-gray-600 text-sm">
+      <footer className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 border-t border-gray-200">
+        <div className="text-center text-gray-600 text-xs sm:text-sm">
           <p>© 2026 AfriHR. All rights reserved. Made with ❤️ for African businesses.</p>
         </div>
       </footer>
