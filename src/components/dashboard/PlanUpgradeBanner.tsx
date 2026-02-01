@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePlanRestrictions } from "@/hooks/usePlanRestrictions";
+import { usePlanRestrictions } from "@/hooks/usePlanRestrictions.tsx";
 import { PLANS } from "@/config/plans";
 
 interface PlanUpgradeBannerProps {

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuthUserContext } from "@/context/UserAuthContext";
-import { usePlanRestrictions } from "@/hooks/usePlanRestrictions";
+import { usePlanRestrictions } from "@/hooks/usePlanRestrictions.tsx";
 import { PLANS, formatPrice, FEATURE_LABELS, PlanFeatures } from "@/config/plans";
 import { PlanType, PaymentRecord } from "@/types/company";
 
@@ -29,7 +29,7 @@ export default function SubscriptionPage() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
-  const planConfig = PLANS[plan];
+  const planConfig = PLANS[plan] || PLANS.starter; // Fallback to starter if plan is invalid
   const subscription = company?.subscription;
 
   // Fetch payment history
@@ -165,7 +165,7 @@ export default function SubscriptionPage() {
                 </h2>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl font-bold text-primary">{planName}</span>
-                  {planConfig.popular && (
+                  {planConfig?.popular && (
                     <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
                       Popular
                     </span>

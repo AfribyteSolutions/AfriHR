@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from "react";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Company, PlanType } from "@/types/company";
@@ -207,8 +207,6 @@ export function usePlanRestrictions(companyId: string | null): UsePlanRestrictio
 }
 
 // Context for plan restrictions (for use throughout the app)
-import { createContext, useContext, ReactNode } from "react";
-
 interface PlanContextType extends UsePlanRestrictionsResult {}
 
 const PlanContext = createContext<PlanContextType | null>(null);
