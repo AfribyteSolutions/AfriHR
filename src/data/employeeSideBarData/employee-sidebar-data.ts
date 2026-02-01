@@ -38,6 +38,13 @@ export interface EmployeeSidebarItem {
       link: "/hrm/training",
       icon: "icon-book",
     },
+    {
+      id: 6,
+      label: "Announcements",
+      link: "/announcement",
+      icon: "icon-announcement",
+    },
+
     
   ];
   

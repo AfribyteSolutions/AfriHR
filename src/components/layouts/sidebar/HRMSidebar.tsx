@@ -49,7 +49,8 @@ const HRMSidebar = () => {
       // Find and include specific items from sidebarData
       const includeItems = [
         "HRM",
-        "Add Employee", // Added this new item
+        // "Dashboard", // Remove from here since we're adding it separately
+        "Add Employee",
         "Recruitment Flow",
         "Payroll",
         "Expense",
@@ -171,6 +172,20 @@ const HRMSidebar = () => {
             <ul className="main-menu" style={{ display: "block" }}>
               <li className="sidebar__menu-category">
                 <span className="category-name">Welcome Manager!</span>
+              </li>
+              
+              {/* HRM Dashboard - Direct link right after Welcome Manager */}
+              <li className="slide">
+                <Link
+                  href="/dashboard/hrm-dashboard"
+                  className="sidebar__menu-item"
+                  onClick={() => handleCollapse(true)}
+                >
+                  <div className="side-menu__icon">
+                    <i className="icon-house"></i>
+                  </div>
+                  <span className="sidebar__menu-label">Dashboard</span>
+                </Link>
               </li>
               
               {/* Dynamically render HRM menu items with proper dropdown structure */}
