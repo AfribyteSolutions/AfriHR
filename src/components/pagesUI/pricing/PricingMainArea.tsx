@@ -4,16 +4,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PLANS, formatPrice, FEATURE_LABELS } from "@/config/plans";
 import { PlanType } from "@/types/company";
-import { useAuthUserContext } from "@/context/UserAuthContext";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const PricingMainArea: React.FC = () => {
   const [isAnnual, setIsAnnual] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const router = useRouter();
-  const { user, loading: authLoading } = useAuthUserContext();
 
-  // Check if user is logged in
-  const isLoggedIn = !!user;
+  // Check auth state directly from Firebase
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsLoggedIn(!!user);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const faqs = [
     {

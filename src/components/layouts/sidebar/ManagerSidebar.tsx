@@ -56,18 +56,18 @@ const ManagerSidebar = () => {
     setlinkId(linkId === id ? null : id);
     setlinkIdTwo(null);
     setlinkIdThree(null);
-    handleCollapse(true);
+    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   const handleClickTwo = (id: number) => {
     setlinkIdTwo(linkIdTwo === id ? null : id);
     setlinkIdThree(null);
-    handleCollapse(true);
+    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   const handleClickThree = (id: number) => {
     setlinkIdThree(linkIdThree === id ? null : id);
-    handleCollapse(true);
+    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   return (
@@ -112,9 +112,12 @@ const ManagerSidebar = () => {
                     onClick={(e) => {
                       if (!item.link || item.link === "#") {
                         e.preventDefault();
-                      }
-                      if (item.subItems?.length) {
-                        handleClick(item.id);
+                        if (item.subItems?.length) {
+                          handleClick(item.id);
+                        }
+                      } else {
+                        // Close sidebar on mobile when navigating
+                        handleCollapse(false);
                       }
                     }}
                     href={item.link || "#"}
@@ -141,9 +144,14 @@ const ManagerSidebar = () => {
                         >
                           <Link
                             onClick={(e) => {
-                              if (subOne.subItems?.length) {
+                              if (!subOne.link || subOne.link === "#") {
                                 e.preventDefault();
-                                handleClickTwo(subOne.id);
+                                if (subOne.subItems?.length) {
+                                  handleClickTwo(subOne.id);
+                                }
+                              } else {
+                                // Close sidebar on mobile when navigating
+                                handleCollapse(false);
                               }
                             }}
                             href={subOne.link || "#"}
@@ -165,9 +173,14 @@ const ManagerSidebar = () => {
                                 >
                                   <Link
                                     onClick={(e) => {
-                                      if (subTwo.subItems?.length) {
+                                      if (!subTwo.link || subTwo.link === "#") {
                                         e.preventDefault();
-                                        handleClickThree(subTwo.id);
+                                        if (subTwo.subItems?.length) {
+                                          handleClickThree(subTwo.id);
+                                        }
+                                      } else {
+                                        // Close sidebar on mobile when navigating
+                                        handleCollapse(false);
                                       }
                                     }}
                                     href={subTwo.link || "#"}
@@ -184,7 +197,11 @@ const ManagerSidebar = () => {
                                     >
                                       {subTwo.subItems.map((subThree) => (
                                         <li key={subThree.id} className="slide">
-                                          <Link href={subThree.link || "#"} className="sidebar__menu-item">
+                                          <Link 
+                                            onClick={() => handleCollapse(false)}
+                                            href={subThree.link || "#"} 
+                                            className="sidebar__menu-item"
+                                          >
                                             {subThree.label}
                                           </Link>
                                         </li>

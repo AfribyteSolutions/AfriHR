@@ -156,7 +156,16 @@ const EmployeeSidebar = () => {
               </li>
               {sidebarItems.map((item) => (
                 <li key={item.id} className="slide">
-                  <Link href={item.link} className="sidebar__menu-item">
+                  <Link 
+                    href={item.link} 
+                    className="sidebar__menu-item"
+                    onClick={() => {
+                      // Close sidebar on mobile when navigating
+                      if (window.matchMedia("(max-width: 1199px)").matches) {
+                        setIsCollapse(false);
+                      }
+                    }}
+                  >
                     <div className="side-menu__icon">
                       <i className={item.icon}></i>
                     </div>

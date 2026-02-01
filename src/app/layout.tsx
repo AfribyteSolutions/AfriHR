@@ -54,7 +54,7 @@ export default function RootLayout({
             <AppProvider>
               <DirectionProvider>
                 <AuthUserProvider>
-                  
+                  <SessionMonitor inactivityTimeout={30 * 60 * 1000} />
                   {children}
                 </AuthUserProvider>
                 <Setting />

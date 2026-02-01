@@ -15,14 +15,14 @@ const protectedRoutes = new Map<RegExp, string[]>([
 const publicRoutes = [
   '/auth/signin-basic',
   '/auth/signup-basic',
-  '/auth/signup-advance', 
+  '/auth/signup-advance',
   '/auth/reset-password-basic',
   '/auth/forgot-password',
   '/onboarding',
   '/pricing',
+  '/checkout',
   '/about',
   '/contact',
-  '/' // The root route is a public page that will redirect
 ];
 
 export function middleware(req: NextRequest) {
@@ -55,18 +55,13 @@ export function middleware(req: NextRequest) {
     });
   }
 
-  // Allow access to localhost (for development)
-  if (isLocalhost && pathname === '/') {
+  // Handle root path - always allow access to homepage
+  if (pathname === '/') {
     return res;
   }
 
-  // Redirect root to sign-in page in production
-  if (pathname === '/' && process.env.NODE_ENV === 'production') {
-    return NextResponse.redirect(new URL('/auth/signin-basic', req.url));
-  }
-
   // Allow public routes without authentication
-  if (publicRoutes.some(route => pathname.startsWith(route))) {
+  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))) {
     return res;
   }
 

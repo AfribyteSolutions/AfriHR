@@ -101,7 +101,7 @@ const HRMSidebar = () => {
     setHrmMenuItems(getHrmMenuItems());
   }, []);
 
-  // Utility function to handle collapse behavior for screens with max-width: 1199px
+  // Utility function to handle collapse behavior for mobile screens
   const handleCollapse = (shouldCollapse: boolean) => {
     if (window.matchMedia("(max-width: 1199px)").matches) {
       setIsCollapse(shouldCollapse);
@@ -111,34 +111,31 @@ const HRMSidebar = () => {
   const handleClick = (id: number) => {
     if (linkId === id) {
       setlinkId(null);
-      handleCollapse(true);
     } else {
       setlinkId(id);
       setlinkIdTwo(null);
       setlinkIdThree(null);
-      handleCollapse(true);
     }
+    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   const handleClickTwo = (id: number) => {
     if (linkIdTwo === id) {
       setlinkIdTwo(null);
-      handleCollapse(true);
     } else {
       setlinkIdTwo(id);
       setlinkIdThree(null);
-      handleCollapse(true);
     }
+    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   const handleClickThree = (id: number) => {
     if (linkIdThree === id) {
       setlinkIdThree(null);
-      handleCollapse(true);
     } else {
       setlinkIdThree(id);
-      handleCollapse(true);
     }
+    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   return (
@@ -179,7 +176,7 @@ const HRMSidebar = () => {
                 <Link
                   href="/dashboard/hrm-dashboard"
                   className="sidebar__menu-item"
-                  onClick={() => handleCollapse(true)}
+                  onClick={() => handleCollapse(false)}
                 >
                   <div className="side-menu__icon">
                     <i className="icon-house"></i>
@@ -202,8 +199,11 @@ const HRMSidebar = () => {
                     onClick={(e) => {
                       if (!item.link || item.link === "#") {
                         e.preventDefault();
+                        handleClick(item.id);
+                      } else {
+                        // Close sidebar on mobile when navigating
+                        handleCollapse(false);
                       }
-                      handleClick(item.id);
                     }}
                     href={item.link || "#"}
                     className={`sidebar__menu-item ${
@@ -239,7 +239,15 @@ const HRMSidebar = () => {
                           }`}
                         >
                           <Link
-                            onClick={() => handleClickTwo(index)}
+                            onClick={(e) => {
+                              if (!subOne.link || subOne.link === "#" || subOne.link === "/") {
+                                e.preventDefault();
+                                handleClickTwo(index);
+                              } else {
+                                // Close sidebar on mobile when navigating
+                                handleCollapse(false);
+                              }
+                            }}
                             href={subOne.link || "/"}
                             className={`sidebar__menu-item ${
                               linkIdTwo === index ? "active" : ""
@@ -266,7 +274,15 @@ const HRMSidebar = () => {
                                   }`}
                                 >
                                   <Link
-                                    onClick={() => handleClickThree(subIndex)}
+                                    onClick={(e) => {
+                                      if (!subTwo.link || subTwo.link === "#") {
+                                        e.preventDefault();
+                                        handleClickThree(subIndex);
+                                      } else {
+                                        // Close sidebar on mobile when navigating
+                                        handleCollapse(false);
+                                      }
+                                    }}
                                     href={subTwo.link || "#"}
                                     className={`sidebar__menu-item ${
                                       linkIdThree === subIndex ? "active" : ""
@@ -296,6 +312,7 @@ const HRMSidebar = () => {
                                             }`}
                                           >
                                             <Link
+                                              onClick={() => handleCollapse(false)}
                                               href={subThree.link || "#"}
                                               className="sidebar__menu-item"
                                             >

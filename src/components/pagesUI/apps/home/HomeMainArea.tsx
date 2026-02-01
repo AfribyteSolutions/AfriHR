@@ -1,14 +1,22 @@
 // components/pagesUI/apps/home/HomeMainArea.tsx
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuthUserContext } from "@/context/UserAuthContext";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const HomeMainArea: React.FC = () => {
   const router = useRouter();
-  const { user } = useAuthUserContext();
-  const isLoggedIn = !!user;
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Check auth state directly from Firebase for homepage
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsLoggedIn(!!user);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Handle buy plan click - redirect to login if not logged in
   const handleBuyPlan = (planId: string, billingCycle: string = 'monthly') => {

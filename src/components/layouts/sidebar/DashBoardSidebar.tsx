@@ -75,7 +75,7 @@ const DashBoardSidebar = () => {
     }
   }, [user, loading]);
 
-  // Utility function to handle collapse behavior for screens with max-width: 1199px
+  // Utility function to handle collapse behavior for mobile screens
   const handleCollapse = (shouldCollapse: boolean) => {
     if (window.matchMedia("(max-width: 1199px)").matches) {
       setIsCollapse(shouldCollapse);
@@ -85,47 +85,43 @@ const DashBoardSidebar = () => {
   const handleClick = (id: number) => {
     if (linkId === id) {
       setlinkId(null);
-      handleCollapse(true);
     } else {
       setlinkId(id);
       setlinkIdTwo(null);
       setlinkIdThree(null);
       setlinkIdFour(null);
-      handleCollapse(true);
     }
+    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   const handleClickTwo = (id: number) => {
     if (linkIdTwo === id) {
       setlinkIdTwo(null);
-      handleCollapse(true);
     } else {
       setlinkIdTwo(id);
       setlinkIdThree(null);
       setlinkIdFour(null);
-      handleCollapse(true);
     }
+    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   const handleClickThree = (id: number) => {
     if (linkIdThree === id) {
       setlinkIdThree(null);
-      handleCollapse(true);
     } else {
       setlinkIdThree(id);
       setlinkIdFour(null);
-      handleCollapse(true);
     }
+    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   const handleClickFour = (id: number) => {
     if (linkIdFour === id) {
       setlinkIdFour(null);
-      handleCollapse(true);
     } else {
       setlinkIdFour(id);
-      handleCollapse(true);
     }
+    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   // UseEffect to find and set the active menu based on the current path
@@ -226,8 +222,11 @@ const DashBoardSidebar = () => {
                         onClick={(e) => {
                           if (!item.link || item.link === "#") {
                             e.preventDefault();
+                            handleClick(item.id);
+                          } else {
+                            // Close sidebar on mobile when navigating
+                            handleCollapse(false);
                           }
-                          handleClick(item.id);
                         }}
                         href={item.link || "#"}
                         className={`sidebar__menu-item ${
@@ -264,7 +263,15 @@ const DashBoardSidebar = () => {
                               }`}
                             >
                               <Link
-                                onClick={() => handleClickTwo(index)}
+                                onClick={(e) => {
+                                  if (!subOne.link || subOne.link === "#" || subOne.link === "/") {
+                                    e.preventDefault();
+                                    handleClickTwo(index);
+                                  } else {
+                                    // Close sidebar on mobile when navigating
+                                    handleCollapse(false);
+                                  }
+                                }}
                                 href={subOne.link || "/"}
                                 className={`sidebar__menu-item ${
                                   linkIdTwo === index ? "active" : ""
@@ -291,7 +298,15 @@ const DashBoardSidebar = () => {
                                       }`}
                                     >
                                       <Link
-                                        onClick={() => handleClickThree(subIndex)}
+                                        onClick={(e) => {
+                                          if (!subTwo.link || subTwo.link === "#") {
+                                            e.preventDefault();
+                                            handleClickThree(subIndex);
+                                          } else {
+                                            // Close sidebar on mobile when navigating
+                                            handleCollapse(false);
+                                          }
+                                        }}
                                         href={subTwo.link || "#"}
                                         className={`sidebar__menu-item ${
                                           linkIdThree === subIndex ? "active" : ""
@@ -321,6 +336,10 @@ const DashBoardSidebar = () => {
                                                 }`}
                                               >
                                                 <Link
+                                                  onClick={() => {
+                                                    // Close sidebar on mobile when navigating
+                                                    handleCollapse(false);
+                                                  }}
                                                   href={subThree.link || "#"}
                                                   className="sidebar__menu-item"
                                                 >

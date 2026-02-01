@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { toast } from 'sonner';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface SessionMonitorProps {
   inactivityTimeout?: number; // in milliseconds, default 30 minutes
@@ -12,10 +12,11 @@ interface SessionMonitorProps {
 const SessionMonitor: React.FC<SessionMonitorProps> = ({ 
   inactivityTimeout = 30 * 60 * 1000 // 30 minutes default
 }) => {
-  const router = useRouter();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
   const hasShownWarningRef = useRef<boolean>(false);
+  const isAuthenticatedRef = useRef<boolean>(false);
 
   const clearSession = async () => {
     try {
@@ -23,7 +24,7 @@ const SessionMonitor: React.FC<SessionMonitorProps> = ({
       await auth.signOut();
       
       // Clear all cookies by calling logout API
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/log-out', { method: 'POST' });
       
       // Clear local/session storage
       localStorage.clear();
@@ -36,6 +37,11 @@ const SessionMonitor: React.FC<SessionMonitorProps> = ({
   };
 
   const handleLogout = async (reason: 'inactivity' | 'tab-close' = 'inactivity') => {
+    // Only logout if user is actually authenticated
+    if (!isAuthenticatedRef.current) {
+      return;
+    }
+
     await clearSession();
     
     const message = reason === 'inactivity' 
@@ -49,29 +55,39 @@ const SessionMonitor: React.FC<SessionMonitorProps> = ({
   };
 
   const resetInactivityTimer = () => {
-    // Clear existing timeout
+    // Only reset timer if user is authenticated
+    if (!isAuthenticatedRef.current) {
+      return;
+    }
+
+    // Clear existing timeouts
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
+    }
+    if (warningTimeoutRef.current) {
+      clearTimeout(warningTimeoutRef.current);
     }
 
     // Update last activity
     lastActivityRef.current = Date.now();
     hasShownWarningRef.current = false;
 
-    // Update lastActivity cookie
-    document.cookie = `lastActivity=${Date.now()}; path=/; SameSite=Lax`;
+    // Update lastActivity cookie (client-accessible for visibility check)
+    document.cookie = `lastActivity=${Date.now()}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
 
     // Set warning at 5 minutes before timeout
     const warningTime = inactivityTimeout - (5 * 60 * 1000); // 5 minutes before
     
-    const warningTimeout = setTimeout(() => {
-      if (!hasShownWarningRef.current) {
-        toast.warning('You will be logged out in 5 minutes due to inactivity', {
-          duration: 10000,
-        });
-        hasShownWarningRef.current = true;
-      }
-    }, warningTime);
+    if (warningTime > 0) {
+      warningTimeoutRef.current = setTimeout(() => {
+        if (!hasShownWarningRef.current && isAuthenticatedRef.current) {
+          toast.warning('You will be logged out in 5 minutes due to inactivity', {
+            duration: 10000,
+          });
+          hasShownWarningRef.current = true;
+        }
+      }, warningTime);
+    }
 
     // Set new timeout for logout
     timeoutRef.current = setTimeout(() => {
@@ -80,6 +96,27 @@ const SessionMonitor: React.FC<SessionMonitorProps> = ({
   };
 
   useEffect(() => {
+    // Monitor Firebase Auth state changes
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      isAuthenticatedRef.current = !!user;
+      
+      if (user) {
+        console.log('👤 User authenticated, starting session monitor');
+        resetInactivityTimer();
+      } else {
+        console.log('👤 User not authenticated, stopping session monitor');
+        // Clear timers if user is not authenticated
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        if (warningTimeoutRef.current) {
+          clearTimeout(warningTimeoutRef.current);
+          warningTimeoutRef.current = null;
+        }
+      }
+    });
+
     // Events that indicate user activity
     const activityEvents = [
       'mousedown',
@@ -90,29 +127,49 @@ const SessionMonitor: React.FC<SessionMonitorProps> = ({
       'click',
     ];
 
-    // Add event listeners for user activity
-    activityEvents.forEach(event => {
-      document.addEventListener(event, resetInactivityTimer);
-    });
+    // Add event listeners for user activity (throttled to avoid excessive updates)
+    let throttleTimeout: NodeJS.Timeout | null = null;
+    const throttledReset = () => {
+      if (!throttleTimeout) {
+        throttleTimeout = setTimeout(() => {
+          resetInactivityTimer();
+          throttleTimeout = null;
+        }, 1000); // Throttle to once per second
+      }
+    };
 
-    // Initialize timer
-    resetInactivityTimer();
+    activityEvents.forEach(event => {
+      document.addEventListener(event, throttledReset, { passive: true });
+    });
 
     // Handle tab visibility change
     const handleVisibilityChange = () => {
+      if (!isAuthenticatedRef.current) {
+        return;
+      }
+
       if (document.hidden) {
         // Tab is hidden/inactive
         console.log('📱 Tab hidden');
       } else {
         // Tab is visible again, check if session is still valid
-        const lastActivity = parseInt(document.cookie
+        const lastActivityCookie = document.cookie
           .split('; ')
-          .find(row => row.startsWith('lastActivity='))
-          ?.split('=')[1] || '0');
+          .find(row => row.startsWith('lastActivity='));
         
+        if (!lastActivityCookie) {
+          // No lastActivity cookie found - session might have expired
+          console.warn('⚠️ No lastActivity cookie found');
+          return;
+        }
+
+        const lastActivity = parseInt(lastActivityCookie.split('=')[1] || '0');
         const timeSinceActivity = Date.now() - lastActivity;
         
+        console.log(`⏰ Time since last activity: ${Math.floor(timeSinceActivity / 1000 / 60)} minutes`);
+        
         if (timeSinceActivity > inactivityTimeout) {
+          console.log('⏰ Session expired during inactivity');
           handleLogout('inactivity');
         } else {
           resetInactivityTimer();
@@ -122,36 +179,22 @@ const SessionMonitor: React.FC<SessionMonitorProps> = ({
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Handle page unload (tab close/refresh)
-    const handleBeforeUnload = () => {
-      // Check if "Remember Me" is enabled
-      const rememberMe = document.cookie.includes('rememberMe=true');
-      
-      if (!rememberMe) {
-        // If not "Remember Me", we'll clear session on next load
-        sessionStorage.setItem('shouldClearSession', 'true');
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    // Check on mount if we should clear session
-    const shouldClear = sessionStorage.getItem('shouldClearSession');
-    if (shouldClear === 'true') {
-      sessionStorage.removeItem('shouldClearSession');
-      handleLogout('tab-close');
-    }
-
     // Cleanup
     return () => {
+      unsubscribe();
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
+      if (warningTimeoutRef.current) {
+        clearTimeout(warningTimeoutRef.current);
+      }
+      if (throttleTimeout) {
+        clearTimeout(throttleTimeout);
+      }
       activityEvents.forEach(event => {
-        document.removeEventListener(event, resetInactivityTimer);
+        document.removeEventListener(event, throttledReset);
       });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [inactivityTimeout]);
 
