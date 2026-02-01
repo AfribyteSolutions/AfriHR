@@ -1,12 +1,19 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PLANS, formatPrice, FEATURE_LABELS } from "@/config/plans";
 import { PlanType } from "@/types/company";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
 const PricingMainArea: React.FC = () => {
   const [isAnnual, setIsAnnual] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuthUserContext();
+
+  // Check if user is logged in
+  const isLoggedIn = !!user;
 
   const faqs = [
     {
@@ -45,6 +52,32 @@ const PricingMainArea: React.FC = () => {
 
   const planOrder: PlanType[] = ['starter', 'professional', 'business', 'enterprise'];
 
+  // Handle buy plan click - redirect to login if not logged in
+  const handleBuyPlan = (planId: PlanType) => {
+    const billingCycle = isAnnual ? 'annual' : 'monthly';
+    const checkoutUrl = `/checkout?plan=${planId}&billing=${billingCycle}`;
+
+    if (!isLoggedIn) {
+      // Redirect to login with return URL to pricing page
+      const returnUrl = encodeURIComponent(`/pricing?redirect=${encodeURIComponent(checkoutUrl)}`);
+      router.push(`/auth/signin-basic?returnUrl=${returnUrl}`);
+    } else {
+      // User is logged in, go directly to checkout
+      router.push(checkoutUrl);
+    }
+  };
+
+  // Check for redirect parameter on mount (after login)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isLoggedIn) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectUrl = urlParams.get('redirect');
+      if (redirectUrl) {
+        router.push(decodeURIComponent(redirectUrl));
+      }
+    }
+  }, [isLoggedIn, router]);
+
   const getPlanButton = (planId: PlanType) => {
     const plan = PLANS[planId];
 
@@ -71,16 +104,16 @@ const PricingMainArea: React.FC = () => {
     }
 
     return (
-      <Link
-        href={`/checkout?plan=${planId}&billing=${isAnnual ? 'annual' : 'monthly'}`}
-        className={`block w-full text-center py-3 rounded-lg transition font-medium mb-6 ${
+      <button
+        onClick={() => handleBuyPlan(planId)}
+        className={`w-full text-center py-3 rounded-lg transition font-medium mb-6 ${
           plan.popular
             ? 'bg-primary text-white hover:bg-primary/90'
             : 'border-2 border-borderLight dark:border-borderLight-dark text-dark dark:text-dark-dark hover:border-primary hover:text-primary'
         }`}
       >
-        Start Free Trial
-      </Link>
+        Buy Plan
+      </button>
     );
   };
 

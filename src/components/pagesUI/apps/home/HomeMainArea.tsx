@@ -2,8 +2,28 @@
 "use client";
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
 const HomeMainArea: React.FC = () => {
+  const router = useRouter();
+  const { user } = useAuthUserContext();
+  const isLoggedIn = !!user;
+
+  // Handle buy plan click - redirect to login if not logged in
+  const handleBuyPlan = (planId: string, billingCycle: string = 'monthly') => {
+    const checkoutUrl = `/checkout?plan=${planId}&billing=${billingCycle}`;
+
+    if (!isLoggedIn) {
+      // Redirect to login with return URL to pricing page
+      const returnUrl = encodeURIComponent(`/pricing?redirect=${encodeURIComponent(checkoutUrl)}`);
+      router.push(`/auth/signin-basic?returnUrl=${returnUrl}`);
+    } else {
+      // User is logged in, go directly to checkout
+      router.push(checkoutUrl);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-bgLightest dark:from-bgBody-dark to-white dark:to-card-dark">
       {/* Navigation */}
@@ -270,12 +290,12 @@ const HomeMainArea: React.FC = () => {
                 <span className="text-secondary">✓</span> Advanced analytics
               </li>
             </ul>
-            <Link
-              href="/checkout?plan=professional&billing=monthly"
-              className="block w-full text-center bg-primary text-white py-3 rounded-lg hover:bg-primary/90 transition font-medium"
+            <button
+              onClick={() => handleBuyPlan('professional', 'monthly')}
+              className="w-full text-center bg-primary text-white py-3 rounded-lg hover:bg-primary/90 transition font-medium"
             >
-              Start Free Trial
-            </Link>
+              Buy Plan
+            </button>
           </div>
 
           {/* Business Plan */}
@@ -302,12 +322,12 @@ const HomeMainArea: React.FC = () => {
                 <span className="text-secondary">✓</span> 24/7 phone support
               </li>
             </ul>
-            <Link
-              href="/checkout?plan=business&billing=monthly"
-              className="block w-full text-center border-2 border-borderLight dark:border-borderLight-dark text-dark dark:text-dark-dark py-3 rounded-lg hover:border-primary hover:text-primary transition font-medium"
+            <button
+              onClick={() => handleBuyPlan('business', 'monthly')}
+              className="w-full text-center border-2 border-borderLight dark:border-borderLight-dark text-dark dark:text-dark-dark py-3 rounded-lg hover:border-primary hover:text-primary transition font-medium"
             >
-              Start Free Trial
-            </Link>
+              Buy Plan
+            </button>
           </div>
 
           {/* Enterprise Plan */}

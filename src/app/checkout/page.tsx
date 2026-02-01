@@ -4,16 +4,20 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { PLANS, formatPrice, calculatePrice } from "@/config/plans";
 import { PlanType, BillingCycle } from "@/types/company";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user, loading: authLoading } = useAuthUserContext();
 
   const planId = (searchParams.get("plan") || "professional") as PlanType;
   const initialBillingCycle = (searchParams.get("billing") || "monthly") as BillingCycle;
-  const companyId = searchParams.get("companyId") || "";
+  // Get companyId from URL params or from authenticated user
+  const urlCompanyId = searchParams.get("companyId");
+  const companyId = urlCompanyId || user?.companyId || "";
 
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(initialBillingCycle);
   const [employeeCount, setEmployeeCount] = useState(10);
@@ -22,14 +26,47 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      const currentUrl = `/checkout?plan=${planId}&billing=${initialBillingCycle}`;
+      const returnUrl = encodeURIComponent(`/pricing?redirect=${encodeURIComponent(currentUrl)}`);
+      router.push(`/auth/signin-basic?returnUrl=${returnUrl}`);
+    }
+  }, [authLoading, user, planId, initialBillingCycle, router]);
+
   const plan = PLANS[planId];
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-bgBody dark:bg-bgBody-dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-body dark:text-body-dark">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not logged in, don't render (redirect will happen in useEffect)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-bgBody dark:bg-bgBody-dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-body dark:text-body-dark">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!plan || plan.contactSales) {
     return (
-      <div className="min-h-screen bg-bgBody flex items-center justify-center">
-        <div className="bg-card rounded-xl p-8 text-center max-w-md">
-          <h1 className="text-2xl font-bold text-dark mb-4">Contact Sales</h1>
-          <p className="text-body mb-6">
+      <div className="min-h-screen bg-bgBody dark:bg-bgBody-dark flex items-center justify-center">
+        <div className="bg-card dark:bg-card-dark rounded-xl p-8 text-center max-w-md">
+          <h1 className="text-2xl font-bold text-dark dark:text-dark-dark mb-4">Contact Sales</h1>
+          <p className="text-body dark:text-body-dark mb-6">
             Enterprise plans require custom pricing. Please contact our sales team.
           </p>
           <button

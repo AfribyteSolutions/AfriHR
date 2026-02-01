@@ -1,7 +1,7 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Checkbox, FormControlLabel } from "@mui/material";
 import Link from "next/link";
@@ -16,6 +16,10 @@ const SignInBasicForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<ISignInForm>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get returnUrl from URL params for redirect after login
+  const returnUrl = searchParams.get('returnUrl');
 
   const togglePasswordVisibility = () => setIsPasswordVisible(!isPasswordVisible);
 
@@ -120,12 +124,19 @@ const SignInBasicForm = () => {
           return;
       }
 
-      console.log("🔄 Redirecting to:", dashboardPath);
       toast.success(`Welcome back, ${userData.fullName || "User"}!`);
 
-      // 7. Hard redirect to ensure cookies are properly recognized
-      // Use window.location.href for full page reload with new cookies
-      window.location.href = dashboardPath;
+      // 7. Check if there's a returnUrl to redirect to (e.g., from pricing page)
+      if (returnUrl) {
+        const decodedReturnUrl = decodeURIComponent(returnUrl);
+        console.log("🔄 Redirecting to returnUrl:", decodedReturnUrl);
+        // For returnUrl, redirect within the same domain (pricing/checkout pages)
+        window.location.href = `${baseUrl}${decodedReturnUrl}`;
+      } else {
+        // 8. Hard redirect to dashboard to ensure cookies are properly recognized
+        console.log("🔄 Redirecting to dashboard:", dashboardPath);
+        window.location.href = dashboardPath;
+      }
 
     } catch (error: any) {
       console.error("❌ Sign-in error:", error);
