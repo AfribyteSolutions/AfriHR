@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
           billingCycle,
           employeeCount: employeeCount.toString(),
         },
-        trial_period_days: plan.trialDays > 0 ? plan.trialDays : undefined,
+        // No trial period - instant payment required
       },
       allow_promotion_codes: true,
       billing_address_collection: "required",

@@ -5,18 +5,46 @@ import { useRouter } from "next/navigation";
 import { PLANS, formatPrice, FEATURE_LABELS } from "@/config/plans";
 import { PlanType } from "@/types/company";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 const PricingMainArea: React.FC = () => {
   const [isAnnual, setIsAnnual] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<PlanType | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Check auth state directly from Firebase
+  // Check auth state and fetch current plan
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setIsLoggedIn(!!user);
+
+      if (user) {
+        try {
+          // Get user's company to find current plan
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const companyId = userData.companyId;
+
+            if (companyId) {
+              const companyDoc = await getDoc(doc(db, "companies", companyId));
+              if (companyDoc.exists()) {
+                const companyData = companyDoc.data();
+                setCurrentPlan(companyData.plan || 'starter');
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user plan:", error);
+        }
+      } else {
+        setCurrentPlan(null);
+      }
+
+      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -86,25 +114,35 @@ const PricingMainArea: React.FC = () => {
 
   const getPlanButton = (planId: PlanType) => {
     const plan = PLANS[planId];
+    const isCurrentPlan = currentPlan === planId;
+
+    // Show "Current Plan" badge if this is the user's active plan
+    if (isCurrentPlan) {
+      return (
+        <div className="w-full text-center py-3 rounded-lg bg-secondary/20 text-secondary border-2 border-secondary font-medium mb-6">
+          ✓ Current Plan
+        </div>
+      );
+    }
 
     if (plan.contactSales) {
       return (
-        <Link
-          href="/contact"
+        <a
+          href="mailto:sales@afrihrm.com?subject=Enterprise Plan Inquiry"
           className="block w-full text-center border-2 border-borderLight dark:border-borderLight-dark text-dark dark:text-dark-dark py-3 rounded-lg hover:border-primary hover:text-primary transition font-medium mb-6"
         >
           Contact Sales
-        </Link>
+        </a>
       );
     }
 
     if (planId === 'starter') {
       return (
         <Link
-          href="/auth/signup-basic"
+          href={isLoggedIn ? "/dashboard" : "/auth/signup-basic"}
           className="block w-full text-center border-2 border-borderLight dark:border-borderLight-dark text-dark dark:text-dark-dark py-3 rounded-lg hover:border-primary hover:text-primary transition font-medium mb-6"
         >
-          Get Started Free
+          {isLoggedIn ? "Go to Dashboard" : "Get Started Free"}
         </Link>
       );
     }
@@ -118,7 +156,7 @@ const PricingMainArea: React.FC = () => {
             : 'border-2 border-borderLight dark:border-borderLight-dark text-dark dark:text-dark-dark hover:border-primary hover:text-primary'
         }`}
       >
-        Buy Plan
+        {isLoggedIn ? "Upgrade to This Plan" : "Buy Plan"}
       </button>
     );
   };
@@ -232,16 +270,31 @@ const PricingMainArea: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <Link href="/auth/signin-basic" className="text-body dark:text-body-dark hover:text-dark dark:hover:text-dark-dark text-sm sm:text-base">
-              Sign In
-            </Link>
-            <Link
-              href="/auth/signup-basic"
-              className="bg-primary text-white px-3 sm:px-6 py-2 rounded-lg hover:bg-primary/90 transition text-sm sm:text-base"
-            >
-              <span className="hidden sm:inline">Start Free Trial</span>
-              <span className="sm:hidden">Sign Up</span>
-            </Link>
+            {isLoggedIn ? (
+              <>
+                {currentPlan && (
+                  <div className="text-xs sm:text-sm text-body dark:text-body-dark">
+                    Current: <span className="font-semibold capitalize">{currentPlan}</span>
+                  </div>
+                )}
+                <Link href="/dashboard" className="text-body dark:text-body-dark hover:text-dark dark:hover:text-dark-dark text-sm sm:text-base">
+                  Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/auth/signin-basic" className="text-body dark:text-body-dark hover:text-dark dark:hover:text-dark-dark text-sm sm:text-base">
+                  Sign In
+                </Link>
+                <Link
+                  href="/auth/signup-basic"
+                  className="bg-primary text-white px-3 sm:px-6 py-2 rounded-lg hover:bg-primary/90 transition text-sm sm:text-base"
+                >
+                  <span className="hidden sm:inline">Get Started</span>
+                  <span className="sm:hidden">Sign Up</span>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
