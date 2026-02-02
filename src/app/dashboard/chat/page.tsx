@@ -94,17 +94,17 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="mb-6">
+    <div className="h-screen flex flex-col overflow-hidden">
+      <div className="flex-shrink-0 py-6">
         <h1 className="text-2xl font-bold text-dark dark:text-dark-dark">Messages</h1>
         <p className="text-body dark:text-body-dark text-sm">
           Team communication
         </p>
       </div>
 
-      <div className="flex-1 flex gap-6 overflow-hidden min-h-[calc(100vh-200px)]">
+      <div className="flex-1 flex gap-6 overflow-hidden">
         {/* Conversations List */}
-        <div className="w-80 bg-card dark:bg-card-dark rounded-xl border border-borderLightest dark:border-borderLightest-dark overflow-hidden flex flex-col">
+        <div className="w-80 bg-card dark:bg-card-dark rounded-xl border border-borderLightest dark:border-borderLightest-dark overflow-hidden flex flex-col h-full">
           <div className="p-4 border-b border-borderLightest dark:border-borderLightest-dark">
             <input
               type="search"
@@ -153,11 +153,11 @@ export default function ChatPage() {
         </div>
 
         {/* Chat Window */}
-        <div className="flex-1 bg-card dark:bg-card-dark rounded-xl border border-borderLightest dark:border-borderLightest-dark overflow-hidden flex flex-col">
+        <div className="flex-1 bg-card dark:bg-card-dark rounded-xl border border-borderLightest dark:border-borderLightest-dark overflow-hidden flex flex-col h-full">
           {selectedConversation ? (
             <>
               {/* Chat Header */}
-              <div className="p-4 border-b border-borderLightest dark:border-borderLightest-dark flex items-center justify-between">
+              <div className="flex-shrink-0 p-4 border-b border-borderLightest dark:border-borderLightest-dark flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
@@ -211,7 +211,7 @@ export default function ChatPage() {
               </div>
 
               {/* Message Input */}
-              <div className="p-4 border-t border-borderLightest dark:border-borderLightest-dark">
+              <div className="flex-shrink-0 p-4 border-t border-borderLightest dark:border-borderLightest-dark bg-card dark:bg-card-dark">
                 <form onSubmit={handleSendMessage} className="flex items-center gap-3">
                   <button
                     type="button"
