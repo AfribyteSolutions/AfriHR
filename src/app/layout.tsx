@@ -6,7 +6,6 @@ import { DirectionProvider } from "@/hooks/useDirection";
 import Setting from "@/common/setting/Setting";
 import { Toaster } from "sonner";
 import { AuthUserProvider } from '@/context/UserAuthContext';
-import SessionMonitor from '@/components/SessionMonitor'; // Add this import
 
 export default function RootLayout({
   children,
@@ -54,7 +53,6 @@ export default function RootLayout({
             <AppProvider>
               <DirectionProvider>
                 <AuthUserProvider>
-                  <SessionMonitor inactivityTimeout={30 * 60 * 1000} />
                   {children}
                 </AuthUserProvider>
                 <Setting />

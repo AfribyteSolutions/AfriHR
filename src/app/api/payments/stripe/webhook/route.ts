@@ -99,6 +99,16 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     return;
   }
 
+  // Validate planId
+  const validPlans: PlanType[] = ["starter", "professional", "business", "enterprise"];
+  const validatedPlanId = (planId && validPlans.includes(planId as PlanType))
+    ? planId as PlanType
+    : "professional";
+
+  if (planId && !validPlans.includes(planId as PlanType)) {
+    console.warn(`⚠️ Invalid planId "${planId}" in metadata, defaulting to "professional"`);
+  }
+
   const statusMap: Record<string, SubscriptionStatus> = {
     active: "active",
     past_due: "past_due",
@@ -111,7 +121,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
   const subscriptionData = {
     id: subscription.id,
-    planId: planId as PlanType || "professional",
+    planId: validatedPlanId,
     status: statusMap[subscription.status] || "incomplete",
     billingCycle: (billingCycle as BillingCycle) || "monthly",
     currentPeriodStart: new Date(subscription.current_period_start * 1000).toISOString(),
@@ -127,16 +137,27 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     updatedAt: new Date().toISOString(),
   };
 
-  await db.collection("companies").doc(companyId).update({
-    plan: planId || "professional",
+  // Calculate trial end date if subscription is trialing
+  const updateData: any = {
+    plan: validatedPlanId,
     subscription: subscriptionData,
     isActive: subscription.status === "active" || subscription.status === "trialing",
     employeeCount: parseInt(employeeCount || "1"),
     employeeLimit: -1, // Unlimited for paid plans
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  };
 
-  console.log(`✅ Subscription updated for company: ${companyId}`);
+  // Set trialEndsAt if subscription is in trial
+  if (subscription.status === "trialing" && subscription.trial_end) {
+    updateData.trialEndsAt = new Date(subscription.trial_end * 1000).toISOString();
+  } else if (subscription.status !== "trialing") {
+    // Remove trialEndsAt if no longer trialing
+    updateData.trialEndsAt = admin.firestore.FieldValue.delete();
+  }
+
+  await db.collection("companies").doc(companyId).update(updateData);
+
+  console.log(`✅ Subscription updated for company: ${companyId}, plan: ${validatedPlanId}, status: ${subscription.status}`);
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {

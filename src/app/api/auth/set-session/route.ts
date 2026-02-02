@@ -27,14 +27,9 @@ export async function POST(request: NextRequest) {
       maxAge: maxAge,
     };
 
-    // Set multiple cookie names for compatibility
+    // Set authentication cookies (standardized to single names)
     cookieStore.set('authToken', token, cookieOptions);
-    cookieStore.set('token', token, cookieOptions);
-    cookieStore.set('session', token, cookieOptions);
-    
-    // Set role cookies
     cookieStore.set('role', role, cookieOptions);
-    cookieStore.set('userRole', role, cookieOptions);
     
     // Set additional info cookies
     cookieStore.set('userId', userId, cookieOptions);

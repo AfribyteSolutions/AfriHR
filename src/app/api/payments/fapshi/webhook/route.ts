@@ -61,9 +61,17 @@ export async function POST(request: NextRequest) {
       const periodEnd = new Date(now);
       periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
 
+      // Validate planId
+      const validPlans: PlanType[] = ["starter", "professional", "business", "enterprise"];
+      const validatedPlanId = validPlans.includes(planId) ? planId : "professional";
+
+      if (!validPlans.includes(planId)) {
+        console.warn(`⚠️ Invalid planId "${planId}" in Fapshi payment, defaulting to "professional"`);
+      }
+
       const subscription: Subscription = {
         id: externalId,
-        planId,
+        planId: validatedPlanId,
         status: "active",
         billingCycle,
         currentPeriodStart: now.toISOString(),
@@ -80,11 +88,11 @@ export async function POST(request: NextRequest) {
       };
 
       await db.collection("companies").doc(companyId).update({
-        plan: planId,
+        plan: validatedPlanId,
         subscription,
         isActive: true,
         employeeCount,
-        employeeLimit: plan.features.employeeLimit,
+        employeeLimit: -1, // Unlimited for paid plans (consistent with Stripe)
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 

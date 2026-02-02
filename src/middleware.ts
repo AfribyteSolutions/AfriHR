@@ -65,13 +65,9 @@ export function middleware(req: NextRequest) {
     return res;
   }
 
-  // Check if user is authenticated - check multiple cookie names for compatibility
-  const authToken = req.cookies.get('authToken')?.value || 
-                    req.cookies.get('session')?.value || 
-                    req.cookies.get('token')?.value;
-  
-  const userRole = req.cookies.get('role')?.value || 
-                   req.cookies.get('userRole')?.value;
+  // Check if user is authenticated
+  const authToken = req.cookies.get('authToken')?.value;
+  const userRole = req.cookies.get('role')?.value;
 
   // Check session timeout
   const lastActivity = req.cookies.get('lastActivity')?.value;
@@ -88,12 +84,12 @@ export function middleware(req: NextRequest) {
       // Clear cookies
       const response = NextResponse.redirect(signInUrl);
       response.cookies.delete('authToken');
-      response.cookies.delete('session');
-      response.cookies.delete('token');
       response.cookies.delete('role');
-      response.cookies.delete('userRole');
+      response.cookies.delete('userId');
+      response.cookies.delete('userEmail');
+      response.cookies.delete('subdomain');
       response.cookies.delete('lastActivity');
-      
+
       return response;
     }
   }

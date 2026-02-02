@@ -75,11 +75,9 @@ const DashBoardSidebar = () => {
     }
   }, [user, loading]);
 
-  // Utility function to handle collapse behavior for mobile screens
+  // Utility function to handle collapse behavior for all screen sizes
   const handleCollapse = (shouldCollapse: boolean) => {
-    if (window.matchMedia("(max-width: 1199px)").matches) {
-      setIsCollapse(shouldCollapse);
-    }
+    setIsCollapse(shouldCollapse);
   };
 
   const handleClick = (id: number) => {
@@ -91,7 +89,10 @@ const DashBoardSidebar = () => {
       setlinkIdThree(null);
       setlinkIdFour(null);
     }
-    handleCollapse(false); // Close sidebar on mobile after clicking
+    // Close sidebar on mobile after clicking menu item
+    if (window.matchMedia("(max-width: 1199px)").matches) {
+      handleCollapse(false);
+    }
   };
 
   const handleClickTwo = (id: number) => {
@@ -102,7 +103,10 @@ const DashBoardSidebar = () => {
       setlinkIdThree(null);
       setlinkIdFour(null);
     }
-    handleCollapse(false); // Close sidebar on mobile after clicking
+    // Close sidebar on mobile after clicking menu item
+    if (window.matchMedia("(max-width: 1199px)").matches) {
+      handleCollapse(false);
+    }
   };
 
   const handleClickThree = (id: number) => {
@@ -112,7 +116,10 @@ const DashBoardSidebar = () => {
       setlinkIdThree(id);
       setlinkIdFour(null);
     }
-    handleCollapse(false); // Close sidebar on mobile after clicking
+    // Close sidebar on mobile after clicking menu item
+    if (window.matchMedia("(max-width: 1199px)").matches) {
+      handleCollapse(false);
+    }
   };
 
   const handleClickFour = (id: number) => {
@@ -121,7 +128,10 @@ const DashBoardSidebar = () => {
     } else {
       setlinkIdFour(id);
     }
-    handleCollapse(false); // Close sidebar on mobile after clicking
+    // Close sidebar on mobile after clicking menu item
+    if (window.matchMedia("(max-width: 1199px)").matches) {
+      handleCollapse(false);
+    }
   };
 
   // UseEffect to find and set the active menu based on the current path

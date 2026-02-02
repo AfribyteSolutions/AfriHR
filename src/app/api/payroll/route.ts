@@ -1,9 +1,10 @@
 // src/app/api/payroll/route.ts
-export const dynamic = "force-dynamic"; 
+export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { requireAuth } from '@/lib/auth-helper';
 
 // Initialize Firebase Admin SDK (only if not already initialized)
 if (!getApps().length) {
@@ -20,11 +21,26 @@ const adminDb = getFirestore();
 
 // GET - Fetch payroll(s)
 export async function GET(request: NextRequest) {
+  // Require authentication
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+  const user = authResult;
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const companyId = searchParams.get('companyId');
     const employeeUid = searchParams.get('employeeUid');
+
+    // Verify user has access to this company's data
+    if (companyId && user.companyId !== companyId && user.role !== 'super-admin') {
+      return NextResponse.json(
+        { error: "You don't have permission to access this company's payroll data" },
+        { status: 403 }
+      );
+    }
 
     if (id) {
       // Get single payroll by ID

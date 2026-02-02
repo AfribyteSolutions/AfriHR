@@ -29,6 +29,7 @@ import {
 
 //Define an interface for the context api data
 export interface AppContextType {
+  // UI State
   scrollDirection?: string;
   setScrollDirection?: React.Dispatch<React.SetStateAction<string>> | undefined;
   sideMenuOpen: boolean;
@@ -39,6 +40,13 @@ export interface AppContextType {
   setIsCollapse: React.Dispatch<React.SetStateAction<boolean>>;
   theme: string;
   setTheme: React.Dispatch<React.SetStateAction<string>>;
+  // User State (optional - not actively used)
+  userId?: string | null;
+  userRole?: string | null;
+  companyId?: string | null;
+  setUserId?: (id: string | null) => void;
+  setUserRole?: (role: string | null) => void;
+  setCompanyId?: (id: string | null) => void;
 }
 
 //Define an interface for the product
@@ -253,13 +261,5 @@ export interface dealsDetailsStatePropsType {
   editData: IDeal;
 }
 
-// common.interface.ts
-export interface AppContextType {
-  userId: string | null;
-  userRole: string | null;
-  companyId: string | null;   // ✅ add this
-  setUserId: (id: string | null) => void;
-  setUserRole: (role: string | null) => void;
-  setCompanyId: (id: string | null) => void; // ✅ add setter
-}
+// Removed duplicate AppContextType - merged into single definition above
 

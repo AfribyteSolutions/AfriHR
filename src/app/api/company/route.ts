@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
+import { requireAuth, validateSubdomain } from "@/lib/auth-helper";
 
 // Helper to safely serialize Firestore data
 function serializeFirestore(doc: FirebaseFirestore.DocumentSnapshot) {
@@ -65,12 +66,27 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  // Require authentication - only admins and super-admins can update companies
+  const authResult = await requireAuth(request, ['admin', 'super-admin']);
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+  const user = authResult;
+
   try {
     const body = await request.json();
     const { id, ...updateData } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Company ID is required" }, { status: 400 });
+    }
+
+    // Verify user has access to this company
+    if (user.companyId !== id && user.role !== 'super-admin') {
+      return NextResponse.json(
+        { error: "You don't have permission to update this company" },
+        { status: 403 }
+      );
     }
 
     console.log(`🔄 Updating company: ${id}`);
@@ -155,6 +171,12 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  // Require super-admin auth for deleting companies
+  const authResult = await requireAuth(request, ['super-admin']);
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 

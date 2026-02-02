@@ -91,9 +91,6 @@ const HomeMainArea: React.FC = () => {
             >
               Get Started
             </Link>
-            <button className="w-full sm:w-auto border-2 border-borderLight dark:border-borderLight-dark text-dark dark:text-dark-dark px-6 sm:px-8 py-3 rounded-lg hover:border-primary hover:text-primary transition font-medium">
-              View Demo
-            </button>
           </div>
 
           {/* Stats Badge */}
@@ -362,9 +359,12 @@ const HomeMainArea: React.FC = () => {
                 <span className="text-secondary">✓</span> SLA guarantees
               </li>
             </ul>
-            <button className="w-full border-2 border-borderLight dark:border-borderLight-dark text-dark dark:text-dark-dark py-3 rounded-lg hover:border-primary hover:text-primary transition font-medium">
+            <a
+              href="mailto:sales@afrihrm.com?subject=Enterprise Plan Inquiry"
+              className="w-full border-2 border-borderLight dark:border-borderLight-dark text-dark dark:text-dark-dark py-3 rounded-lg hover:border-primary hover:text-primary transition font-medium text-center block"
+            >
               Contact Sales
-            </button>
+            </a>
           </div>
         </div>
 
@@ -495,9 +495,6 @@ const HomeMainArea: React.FC = () => {
             <Link href="/auth/signup-basic" className="w-full sm:w-auto bg-white text-primary px-6 sm:px-8 py-3 rounded-lg hover:bg-gray-100 transition font-medium">
               Start Free Trial
             </Link>
-            <button className="w-full sm:w-auto border-2 border-white text-white px-6 sm:px-8 py-3 rounded-lg hover:bg-white/10 transition font-medium">
-              Schedule Demo
-            </button>
           </div>
         </div>
       </section>
