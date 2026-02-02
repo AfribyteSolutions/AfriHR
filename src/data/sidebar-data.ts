@@ -58,16 +58,9 @@ const sidebarData: SidebarCategory[] = [
       },
       {
         id: 4,
-        label: "Apps",
-        icon: "fa-sharp fa-light fa-grid-2",
-        subItems: [
-          // { label: "Chat", link: "/apps/app-chat" },
-          // { label: "Email Inbox", link: "/apps/email-inbox" },
-          // { label: "Email Read", link: "/apps/email-read" },
-          // { label: "Email Compose", link: "/apps/email-compose" },
-          // { label: "Contacts", link: "/apps/contacts" },
-          // { label: "Calendar", link: "/apps/calendar" },
-        ],
+        label: "Chat",
+        icon: "fa-sharp fa-light fa-messages",
+        link: "/dashboard/chat",
       },
       {
         id: 5,

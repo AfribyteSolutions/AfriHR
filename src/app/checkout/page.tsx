@@ -295,8 +295,8 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-body dark:text-body-dark">
                       {formatPrice(
-                        billingCycle === "annual" ? plan.annualPrice : plan.monthlyPrice,
-                        "USD"
+                        billingCycle === "annual" ? plan.xafAnnualPrice : plan.xafMonthlyPrice,
+                        "XAF"
                       )} x {employeeCount} employees
                     </span>
                   </div>
@@ -308,9 +308,9 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-lg font-bold pt-2">
                     <span className="text-dark dark:text-dark-dark">Total</span>
                     <div className="text-right">
-                      <div className="text-primary">{formatPrice(usdTotal, "USD")}</div>
+                      <div className="text-primary">{formatPrice(xafTotal, "XAF")}</div>
                       <div className="text-sm text-body dark:text-body-dark">
-                        ~{formatPrice(xafTotal, "XAF")}
+                        ~{formatPrice(usdTotal, "USD")}
                       </div>
                     </div>
                   </div>
@@ -455,7 +455,7 @@ export default function CheckoutPage() {
                     </>
                   ) : (
                     <>
-                      Pay {paymentMethod === "stripe" ? formatPrice(usdTotal, "USD") : formatPrice(xafTotal, "XAF")}
+                      Pay {formatPrice(xafTotal, "XAF")}
                     </>
                   )}
                 </button>

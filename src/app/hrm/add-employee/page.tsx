@@ -39,6 +39,9 @@ export default function AddEmployeePage() {
     branchName: "",
     departmentName: "",
   });
+
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [contractFileName, setContractFileName] = useState<string>("");
   const commonDepartments = [
     "Human Resources",
     "Finance",
@@ -160,11 +163,24 @@ export default function AddEmployeePage() {
         ? { approveLeaves: true, confirmProfileChanges: true }
         : { approveLeaves: false, confirmProfileChanges: false };
 
+    // Contract data (in production, upload file to Firebase Storage first)
+    const contractData = contractFile
+      ? {
+          fileName: contractFile.name,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: user.uid,
+          fileSize: contractFile.size,
+          // In production, add: fileUrl: <uploaded URL from Firebase Storage>
+        }
+      : null;
+
     const payload = {
       ...formData,
       createdBy: user.uid,
       companyId: userCompanyId,
       permissions,
+      contract: contractData,
+      contractHistory: contractData ? [{ ...contractData, version: 1 }] : [],
     };
 
     try {
@@ -265,6 +281,45 @@ export default function AddEmployeePage() {
 
           </div>
         )}
+
+        {/* Employment Contract */}
+        <div className="border p-4 rounded-md bg-gray-50">
+          <label className="block font-medium mb-1">Employment Contract (Optional)</label>
+          <p className="text-sm text-gray-600 mb-3">
+            Upload employee contract document (PDF, DOC, DOCX)
+          </p>
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                setContractFile(file);
+                setContractFileName(file.name);
+              }
+            }}
+            className="w-full px-4 py-2 border rounded-md"
+          />
+          {contractFileName && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+              </svg>
+              <span>{contractFileName}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setContractFile(null);
+                  setContractFileName("");
+                }}
+                className="text-red-600 hover:text-red-800"
+              >
+                ×
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Reports To */}
         <div>
           <label className="block font-medium mb-1">Reports To (Manager)</label>

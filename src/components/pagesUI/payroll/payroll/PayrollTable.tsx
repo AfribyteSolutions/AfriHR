@@ -50,7 +50,7 @@ const PayrollTable: React.FC = () => {
 
   const formatCurrency = (value: any): string => {
     const num = Number(value);
-    return isNaN(num) ? '0.00' : num.toFixed(2);
+    return isNaN(num) ? '0' : num.toLocaleString('fr-FR');
   };
 
   const formatDate = (date: any): string => {
@@ -120,7 +120,7 @@ const PayrollTable: React.FC = () => {
         await createNotification({
           userId: row.employeeUid,
           title: "💰 Payslip Issued",
-          message: `Your payslip for ${row.month} ${row.year} has been processed. Net Pay: $${formatCurrency(row.netPay)}`,
+          message: `Your payslip for ${row.month} ${row.year} has been processed. Net Pay: ${formatCurrency(row.netPay)} FCFA`,
           category: "hr",
           link: `/payroll/payroll-payslip?id=${payrollId}`
         });
@@ -194,7 +194,7 @@ const PayrollTable: React.FC = () => {
                           <TableCell>{row.employeeName}</TableCell>
                           <TableCell>{row.email || row.employeeEmail}</TableCell>
                           <TableCell>{formatDate(row.joiningDate)}</TableCell>
-                          <TableCell>${formatCurrency(row.salaryMonthly)}</TableCell>
+                          <TableCell>{formatCurrency(row.salaryMonthly)} FCFA</TableCell>
                           <TableCell>
                             <span className={`bd-badge ${getStatusClass(row.status)}`}>
                               {row.status}

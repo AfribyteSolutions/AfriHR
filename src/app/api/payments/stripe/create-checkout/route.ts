@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate price
-    const pricePerEmployee = billingCycle === "annual" ? plan.annualPrice : plan.monthlyPrice;
+    // Calculate price - use XAF prices
+    const pricePerEmployee = billingCycle === "annual" ? plan.xafAnnualPrice : plan.xafMonthlyPrice;
     const totalAmount = pricePerEmployee * employeeCount * (billingCycle === "annual" ? 12 : 1);
 
     if (totalAmount === 0) {
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       line_items: [
         {
           price_data: {
-            currency: "usd",
+            currency: "xaf", // Central African CFA Franc
             product_data: {
               name: `AfriHR ${plan.name} Plan`,
               description: `${employeeCount} employees - ${billingCycle === "annual" ? "Annual" : "Monthly"} billing`,

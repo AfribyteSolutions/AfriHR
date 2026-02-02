@@ -49,7 +49,7 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     annualPrice: 0,
     xafMonthlyPrice: 0,
     xafAnnualPrice: 0,
-    currency: 'USD',
+    currency: 'XAF',
     trialDays: 0, // Free forever
     features: {
       employeeLimit: 10,
@@ -81,9 +81,9 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     description: 'Complete HR solution for growing businesses with advanced features.',
     monthlyPrice: 1000, // $10 in cents
     annualPrice: 800, // $8 in cents (20% off)
-    xafMonthlyPrice: 6000, // ~6000 XAF
-    xafAnnualPrice: 4800, // 20% off
-    currency: 'USD',
+    xafMonthlyPrice: 6000, // 6000 XAF per employee
+    xafAnnualPrice: 4800, // 4800 XAF per employee (20% off)
+    currency: 'XAF',
     trialDays: 14,
     popular: true,
     features: {
@@ -116,9 +116,9 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     description: 'Advanced features for scaling companies with complex HR needs.',
     monthlyPrice: 1500, // $15 in cents
     annualPrice: 1200, // $12 in cents (20% off)
-    xafMonthlyPrice: 9000, // ~9000 XAF
-    xafAnnualPrice: 7200, // 20% off
-    currency: 'USD',
+    xafMonthlyPrice: 9000, // 9000 XAF per employee
+    xafAnnualPrice: 7200, // 7200 XAF per employee (20% off)
+    currency: 'XAF',
     trialDays: 14,
     features: {
       employeeLimit: -1, // Unlimited
@@ -152,7 +152,7 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     annualPrice: 0,
     xafMonthlyPrice: 0,
     xafAnnualPrice: 0,
-    currency: 'USD',
+    currency: 'XAF',
     trialDays: 30,
     contactSales: true,
     features: {
@@ -250,9 +250,9 @@ export function calculatePrice(
   return pricePerEmployee * employeeCount * multiplier;
 }
 
-export function formatPrice(amount: number, currency: 'USD' | 'XAF'): string {
+export function formatPrice(amount: number, currency: 'USD' | 'XAF' = 'XAF'): string {
   if (currency === 'XAF') {
-    return `${amount.toLocaleString()} XAF`;
+    return `${amount.toLocaleString('fr-FR')} FCFA`;
   }
   return `$${(amount / 100).toFixed(2)}`;
 }

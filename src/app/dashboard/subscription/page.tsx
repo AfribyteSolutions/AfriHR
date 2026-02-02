@@ -224,9 +224,9 @@ export default function SubscriptionPage() {
               <div className="bg-bgLightest dark:bg-bgBody-dark rounded-lg p-4">
                 <div className="text-sm text-body dark:text-body-dark mb-1">Price</div>
                 <div className="text-xl font-bold text-dark dark:text-dark-dark">
-                  {planConfig.monthlyPrice === 0
+                  {planConfig.xafMonthlyPrice === 0
                     ? "Free"
-                    : `${formatPrice(planConfig.monthlyPrice, "USD")}/employee/mo`}
+                    : `${formatPrice(planConfig.xafMonthlyPrice, "XAF")}/employee/mo`}
                 </div>
               </div>
               <div className="bg-bgLightest dark:bg-bgBody-dark rounded-lg p-4">

@@ -173,22 +173,22 @@ const PricingMainArea: React.FC = () => {
       );
     }
 
-    if (plan.monthlyPrice === 0) {
+    if (plan.xafMonthlyPrice === 0) {
       return (
         <>
-          <div className="text-4xl sm:text-5xl font-bold text-dark dark:text-dark-dark">$0</div>
+          <div className="text-4xl sm:text-5xl font-bold text-dark dark:text-dark-dark">0 FCFA</div>
           <div className="text-body dark:text-body-dark text-sm">Always free</div>
         </>
       );
     }
 
-    const price = isAnnual ? plan.annualPrice : plan.monthlyPrice;
+    const price = isAnnual ? plan.xafAnnualPrice : plan.xafMonthlyPrice;
 
     return (
       <>
         <div className="flex items-baseline gap-2">
           <div className="text-4xl sm:text-5xl font-bold text-dark dark:text-dark-dark">
-            ${price / 100}
+            {price.toLocaleString('fr-FR')} FCFA
           </div>
           <div className="text-body dark:text-body-dark text-sm">per employee/month</div>
         </div>

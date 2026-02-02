@@ -33,6 +33,7 @@ export const companyData: ISelectorOption[] = [
   { value: "Stellar Ltd.", label: "Stellar Ltd." },
 ];
 export const currencyData: ISelectorOption[] = [
+  { value: "XAF", label: "FCFA (XAF)" },
   { value: "USD", label: "$ USD" },
   { value: "EURO", label: "€ EURO" },
   { value: "RUBLE", label: "₽ RUBLE " },
