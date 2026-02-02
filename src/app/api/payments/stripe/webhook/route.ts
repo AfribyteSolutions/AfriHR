@@ -94,8 +94,17 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const { companyId, planId, billingCycle, employeeCount } = subscription.metadata;
 
+  console.log(`📦 Processing subscription update:`, {
+    subscriptionId: subscription.id,
+    companyId,
+    planId,
+    billingCycle,
+    employeeCount,
+    status: subscription.status,
+  });
+
   if (!companyId) {
-    console.error("No companyId in subscription metadata");
+    console.error("❌ No companyId in subscription metadata");
     return;
   }
 
@@ -108,6 +117,8 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   if (planId && !validPlans.includes(planId as PlanType)) {
     console.warn(`⚠️ Invalid planId "${planId}" in metadata, defaulting to "professional"`);
   }
+
+  console.log(`✓ Validated plan: ${validatedPlanId}`);
 
   const statusMap: Record<string, SubscriptionStatus> = {
     active: "active",
@@ -157,7 +168,18 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
   await db.collection("companies").doc(companyId).update(updateData);
 
-  console.log(`✅ Subscription updated for company: ${companyId}, plan: ${validatedPlanId}, status: ${subscription.status}`);
+  console.log(`✅ Successfully updated Firestore:`, {
+    companyId,
+    plan: validatedPlanId,
+    status: subscription.status,
+    employeeLimit: -1,
+    trialEndsAt: updateData.trialEndsAt,
+  });
+
+  // Verify the update was successful
+  const verifyDoc = await db.collection("companies").doc(companyId).get();
+  const verifyData = verifyDoc.data();
+  console.log(`✓ Verification - Company plan is now: ${verifyData?.plan}`);
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {

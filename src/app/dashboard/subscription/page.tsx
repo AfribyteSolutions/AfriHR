@@ -28,6 +28,7 @@ export default function SubscriptionPage() {
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
 
   const planConfig = PLANS[plan] || PLANS.starter; // Fallback to starter if plan is invalid
   const subscription = company?.subscription;
@@ -86,6 +87,32 @@ export default function SubscriptionPage() {
       window.location.reload();
     } catch (error) {
       console.error("Error resuming subscription:", error);
+    }
+  };
+
+  const handleSyncSubscription = async () => {
+    if (!companyId) return;
+
+    setSyncLoading(true);
+    try {
+      const response = await fetch("/api/payments/sync-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId }),
+      });
+
+      if (response.ok) {
+        // Reload the page to get updated data
+        window.location.reload();
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to sync subscription");
+      }
+    } catch (error) {
+      console.error("Error syncing subscription:", error);
+      alert("Failed to sync subscription");
+    } finally {
+      setSyncLoading(false);
     }
   };
 
@@ -172,14 +199,24 @@ export default function SubscriptionPage() {
                   )}
                 </div>
               </div>
-              {plan !== "enterprise" && (
-                <Link
-                  href="/pricing"
-                  className="text-primary hover:underline text-sm font-medium"
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSyncSubscription}
+                  disabled={syncLoading}
+                  className="text-secondary hover:underline text-sm font-medium disabled:opacity-50"
+                  title="Refresh subscription data from Stripe"
                 >
-                  Change Plan
-                </Link>
-              )}
+                  {syncLoading ? "Syncing..." : "🔄 Refresh"}
+                </button>
+                {plan !== "enterprise" && (
+                  <Link
+                    href="/pricing"
+                    className="text-primary hover:underline text-sm font-medium"
+                  >
+                    Change Plan
+                  </Link>
+                )}
+              </div>
             </div>
 
             {/* Plan Details */}
