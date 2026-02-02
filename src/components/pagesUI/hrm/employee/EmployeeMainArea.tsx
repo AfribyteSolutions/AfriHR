@@ -23,6 +23,7 @@ const EmployeeMainArea = () => {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Effect to fetch employees once the authUser and their companyId are available
   useEffect(() => {
@@ -98,7 +99,7 @@ const EmployeeMainArea = () => {
     };
 
     fetchEmployeesList(offset);
-  }, [authUser, loadingAuthUser, authUserError, offset]);
+  }, [authUser, loadingAuthUser, authUserError, offset, refreshKey]);
 
   // Display overall loading states before rendering content
   if (loadingAuthUser || loadingEmployees) {
@@ -136,12 +137,18 @@ const EmployeeMainArea = () => {
     );
   }
 
+  // Function to refresh employee list
+  const refreshEmployeeList = () => {
+    setOffset(0);
+    setRefreshKey(prev => prev + 1);
+  };
+
   // Render the employee list once data is ready
   return (
     <>
       <div className="app__slide-wrapper">
         <Breadcrumb breadTitle="Employee" subTitle="Home" />
-        <EmployeeFilter />{" "}
+        <EmployeeFilter onRefresh={refreshEmployeeList} />{" "}
         {/* EmployeeFilter is retained as per your request */}
         <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0">
           {employees.length === 0 ? (

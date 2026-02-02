@@ -4,7 +4,11 @@ import AddNewEmployeeModal from "./AddNewEmployeeModal";
 import { FormControl, MenuItem, Select, SelectChangeEvent } from "@mui/material";
 import { employeeDesignationData } from "@/data/dropdown-data";
 
-const EmployeeFilter = () => {
+interface EmployeeFilterProps {
+  onRefresh?: () => void;
+}
+
+const EmployeeFilter: React.FC<EmployeeFilterProps> = ({ onRefresh }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<string>("");
   const handleSelectChange = (event: SelectChangeEvent<string>) => {
@@ -82,7 +86,7 @@ const EmployeeFilter = () => {
         </div>
       </div>
       {modalOpen && (
-        <AddNewEmployeeModal open={modalOpen} setOpen={setModalOpen} />
+        <AddNewEmployeeModal open={modalOpen} setOpen={setModalOpen} onRefresh={onRefresh} />
       )}
     </>
   );

@@ -39,12 +39,17 @@ const formatDateOnly = (d: Date | null): string | undefined => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-const AddNewEmployeeModal = ({ open, setOpen }: statePropsType) => {
+interface AddNewEmployeeModalProps extends statePropsType {
+  onRefresh?: () => void;
+}
+
+const AddNewEmployeeModal = ({ open, setOpen, onRefresh }: AddNewEmployeeModalProps) => {
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(new Date());
 
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<FormEmployee>();
@@ -104,6 +109,10 @@ const AddNewEmployeeModal = ({ open, setOpen }: statePropsType) => {
 
       toast.success("Employee added successfully!");
       reset();
+      // Refresh the employee list
+      if (onRefresh) {
+        onRefresh();
+      }
       setTimeout(() => setOpen(false), 800);
     } catch (error) {
       console.error(error);
@@ -205,9 +214,7 @@ const AddNewEmployeeModal = ({ open, setOpen }: statePropsType) => {
                     id="designation"
                     label="Designation"
                     options={employeeDesignationData}
-                    control={undefined /* your SelectBox handles its own Controller internally */}
-                    // If your SelectBox expects RHF Controller:
-                    // control={control}
+                    control={control}
                     isRequired={true}
                   />
                 </div>

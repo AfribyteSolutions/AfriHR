@@ -192,7 +192,8 @@ export default function AddEmployeePage() {
       const result = await res.json();
       if (!res.ok || !result.success) throw new Error(result.message || "Failed to add employee.");
       toast.success(`✅ ${formData.fullName} added successfully!`);
-      setTimeout(() => router.push("/dashboard/hrm-dashboard"), 1000);
+      // Redirect to employee list page after successful creation
+      setTimeout(() => router.push("/hrm/employee"), 1000);
     } catch (err: any) {
       toast.error(err.message);
     } finally {

@@ -14,12 +14,28 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, email, phone, role } = body;
+    const {
+      fullName,
+      email,
+      phone,
+      role,
+      department,
+      position,
+      managerId,
+      companyId,
+      branchName,
+      departmentName,
+      managerType,
+      permissions,
+      contract,
+      contractHistory,
+      createdBy
+    } = body;
 
     // Validate required fields
-    if (!name || !email || !role) {
+    if (!fullName || !email || !role) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields: name, email, or role" },
+        { success: false, error: "Missing required fields: fullName, email, or role" },
         { status: 400 }
       );
     }
@@ -34,13 +50,39 @@ export async function POST(req: Request) {
     }
 
     // Save employee in Firestore
-    const docRef = await db.collection("employees").add({
-      name,
+    const employeeData: any = {
+      fullName,
       email,
       phone: phone || "",
       role,
+      department: department || "",
+      position: position || "",
+      companyId: companyId || "",
+      branchName: branchName || "",
+      departmentName: departmentName || "",
+      managerType: managerType || "",
+      permissions: permissions || { approveLeaves: false, confirmProfileChanges: false },
+      createdBy: createdBy || "",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    // Add manager ID if provided
+    if (managerId) {
+      employeeData.managerId = managerId;
+    }
+
+    // Add contract data if provided
+    if (contract) {
+      employeeData.contract = contract;
+    }
+
+    // Add contract history if provided
+    if (contractHistory && Array.isArray(contractHistory)) {
+      employeeData.contractHistory = contractHistory;
+    }
+
+    const docRef = await db.collection("employees").add(employeeData);
 
     // Send welcome email (optional)
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
@@ -59,8 +101,9 @@ export async function POST(req: Request) {
           subject: "Welcome to the Company",
           html: `
             <h2>Welcome to the Company!</h2>
-            <p>Hi <strong>${name}</strong>,</p>
-            <p>You have been successfully added to our system as a <strong>${role}</strong>.</p>
+            <p>Hi <strong>${fullName}</strong>,</p>
+            <p>You have been successfully added to our system as a <strong>${position || role}</strong>.</p>
+            ${department ? `<p>Department: <strong>${department}</strong></p>` : ''}
             <p>We look forward to working with you!</p>
             <br>
             <p>Best regards,<br>HR Team</p>
