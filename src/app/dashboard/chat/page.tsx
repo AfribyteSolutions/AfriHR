@@ -94,15 +94,15 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col">
+    <div className="min-h-screen flex flex-col">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-dark dark:text-dark-dark">Messages</h1>
         <p className="text-body dark:text-body-dark text-sm">
-          Team communication (Demo Interface)
+          Team communication
         </p>
       </div>
 
-      <div className="flex-1 flex gap-6 overflow-hidden">
+      <div className="flex-1 flex gap-6 overflow-hidden min-h-[calc(100vh-200px)]">
         {/* Conversations List */}
         <div className="w-80 bg-card dark:bg-card-dark rounded-xl border border-borderLightest dark:border-borderLightest-dark overflow-hidden flex flex-col">
           <div className="p-4 border-b border-borderLightest dark:border-borderLightest-dark">
@@ -268,23 +268,6 @@ export default function ChatPage() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Demo Notice */}
-      <div className="mt-4 bg-warning/10 border border-warning rounded-lg p-4">
-        <div className="flex items-center gap-2 text-warning">
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <span className="font-medium">Demo Interface</span>
-        </div>
-        <p className="text-sm text-body dark:text-body-dark mt-1">
-          This is a UI-only demo for client proposals. No real messaging functionality is implemented.
-        </p>
       </div>
     </div>
   );

@@ -52,6 +52,7 @@ const HRMSidebar = () => {
         // "Dashboard", // Remove from here since we're adding it separately
         "Add Employee",
         "Recruitment Flow",
+        "Chat",
         "Payroll",
         "Expense",
         "Training",
