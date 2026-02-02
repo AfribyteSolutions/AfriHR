@@ -32,6 +32,22 @@ const HomeMainArea: React.FC = () => {
     }
   };
 
+  // Handle sign in click - redirect to dashboard if already logged in
+  const handleSignInClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isLoggedIn) {
+      e.preventDefault();
+      router.push('/dashboard');
+    }
+  };
+
+  // Handle start free trial click - redirect to pricing if already logged in
+  const handleStartTrialClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isLoggedIn) {
+      e.preventDefault();
+      router.push('/pricing');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-bgLightest dark:from-bgBody-dark to-white dark:to-card-dark">
       {/* Navigation */}
@@ -55,15 +71,22 @@ const HomeMainArea: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <Link href="/auth/signin-basic" className="text-body dark:text-body-dark hover:text-dark dark:hover:text-dark-dark text-sm sm:text-base">
-              Sign In
-            </Link>
+            {isLoggedIn ? (
+              <Link href="/dashboard" className="text-body dark:text-body-dark hover:text-dark dark:hover:text-dark-dark text-sm sm:text-base">
+                Dashboard
+              </Link>
+            ) : (
+              <Link href="/auth/signin-basic" onClick={handleSignInClick} className="text-body dark:text-body-dark hover:text-dark dark:hover:text-dark-dark text-sm sm:text-base">
+                Sign In
+              </Link>
+            )}
             <Link
-              href="/auth/signup-basic"
+              href={isLoggedIn ? "/pricing" : "/auth/signup-basic"}
+              onClick={handleStartTrialClick}
               className="bg-primary text-white px-3 sm:px-6 py-2 rounded-lg hover:bg-primary/90 transition text-sm sm:text-base"
             >
-              <span className="hidden sm:inline">Start Free Trial</span>
-              <span className="sm:hidden">Sign Up</span>
+              <span className="hidden sm:inline">{isLoggedIn ? "View Pricing" : "Start Free Trial"}</span>
+              <span className="sm:hidden">{isLoggedIn ? "Pricing" : "Sign Up"}</span>
             </Link>
           </div>
         </div>
@@ -86,10 +109,11 @@ const HomeMainArea: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12 px-4">
             <Link
-              href="/auth/signup-basic"
+              href={isLoggedIn ? "/pricing" : "/auth/signup-basic"}
+              onClick={handleStartTrialClick}
               className="w-full sm:w-auto bg-primary text-white px-6 sm:px-8 py-3 rounded-lg hover:bg-primary/90 transition font-medium"
             >
-              Get Started
+              {isLoggedIn ? "View Pricing" : "Get Started"}
             </Link>
           </div>
 
@@ -259,10 +283,11 @@ const HomeMainArea: React.FC = () => {
               </li>
             </ul>
             <Link
-              href="/auth/signup-basic"
+              href={isLoggedIn ? "/pricing" : "/auth/signup-basic"}
+              onClick={handleStartTrialClick}
               className="block w-full text-center border-2 border-borderLight dark:border-borderLight-dark text-dark dark:text-dark-dark py-3 rounded-lg hover:border-primary hover:text-primary transition font-medium"
             >
-              Get started
+              {isLoggedIn ? "View Pricing" : "Get started"}
             </Link>
           </div>
 
@@ -492,8 +517,12 @@ const HomeMainArea: React.FC = () => {
             Join hundreds of African businesses using AfriHR to streamline operations, boost productivity, and empower their workforce.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4">
-            <Link href="/auth/signup-basic" className="w-full sm:w-auto bg-white text-primary px-6 sm:px-8 py-3 rounded-lg hover:bg-gray-100 transition font-medium">
-              Start Free Trial
+            <Link
+              href={isLoggedIn ? "/pricing" : "/auth/signup-basic"}
+              onClick={handleStartTrialClick}
+              className="w-full sm:w-auto bg-white text-primary px-6 sm:px-8 py-3 rounded-lg hover:bg-gray-100 transition font-medium"
+            >
+              {isLoggedIn ? "View Pricing" : "Start Free Trial"}
             </Link>
           </div>
         </div>

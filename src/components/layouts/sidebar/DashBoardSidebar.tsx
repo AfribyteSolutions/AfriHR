@@ -396,10 +396,10 @@ const DashBoardSidebar = () => {
           )}
         </div>
       </div>
-      <div className="app__offcanvas-overlay"></div>
+      {/* Overlay for mobile - visible when sidebar is open */}
       <div
-        onClick={() => setIsCollapse(false)}
-        className={`app__offcanvas-overlay ${isCollapse ? "overlay-open" : ""}`}
+        onClick={() => setIsCollapse(true)}
+        className={`app__offcanvas-overlay ${!isCollapse ? "overlay-open" : ""}`}
       ></div>
     </>
   );

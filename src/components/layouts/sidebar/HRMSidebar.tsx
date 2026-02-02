@@ -338,11 +338,10 @@ const HRMSidebar = () => {
         </div>
       </div>
 
-      {/* Overlay */}
-      <div className="app__offcanvas-overlay"></div>
-      <div 
-        className={`app__offcanvas-overlay ${isCollapse ? "overlay-open" : ""}`} 
-        onClick={() => setIsCollapse(false)}
+      {/* Overlay for mobile - visible when sidebar is open */}
+      <div
+        className={`app__offcanvas-overlay ${!isCollapse ? "overlay-open" : ""}`}
+        onClick={() => setIsCollapse(true)}
       ></div>
     </>
   );

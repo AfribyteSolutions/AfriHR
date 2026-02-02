@@ -223,9 +223,10 @@ const ManagerSidebar = () => {
         </div>
       </div>
 
+      {/* Overlay for mobile - visible when sidebar is open */}
       <div
-        className={`app__offcanvas-overlay ${isCollapse ? "overlay-open" : ""}`}
-        onClick={() => setIsCollapse(false)}
+        className={`app__offcanvas-overlay ${!isCollapse ? "overlay-open" : ""}`}
+        onClick={() => setIsCollapse(true)}
       ></div>
     </>
   );

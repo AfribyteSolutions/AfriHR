@@ -1,11 +1,28 @@
+"use client";
 import Image from 'next/image';
 import Link from 'next/link';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import logoSvg from '../../../../public/assets/images/logo/logo.svg';
 import logoWhite from '../../../../public/assets/images/logo/logo-white.svg';
 import SignUpBasicForm from '@/form/auth/SignUp/basic-form';
 
 const SignUpBasicMain = () => {
+  const router = useRouter();
+
+  // Redirect to pricing page if already logged in
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('User already logged in, redirecting to pricing page');
+        router.replace('/pricing');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
   return (
     <>
       <div 

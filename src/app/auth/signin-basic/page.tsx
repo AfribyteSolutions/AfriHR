@@ -1,12 +1,29 @@
+"use client";
 import Image from 'next/image';
 import Link from 'next/link';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import logoSvg from '../../../../public/assets/images/logo/logo.svg';
 import logoWhite from '../../../../public/assets/images/logo/logo-white.svg';
 import SignInBasicForm from '@/form/auth/SignIn/basic-form';
 import SocialLinks from '@/components/SocialLinks/SocialLinks';
 
 const SignInBasicMain = () => {
+    const router = useRouter();
+
+    // Redirect to dashboard if already logged in
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log('User already logged in, redirecting to dashboard');
+                router.replace('/dashboard');
+            }
+        });
+        return () => unsubscribe();
+    }, [router]);
+
     return (
         <>
             <div className="container-xxl">
