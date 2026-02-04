@@ -390,7 +390,7 @@ const PricingMainArea: React.FC = () => {
             Compare Plans
           </h2>
           <p className="text-sm sm:text-base text-body dark:text-body-dark">
-            See what's included in each plan
+            See what is included in each plan
           </p>
         </div>
 
