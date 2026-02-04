@@ -6,7 +6,6 @@ export interface IPayrollLineItem {
   amount: number;
   description?: string;
 }
-
 export interface IPaylist {
   [key: string]: any; 
   id?: string;
@@ -445,13 +444,16 @@ export interface IDeduction {
 }
 // Define an interface for the expese
 export interface IExpese {
-  invoiceNumber: string; // Unique identifier for the invoice
-  itemName: string; // Name of the purchased item
-  purchasedBy: string; // Name of the person who made the purchase
-  purchaseDate: string; // Date of the purchase
-  amount: number; // Monetary amount of the purchase
-  status: "Paid" | "Unpaid" | "Returned"; // Status of the purchase
-  employeeImg?: StaticImageData;
+  id: string;
+  invoiceNumber: string;
+  itemName: string;
+  purchasedBy: string;
+  purchaseDate: string;
+  amount: number;
+  status: "Paid" | "Unpaid" | "Returned";
+  employeeImg?: string | StaticImageData | any;
+  // ✅ FIX: This allows the table hook to sort/filter by string keys
+  [key: string]: any; 
 }
 // Define an interface for the company
 export interface ICompany {

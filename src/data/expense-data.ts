@@ -13,6 +13,7 @@ import img9 from "../../public/assets/images/avatar/avatar6.png";
 
 export const expenseData: IExpese[] = [
   {
+    id: "1",
     invoiceNumber: "MZ-114",
     itemName: "Gree Inverter AC 1.5 Ton Wifi - GS-18XFV32",
     purchasedBy: "Abdus Salam",
@@ -22,6 +23,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img1,
   },
   {
+    id: "2",
     invoiceNumber: "MZ-115",
     itemName: "AMD Ryzen 9 7950X3D Gaming Processor",
     purchasedBy: "John",
@@ -31,6 +33,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img2,
   },
   {
+    id: "3",
     invoiceNumber: "MZ-116",
     itemName: "LG 32 Inch UltraFine OLED Pro 4K Monitor",
     purchasedBy: "Mary",
@@ -40,6 +43,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img3,
   },
   {
+    id: "4",
     invoiceNumber: "MZ-117",
     itemName: "Asus TUF Gaming Laptop A15 Ryzen 5 RTX",
     purchasedBy: "Michael",
@@ -49,6 +53,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img4,
   },
   {
+    id: "5",
     invoiceNumber: "MZ-118",
     itemName: "Sample Item 118",
     purchasedBy: "Sarah",
@@ -58,6 +63,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img5,
   },
   {
+    id: "6",
     invoiceNumber: "MZ-119",
     itemName: "Sample Item 119",
     purchasedBy: "David",
@@ -67,6 +73,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img6,
   },
   {
+    id: "7",
     invoiceNumber: "MZ-120",
     itemName: "Sample Item 120",
     purchasedBy: "Emily",
@@ -76,6 +83,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img7,
   },
   {
+    id: "8",
     invoiceNumber: "MZ-121",
     itemName: "Sample Item 121",
     purchasedBy: "Benjamin",
@@ -85,6 +93,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img8,
   },
   {
+    id: "9",
     invoiceNumber: "MZ-122",
     itemName: "Sample Item 122",
     purchasedBy: "Hannah",
@@ -94,6 +103,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img9,
   },
   {
+    id: "10",
     invoiceNumber: "MZ-123",
     itemName: "Sample Item 123",
     purchasedBy: "Alexander",
@@ -103,6 +113,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img1,
   },
   {
+    id: "11",
     invoiceNumber: "MZ-124",
     itemName: "Sample Item 124",
     purchasedBy: "Grace",
@@ -112,6 +123,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img2,
   },
   {
+    id: "12",
     invoiceNumber: "MZ-125",
     itemName: "Sample Item 125",
     purchasedBy: "Andrew",
@@ -121,6 +133,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img3,
   },
   {
+    id: "13",
     invoiceNumber: "MZ-126",
     itemName: "Sample Item 126",
     purchasedBy: "Charlotte",
@@ -130,6 +143,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img4,
   },
   {
+    id: "14",
     invoiceNumber: "MZ-127",
     itemName: "Sample Item 127",
     purchasedBy: "Matthew",
@@ -139,6 +153,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img5,
   },
   {
+    id: "15",
     invoiceNumber: "MZ-128",
     itemName: "Sample Item 128",
     purchasedBy: "Isabella",
@@ -148,6 +163,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img6,
   },
   {
+    id: "16",
     invoiceNumber: "MZ-129",
     itemName: "Sample Item 129",
     purchasedBy: "William",
@@ -157,6 +173,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img7,
   },
   {
+    id: "17",
     invoiceNumber: "MZ-130",
     itemName: "Sample Item 130",
     purchasedBy: "Olivia",
@@ -166,6 +183,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img8,
   },
   {
+    id: "18",
     invoiceNumber: "MZ-131",
     itemName: "Sample Item 131",
     purchasedBy: "Daniel",
@@ -175,6 +193,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img9,
   },
   {
+    id: "19",
     invoiceNumber: "MZ-132",
     itemName: "Sample Item 132",
     purchasedBy: "Sophia",
@@ -184,6 +203,7 @@ export const expenseData: IExpese[] = [
     employeeImg: img1,
   },
   {
+    id: "20",
     invoiceNumber: "MZ-133",
     itemName: "Sample Item 133",
     purchasedBy: "Charlotte",

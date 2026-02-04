@@ -1,30 +1,59 @@
+// app/dashboard/payroll/payroll-payslip/page.tsx
+"use client";
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import PayslipAndBillingAddress from "@/components/pagesUI/payroll/payroll-payslip/PayslipAndBillingAddress";
+import EarningTable from "@/components/pagesUI/payroll/payroll-payslip/EarningTable";
+import DeductionTable from "@/components/pagesUI/payroll/payroll-payslip/DeductionTable";
 
-import React from 'react';
-import DeductionTable from '@/components/pagesUI/payroll/payroll-payslip/DeductionTable';
-import EarningTable from '@/components/pagesUI/payroll/payroll-payslip/EarningTable';
-import PayslipAndBillingAddress from '@/components/pagesUI/payroll/payroll-payslip/PayslipAndBillingAddress';
+const PayslipPage = () => {
+  const searchParams = useSearchParams();
+  const payrollId = searchParams.get("id");
+  const [payroll, setPayroll] = useState<any>(null);
+  const [company, setCompany] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-const PayrollPayslipPrintMain = () => {
-    return (
-        <>
-            <div className="invoice__print p-[50px]">
-                <div className='invoice__print--overlay'></div>
-                <div className="card__wrapper box-shadow-hidden">
-                    <PayslipAndBillingAddress />
-                    <EarningTable />
-                    <DeductionTable />
-                    <div className="payslip-line"></div>
-                    <div className="payslip__payment-details">
-                        <h5 className="card__heading-title mb-[15px]">Payment Details:</h5>
-                        <p className="text-muted">Payment Method: <span className="font-semibold">Bank Account</span></p>
-                        <p className="text-muted">Account Name: <span className="font-semibold">Ethan Mitchell</span></p>
-                        <p className="text-muted">Account Number: <span className="font-semibold">3456 **** **** **34</span></p>
-                        <p className="text-muted">Account Name: <span className="font-semibold">Manez Bank LTD</span></p>
-                    </div>
-                </div>
-            </div>
-        </>
-    );
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!payrollId) return;
+      try {
+        // 1. Fetch Payroll Record
+        const payDoc = await getDoc(doc(db, "payrolls", payrollId));
+        if (payDoc.exists()) {
+          const payData = payDoc.data();
+          setPayroll({ id: payDoc.id, ...payData });
+
+          // 2. Fetch Company Info using companyId from payroll
+          if (payData.companyId) {
+            const compDoc = await getDoc(doc(db, "companies", payData.companyId));
+            if (compDoc.exists()) setCompany(compDoc.data());
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching payslip:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [payrollId]);
+
+  if (loading) return <div>Loading Payslip...</div>;
+  if (!payroll) return <div>Payslip not found.</div>;
+
+  return (
+    <div className="card__wrapper p-10 bg-white dark:bg-card-dark rounded-3xl">
+      {/* PASSING THE REQUIRED PROPS HERE FIXES THE ERROR */}
+      <PayslipAndBillingAddress payroll={payroll} company={company} />
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
+        <EarningTable payroll={payroll} />
+        <DeductionTable payroll={payroll} />
+      </div>
+    </div>
+  );
 };
 
-export default PayrollPayslipPrintMain;
+export default PayslipPage;

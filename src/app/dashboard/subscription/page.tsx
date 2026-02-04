@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuthUserContext } from "@/context/UserAuthContext";
-import { usePlanRestrictions } from "@/hooks/usePlanRestrictions.tsx";
+import { usePlanRestrictions } from "@/hooks/usePlanRestrictions";
 import { PLANS, formatPrice, FEATURE_LABELS, PlanFeatures } from "@/config/plans";
 import { PlanType, PaymentRecord } from "@/types/company";
 
@@ -395,12 +395,12 @@ export default function SubscriptionPage() {
             <p className="text-body dark:text-body-dark mb-6">
               Your subscription will remain active until{" "}
               {subscriptionEndDate && new Date(subscriptionEndDate).toLocaleDateString()}.
-              After that, you'll be downgraded to the free Starter plan.
+              After that, you will be downgraded to the free Starter plan.
             </p>
 
             <div className="bg-warning/10 rounded-lg p-4 mb-6">
               <div className="font-medium text-dark dark:text-dark-dark mb-2">
-                You'll lose access to:
+                You will lose access to:
               </div>
               <ul className="text-sm text-body dark:text-body-dark space-y-1">
                 <li>• Unlimited employees (limited to 10)</li>

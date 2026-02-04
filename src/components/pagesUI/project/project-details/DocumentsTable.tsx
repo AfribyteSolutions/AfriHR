@@ -13,7 +13,8 @@ import Paper from "@mui/material/Paper";
 import { visuallyHidden } from "@mui/utils";
 import useMaterialTableHook from "@/hooks/useMaterialTableHook";
 import { IPDocument } from "@/interface/table.interface";
-import { projectDocumentsData } from "@/data/projects/documents-data";
+// ✅ IMPORT AUTH HERE (Adjust path to match your project structure)
+import { auth } from "@/lib/firebase"; 
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
 
@@ -22,30 +23,10 @@ interface DocumentsTableProps {
 }
 
 const headCells = [
-  {
-    id: "File Name",
-    numeric: false,
-    disablePadding: false,
-    label: "fileName",
-  },
-  {
-    id: "type",
-    numeric: false,
-    disablePadding: false,
-    label: "Type",
-  },
-  {
-    id: "Size",
-    numeric: false,
-    disablePadding: false,
-    label: "size",
-  },
-  {
-    id: "Upload Date",
-    numeric: false,
-    disablePadding: false,
-    label: "uploadDate",
-  },
+  { id: "fileName", label: "File Name" },
+  { id: "type", label: "Type" },
+  { id: "size", label: "Size" },
+  { id: "uploadDate", label: "Upload Date" },
 ];
 
 const DocumentsTable = ({ project }: DocumentsTableProps) => {
@@ -53,7 +34,6 @@ const DocumentsTable = ({ project }: DocumentsTableProps) => {
   const [deleteId, setDeleteId] = useState<number>(0);
   const [uploading, setUploading] = useState(false);
 
-  // Use project documents or empty array
   const documentsData = project?.attachedFiles || [];
 
   const {
@@ -73,17 +53,20 @@ const DocumentsTable = ({ project }: DocumentsTableProps) => {
     handleSearchChange,
   } = useMaterialTableHook<IPDocument | any>(documentsData, 5);
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0 || !project) return;
 
     setUploading(true);
     try {
-      const idToken = await auth.currentUser?.getIdToken();
-      if (!idToken) return;
+      // ✅ Now 'auth' is defined
+      const user = auth.currentUser;
+      if (!user) {
+        alert("You must be logged in to upload documents.");
+        return;
+      }
 
+      const idToken = await user.getIdToken();
       const formData = new FormData();
       Array.from(files).forEach((file) => {
         formData.append("files", file);
@@ -100,8 +83,7 @@ const DocumentsTable = ({ project }: DocumentsTableProps) => {
       const result = await response.json();
       if (result.success) {
         alert("Documents uploaded successfully!");
-        // Refresh project data if needed
-        window.location.reload(); // Simple refresh for now
+        window.location.reload(); 
       } else {
         alert(`Error: ${result.message}`);
       }
@@ -116,19 +98,21 @@ const DocumentsTable = ({ project }: DocumentsTableProps) => {
   return (
     <>
       <div className="manaz-common-mat-list w-full table__wrapper table-responsive">
-        {/* Upload Section */}
-        <div className="mb-4">
-          <h6 className="mb-2">Upload Documents</h6>
+        <div className="mb-4 p-4 border rounded-lg bg-gray-50 dark:bg-card-dark">
+          <h6 className="mb-2 font-semibold">Upload Project Documents</h6>
           <input
             type="file"
             multiple
             onChange={handleFileUpload}
             disabled={uploading}
-            className="form-control"
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
             accept=".pdf,.doc,.docx,.txt,.zip,.rar,.jpg,.jpeg,.png"
           />
           {uploading && (
-            <p className="text-sm text-blue-500 mt-1">Uploading...</p>
+            <div className="flex items-center gap-2 mt-2">
+              <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+              <p className="text-sm text-primary">Uploading files...</p>
+            </div>
           )}
         </div>
 
@@ -138,31 +122,29 @@ const DocumentsTable = ({ project }: DocumentsTableProps) => {
           handleChangeRowsPerPage={handleChangeRowsPerPage}
           handleSearchChange={handleSearchChange}
         />
-        <Box sx={{ width: "100%" }} className="table-responsive">
+        
+        <Box sx={{ width: "100%" }}>
           <Paper sx={{ width: "100%", mb: 2 }}>
-            <TableContainer className="table mb-[20px] hover multiple_tables w-full">
+            <TableContainer className="table mb-[20px] hover w-full overflow-x-auto">
               <Table aria-labelledby="tableTitle" className="whitespace-nowrap">
                 <TableHead>
                   <TableRow className="table__title">
                     {headCells.map((headCell) => (
                       <TableCell
-                        className="table__title"
                         key={headCell.id}
                         sortDirection={orderBy === headCell.id ? order : false}
                       >
                         <TableSortLabel
                           active={orderBy === headCell.id}
                           direction={orderBy === headCell.id ? order : "asc"}
-                          onClick={() => handleRequestSort(headCell.id)}
+                          onClick={() => handleRequestSort(headCell.id as string)}
                         >
                           {headCell.label}
-                          {orderBy === headCell.id ? (
+                          {orderBy === headCell.id && (
                             <Box component="span" sx={visuallyHidden}>
-                              {order === "desc"
-                                ? "sorted descending"
-                                : "sorted ascending"}
+                              {order === "desc" ? "sorted descending" : "sorted ascending"}
                             </Box>
-                          ) : null}
+                          )}
                         </TableSortLabel>
                       </TableCell>
                     ))}
@@ -175,32 +157,17 @@ const DocumentsTable = ({ project }: DocumentsTableProps) => {
                       key={index}
                       selected={selected.includes(index)}
                       onClick={() => handleClick(index)}
+                      hover
                     >
-                      <TableCell className="table__designation">
-                        {row?.fileName}
-                      </TableCell>
-                      <TableCell className="table__department">
-                        {row?.type}
-                      </TableCell>
-                      <TableCell className="table__department">
-                        {row?.size}
-                      </TableCell>
-                      <TableCell className="table__department">
-                        {row?.uploadData}
-                      </TableCell>
-                      <TableCell className="table__icon-box">
-                        <div className="flex items-center justify-start gap-[10px]">
+                      <TableCell>{row?.fileName}</TableCell>
+                      <TableCell>{row?.type}</TableCell>
+                      <TableCell>{row?.size}</TableCell>
+                      <TableCell>{row?.uploadDate}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            className="table__icon edit"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                          >
-                            <i className="fa-sharp fa-light fa-pen"></i>
-                          </button>
-                          <button
-                            className="removeBtn table__icon delete"
+                            className="table__icon delete"
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteId(index);
@@ -218,20 +185,17 @@ const DocumentsTable = ({ project }: DocumentsTableProps) => {
             </TableContainer>
           </Paper>
         </Box>
-        <Box className="table-search-box mt-[30px]" sx={{ p: 2 }}>
-          <Box>
-            {`Showing ${(page - 1) * rowsPerPage + 1} to ${Math.min(
-              page * rowsPerPage,
-              filteredRows.length,
-            )} of ${filteredRows.length} entries`}
-          </Box>
-          <Pagination
+
+        <Box className="flex justify-between items-center mt-4">
+           <p className="text-sm text-body">
+            Showing {(page - 1) * rowsPerPage + 1} to {Math.min(page * rowsPerPage, filteredRows.length)} of {filteredRows.length}
+           </p>
+           <Pagination
             count={Math.ceil(filteredRows.length / rowsPerPage)}
             page={page}
-            onChange={(e, value) => handleChangePage(value)}
+            onChange={(_, value) => handleChangePage(value)}
             variant="outlined"
             shape="rounded"
-            className="manaz-pagination-button"
           />
         </Box>
       </div>
