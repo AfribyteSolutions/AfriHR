@@ -1,249 +1,253 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import Box from "@mui/material/Box";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import TableSortLabel from "@mui/material/TableSortLabel";
-import Paper from "@mui/material/Paper";
+import React, { useEffect, useState, useMemo } from "react";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip } from "@mui/material";
 import useMaterialTableHook from "@/hooks/useMaterialTableHook";
 import Link from "next/link";
-import { IPaylist } from "@/interface/payroll.interface";
-import { payListHeadCells } from "@/data/table-head-cell/table-head";
+import { IPaylist } from "@/interface/table.interface"; 
 import EditSalaryModal from "./EditSalaryModal";
 import DeleteModal from "@/components/common/DeleteModal";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
+import PayrollFilters from "./PayrollFilters";
 import { db, auth } from "@/lib/firebase";
-import {
-  collection,
-  doc,
-  getDocs,
-  query,
-  where,
-  getDoc,
-} from "firebase/firestore";
+import { collection, doc, getDocs, query, where, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { useAuthState } from "react-firebase-hooks/auth";
-// IMPORT YOUR NOTIFICATION HELPER
-import { createNotification } from "@/lib/notification";
 
 const PayrollTable: React.FC = () => {
   const [user, authLoading] = useAuthState(auth);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editData, setEditData] = useState<IPaylist | null>(null);
-  const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string>("");
   const [payrollData, setPayrollData] = useState<IPaylist[]>([]);
   const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
 
-  const getStatusClass = (status: string | undefined) => {
-    switch (status?.toLowerCase()) {
-      case "paid": return "bg-success";
-      case "unpaid": return "bg-danger";
-      default: return "bg-primary";
-    }
-  };
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editData, setEditData] = useState<IPaylist | null>(null);
+  const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string>("");
 
-  const formatCurrency = (value: any): string => {
-    const num = Number(value);
-    return isNaN(num) ? '0' : num.toLocaleString('fr-FR');
-  };
+  const [startMonth, setStartMonth] = useState<number>(1);
+  const [endMonth, setEndMonth] = useState<number>(12);
+  const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
+  const [statusFilter, setStatusFilter] = useState<string>("All");
 
-  const formatDate = (date: any): string => {
-    if (!date) return 'N/A';
-    if (date && typeof date === 'object' && date._seconds) {
-      return new Date(date._seconds * 1000).toLocaleDateString();
-    }
-    return 'N/A';
-  };
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-  useEffect(() => {
-    const getUserCompany = async () => {
-      if (!user) return;
-      try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) setCompanyId(userDoc.data().companyId);
-      } catch (error) { console.error(error); }
-    };
-    if (user && !authLoading) getUserCompany();
-  }, [user, authLoading]);
-
-  const fetchPayroll = async () => {
-    if (!companyId) return;
+  const fetchPayroll = async (cId: string) => {
     try {
       setLoading(true);
-      const q = query(collection(db, "payrolls"), where("companyId", "==", companyId));
+      const q = query(collection(db, "payrolls"), where("companyId", "==", cId));
       const snapshot = await getDocs(q);
-      const list = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
+      const data = snapshot.docs.map(d => ({ 
+        id: d.id, 
+        ...d.data(),
+        salaryMonth: d.data().salaryMonth || (months.indexOf(d.data().month) + 1),
+        salaryYear: Number(d.data().salaryYear || d.data().year)
       })) as IPaylist[];
-      setPayrollData(list);
-    } catch (err: any) { toast.error("Failed to fetch data"); }
-    finally { setLoading(false); }
+      setPayrollData(data);
+    } catch (err) {
+      toast.error("Failed to load payroll database");
+    } finally { setLoading(false); }
   };
 
-  useEffect(() => { if (companyId) fetchPayroll(); }, [companyId]);
+  const handleStatusToggle = async (row: IPaylist) => {
+    // 1. BLOCK: If already paid, don't allow changing back to unpaid
+    if (row.status === "Paid") {
+      toast.error("Confirmed payments cannot be reversed.");
+      return;
+    }
 
-  const {
-    order, orderBy, searchQuery, paginatedRows,
-    handleRequestSort, handleChangeRowsPerPage, handleSearchChange,
-  } = useMaterialTableHook<IPaylist>(payrollData, 10);
+    // 2. CONFIRM: Show a modal before marking as Paid
+    const confirmPay = window.confirm(
+      `Confirm payment for ${row.employeeName}? \nOnce marked as Paid, a payslip will be generated and emailed. This action cannot be undone.`
+    );
 
-  // UPDATED FUNCTION: Now accepts the full row object to get employeeUid
-  const handleMarkAsPaid = async (row: IPaylist) => {
-    const payrollId = row.id;
-    if (!payrollId) return;
+    if (!confirmPay) return;
+
+    const newStatus = "Paid";
+    const original = [...payrollData];
+    
+    setPayrollData(prev => prev.map(item => item.id === row.id ? { ...item, status: newStatus } : item));
 
     try {
-      setLoading(true);
-      
-      // 1. Update status to paid in Database
-      const updateResponse = await fetch(`/api/payroll?id=${payrollId}`, {
-        method: "PUT",
+      const res = await fetch(`/api/payroll?id=${row.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          status: "paid",
-          emailStatus: "Sending" 
-        }),
+          status: newStatus,
+          emailStatus: "Pending",
+          paidAt: new Date().toISOString()
+        })
       });
 
-      if (!updateResponse.ok) throw new Error("Failed to update payroll status");
-
-      // 2. TRIGGER SYSTEM NOTIFICATION
-      // This makes the red dot/bell icon update for the employee
-      if (row.employeeUid) {
-        await createNotification({
-          userId: row.employeeUid,
-          title: "💰 Payslip Issued",
-          message: `Your payslip for ${row.month} ${row.year} has been processed. Net Pay: ${formatCurrency(row.netPay)} FCFA`,
-          category: "hr",
-          link: `/payroll/payroll-payslip?id=${payrollId}`
+      if (res.ok) {
+        toast.info("Generating and sending payslip...");
+        const emailRes = await fetch(`/api/payroll/send-payslip`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ payrollId: row.id })
         });
+        
+        if (emailRes.ok) toast.success("Payment confirmed and Payslip sent!");
+        else toast.warning("Status updated, but email notification failed.");
+        
+        if (companyId) fetchPayroll(companyId);
       } else {
-        console.warn("No employeeUid found for this record. System notification skipped.");
+        throw new Error();
       }
-
-      // 3. TRIGGER EMAIL SENDING
-      const emailResponse = await fetch(`/api/payroll/send-payslip`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payrollId }),
-      });
-
-      if (!emailResponse.ok) {
-        toast.warning("Marked as Paid and notified in-app, but email failed.");
-      } else {
-        toast.success("Success! Employee notified via app and email.");
-      }
-
-      await fetchPayroll();
-    } catch (err: any) {
-      toast.error("Error: " + err.message);
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      toast.error("Update failed");
+      setPayrollData(original);
     }
   };
 
-  const handleDelete = async () => {
+  const handleResetForNewMonth = async () => {
+    const nextMonthIdx = (new Date().getMonth() + 1) % 12;
+    const nextMonthName = months[nextMonthIdx];
+    const nextYear = new Date().getFullYear();
+
+    if (!confirm(`Generate payroll placeholders for ${nextMonthName} ${nextYear}?`)) return;
+
     try {
-      const response = await fetch(`/api/payroll?id=${deleteId}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("Delete failed");
-      toast.success("Deleted successfully");
-      setModalDeleteOpen(false);
-      await fetchPayroll();
-    } catch (err: any) { toast.error(err.message); }
+      toast.loading("Generating next month...");
+      const uniqueEmployees = Array.from(new Set(payrollData.map(p => p.employeeUid)));
+      
+      for (const empUid of uniqueEmployees) {
+        const base = payrollData.find(p => p.employeeUid === empUid);
+        if (base) {
+          await fetch(`/api/payroll`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...base,
+              id: undefined,
+              status: "Unpaid",
+              emailStatus: "Pending",
+              month: nextMonthName,
+              year: nextYear,
+              createdAt: new Date()
+            })
+          });
+        }
+      }
+      toast.dismiss();
+      toast.success("New month generated");
+      if (companyId) fetchPayroll(companyId);
+    } catch (err) {
+      toast.error("Generation failed");
+    }
   };
 
+  const filteredData = useMemo(() => {
+    return payrollData.filter((item) => {
+      if (Number(item.salaryYear) !== filterYear) return false;
+      if (statusFilter !== "All" && item.status !== statusFilter) return false;
+      const m = Number(item.salaryMonth);
+      return m >= startMonth && m <= endMonth;
+    });
+  }, [payrollData, filterYear, startMonth, endMonth, statusFilter]);
+
+  const { searchQuery, paginatedRows, handleChangeRowsPerPage, handleSearchChange } = useMaterialTableHook<IPaylist>(filteredData, 10);
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      getDoc(doc(db, "users", user.uid)).then((snap) => {
+        if (snap.exists()) {
+          const cId = snap.data().companyId;
+          setCompanyId(cId);
+          fetchPayroll(cId);
+        }
+      });
+    }
+  }, [user, authLoading]);
+
   return (
-    <>
-      <div className="col-span-12">
-        <div className="card__wrapper">
-          <div className="manaz-common-mat-list w-full table__wrapper table-responsive">
-            <TableControls
-              rowsPerPage={10}
-              searchQuery={searchQuery}
-              handleChangeRowsPerPage={handleChangeRowsPerPage}
-              handleSearchChange={handleSearchChange}
-            />
-            <Box sx={{ width: "100%" }}>
-              <Paper sx={{ width: "100%", mb: 2 }}>
-                <TableContainer className="table mb-[20px] hover w-full">
-                  <Table className="whitespace-nowrap">
-                    <TableHead>
-                      <TableRow className="table__title">
-                        {payListHeadCells.map((headCell) => (
-                          <TableCell key={headCell.id} sortDirection={orderBy === headCell.id ? order : false}>
-                            <TableSortLabel active={orderBy === headCell.id} direction={orderBy === headCell.id ? order : "asc"} onClick={() => handleRequestSort(headCell.id)}>
-                              {headCell.label}
-                            </TableSortLabel>
-                          </TableCell>
-                        ))}
-                        <TableCell>Action</TableCell>
-                        <TableCell>Status</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody className="table__body">
-                      {paginatedRows.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell>{row.employeeId}</TableCell>
-                          <TableCell>{row.employeeName}</TableCell>
-                          <TableCell>{row.email || row.employeeEmail}</TableCell>
-                          <TableCell>{formatDate(row.joiningDate)}</TableCell>
-                          <TableCell>{formatCurrency(row.salaryMonthly)} FCFA</TableCell>
-                          <TableCell>
-                            <span className={`bd-badge ${getStatusClass(row.status)}`}>
-                              {row.status}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-[10px]">
-                              <Link href={`/payroll/payroll-payslip?id=${row.id}`} className="table__icon download">
-                                <i className="fa-regular fa-eye"></i>
-                              </Link>
-                              <button type="button" className="table__icon edit" onClick={() => { setEditData(row); setModalOpen(true); }}>
-                                <i className="fa-sharp fa-light fa-pen"></i>
-                              </button>
-                              <button className="table__icon delete" onClick={() => { setDeleteId(row.id || ""); setModalDeleteOpen(true); }}>
-                                <i className="fa-regular fa-trash"></i>
-                              </button>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {row.status === 'paid' ? (
-                              <div className="text-center">
-                                <span className="text-green-500 font-bold block">Paid</span>
-                                <span className={`text-[10px] font-semibold ${row.emailStatus === 'Sent' ? 'text-green-600' : 'text-amber-500'}`}>
-                                  {row.emailStatus || 'Pending Email'}
-                                </span>
-                              </div>
-                            ) : (
-                              <button 
-                                type="button" 
-                                className="btn btn-sm bg-green-500 text-white hover:bg-green-600" 
-                                onClick={() => handleMarkAsPaid(row)} // Passed the whole row
-                              >
-                                Mark as Paid
-                              </button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Paper>
-            </Box>
-          </div>
-        </div>
+    <div className="w-full space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold dark:text-white">Payroll Records</h2>
+        <button 
+          onClick={handleResetForNewMonth}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors"
+        >
+          Generate Next Month
+        </button>
       </div>
-      {modalOpen && editData && <EditSalaryModal open={modalOpen} setOpen={setModalOpen} editData={editData} onSave={fetchPayroll} />}
-      {modalDeleteOpen && <DeleteModal open={modalDeleteOpen} setOpen={setModalDeleteOpen} handleDeleteFunc={handleDelete} deleteId={deleteId} />}
-    </>
+
+      <div className="bg-white dark:bg-[#1e293b] rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="p-8 border-b border-slate-100 dark:border-slate-800">
+           <TableControls rowsPerPage={10} searchQuery={searchQuery} handleChangeRowsPerPage={handleChangeRowsPerPage} handleSearchChange={handleSearchChange} />
+           <div className="mt-6">
+             <PayrollFilters 
+               startMonth={startMonth} setStartMonth={setStartMonth} 
+               endMonth={endMonth} setEndMonth={setEndMonth} 
+               filterYear={filterYear} setFilterYear={setFilterYear} 
+               statusFilter={statusFilter} setStatusFilter={setStatusFilter} 
+               onReset={() => { setStartMonth(1); setEndMonth(12); setStatusFilter("All"); }} 
+             />
+           </div>
+        </div>
+
+        <TableContainer>
+          <Table>
+            <TableHead className="bg-slate-50/50 dark:bg-slate-900/20">
+              <TableRow>
+                <TableCell className="!font-black !text-[11px] !uppercase !tracking-widest !pl-8 dark:text-slate-400">Staff Member</TableCell>
+                <TableCell className="!font-black !text-[11px] !uppercase !tracking-widest dark:text-slate-400">Period</TableCell>
+                <TableCell className="!font-black !text-[11px] !uppercase !tracking-widest dark:text-slate-400">Amount</TableCell>
+                <TableCell className="!font-black !text-[11px] !uppercase !tracking-widest dark:text-slate-400">Status</TableCell>
+                <TableCell align="right" className="!font-black !text-[11px] !uppercase !tracking-widest !pr-8 dark:text-slate-400">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {paginatedRows.map((row) => (
+                <TableRow key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-all group">
+                  <TableCell className="!pl-8">
+                    {/* Fixed text colors for Dark Mode */}
+                    <div className="font-bold text-slate-700 dark:text-slate-100">{row.employeeName}</div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase">{row.employeeId || "No ID"}</div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">{row.month}</span>
+                    <span className="block text-[10px] text-slate-400 font-black">{row.year}</span>
+                  </TableCell>
+                  <TableCell className="font-black text-blue-600 dark:text-blue-400">{Number(row.netPay).toLocaleString()} FCFA</TableCell>
+                  <TableCell>
+                    <button 
+                      onClick={() => handleStatusToggle(row)}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${
+                        row.status === 'Paid' 
+                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 cursor-not-allowed' 
+                        : 'bg-orange-500/10 text-orange-500 border-orange-500/20 hover:bg-orange-500/20'
+                      }`}
+                    >
+                      <i className={`fa-solid ${row.status === 'Paid' ? 'fa-check-circle' : 'fa-clock'} mr-1`}></i>
+                      {row.status}
+                    </button>
+                  </TableCell>
+                  <TableCell align="right" className="!pr-8">
+                    {/* Always visible actions - Removed opacity-0 */}
+                    <div className="flex gap-2 justify-end transition-opacity">
+                      <Tooltip title="View/Download Payslip">
+                        <Link href={`/payroll/payroll-payslip?id=${row.id}`} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 hover:text-white dark:text-slate-300 transition-colors">
+                          <i className="fa-solid fa-file-invoice text-xs"></i>
+                        </Link>
+                      </Tooltip>
+                      <button onClick={() => { setEditData(row); setModalOpen(true); }} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-500 hover:text-white dark:text-slate-300 transition-colors">
+                        <i className="fa-solid fa-pen text-xs"></i>
+                      </button>
+                      <button onClick={() => { setDeleteId(row.id || ""); setModalDeleteOpen(true); }} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-600 hover:text-white dark:text-slate-300 transition-colors">
+                        <i className="fa-solid fa-trash text-xs"></i>
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </div>
+
+      {modalOpen && editData && <EditSalaryModal open={modalOpen} setOpen={setModalOpen} editData={editData} onSave={() => companyId && fetchPayroll(companyId)} />}
+      <DeleteModal open={modalDeleteOpen} setOpen={setModalDeleteOpen} handleDeleteFunc={() => {}} deleteId={deleteId} />
+    </div>
   );
 };
 

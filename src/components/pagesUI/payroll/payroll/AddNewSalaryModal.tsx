@@ -1,389 +1,154 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Dialog, DialogTitle, DialogContent } from "@mui/material";
-import { useForm } from "react-hook-form";
-import { IPaylist } from "@/interface/table.interface";
-import InputField from "@/components/elements/SharedInputs/InputField";
+import { Dialog } from "@mui/material";
+import { useForm, useFieldArray } from "react-hook-form";
+import { IPayrollLineItem } from "@/interface/table.interface";
 import { toast } from "sonner";
-import { statePropsType } from "@/interface/common.interface";
-import useAuth from "@/hooks/useAuth"; // must return { user: { uid, companyId } }
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import useAuth from "@/hooks/useAuth";
 
-type Option = { 
-  label: string; 
-  value: string; 
-  email?: string; 
-  role?: string; 
-  createdAt?: string;
-};
-
-interface AddNewSalaryModalProps extends statePropsType {
-  onSuccess?: () => void;
-}
-
-const AddNewSalaryModal = ({ open, setOpen, onSuccess }: AddNewSalaryModalProps) => {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<IPaylist>();
-
+const AddNewSalaryModal = ({ open, setOpen, onSuccess }: any) => {
   const { user } = useAuth();
-  const [employeeOptions, setEmployeeOptions] = useState<Option[]>([]);
-  const [fetchingUsers, setFetchingUsers] = useState(false);
+  const [employeeOptions, setEmployeeOptions] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Load users from API
-  useEffect(() => {
-    const loadUsers = async () => {
-      if (!user?.companyId) return;
-      setFetchingUsers(true);
-      try {
-        const res = await fetch(
-          `/api/user-data?companyId=${user.companyId}&roles=admin,employee`
-        );
-        const json = await res.json();
-
-        if (!res.ok || !json.success) {
-          throw new Error(json.message || "Failed to fetch users");
-        }
-
-        // Map users to options with email, role, createdAt
-        const opts: Option[] = json.users.map((u: any) => ({
-          value: u.uid,
-          label: u.fullName || u.name || u.email || `User ${u.uid.slice(0, 8)}`,
-          email: u.email,
-          role: u.role,
-          createdAt: u.createdAt,
-        }));
-
-        setEmployeeOptions(opts);
-      } catch (e: any) {
-        console.error("Failed to load users:", e);
-        toast.error(e.message || "Failed to load employees/admins.");
-      } finally {
-        setFetchingUsers(false);
-      }
-    };
-
-    if (open) {
-      loadUsers();
+  const { register, handleSubmit, control, reset, watch } = useForm({
+    defaultValues: {
+      employeeUid: "",
+      salaryMonthly: 0,
+      additions: [{ label: "Transport", amount: 0 }] as IPayrollLineItem[],
+      deductions: [{ label: "Late Penalty", amount: 0 }] as IPayrollLineItem[]
     }
-  }, [user?.companyId, open]);
+  });
 
-  const handleToggle = () => {
-    setOpen(!open);
-    if (!open) {
-      reset();
-    }
+  const { fields: addFields, append: appendAdd, remove: removeAdd } = useFieldArray({ control, name: "additions" });
+  const { fields: dedFields, append: appendDed, remove: removeDed } = useFieldArray({ control, name: "deductions" });
+
+  const watched = watch();
+
+  const calculateNetPay = (): number => {
+    const basic = Number(watched.salaryMonthly) || 0;
+    const adds = watched.additions?.reduce((s: number, i: any) => s + (Number(i.amount) || 0), 0) || 0;
+    const dels = watched.deductions?.reduce((s: number, i: any) => s + (Number(i.amount) || 0), 0) || 0;
+    return (basic + adds) - dels;
   };
 
-  const onSubmit = async (data: IPaylist) => {
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      if (!user?.companyId) return;
+      try {
+        // Fetching from 'employees' collection to get employeeId and email
+        const q = query(collection(db, "employees"), where("companyId", "==", user.companyId));
+        const snapshot = await getDocs(q);
+        const formatted = snapshot.docs.map(doc => ({
+          value: doc.data().userId || doc.id,
+          label: doc.data().fullName || "Unnamed",
+          email: doc.data().email || "",
+          employeeId: doc.data().employeeId || "N/A"
+        }));
+        setEmployeeOptions(formatted);
+      } catch (err) {
+        console.error("Fetch Error:", err);
+      }
+    };
+    if (open) fetchEmployees();
+  }, [open, user?.companyId]);
+
+  const onSubmit = async (data: any) => {
+    if (!user?.companyId) return toast.error("User session not found");
+    setSubmitting(true);
+    
+    const selectedEmp = employeeOptions.find(o => o.value === data.employeeUid);
+    const now = new Date();
+    
+    const payload = {
+      ...data,
+      companyId: user.companyId,
+      employeeName: selectedEmp?.label || "Unknown",
+      employeeEmail: selectedEmp?.email || "",
+      employeeId: selectedEmp?.employeeId || "N/A", 
+      netPay: calculateNetPay(),
+      month: now.toLocaleString('default', { month: 'long' }),
+      year: now.getFullYear().toString(),
+      salaryMonth: now.getMonth() + 1, 
+      salaryYear: now.getFullYear(),   
+      createdAt: now.toISOString(),
+      status: "Unpaid"
+    };
+
     try {
-      setSubmitting(true);
-
-      if (!user?.companyId) {
-        toast.error("Missing company information.");
-        return;
-      }
-      if (!data?.employeeName) {
-        toast.error("Please select an employee/admin.");
-        return;
-      }
-
-      // Find full employee details
-      const selectedEmployee = employeeOptions.find(
-        (opt) => opt.value === data.employeeName
-      );
-
-      const payload = {
-        companyId: user.companyId,
-        createdBy: user.uid,
-
-        // Employee details
-        employeeUid: data.employeeName,
-        employeeName: selectedEmployee?.label || "Unknown",
-        employeeEmail: selectedEmployee?.email || "",
-        employeeRole: selectedEmployee?.role || "",
-        employeeJoinDate: selectedEmployee?.createdAt || "",
-
-        employeeDisplay: {
-          uid: data.employeeName,
-          name: selectedEmployee?.label,
-          email: selectedEmployee?.email,
-          role: selectedEmployee?.role,
-          joinDate: selectedEmployee?.createdAt,
-        },
-
-        // Earnings
-        salaryMonthly: Number(data.salaryMonthly) || 0,
-        dearnessAllowance: Number(data.dearnessAllowance) || 0,
-        transportAllowance: Number(data.transportAllowance) || 0,
-        mobileAllowance: Number(data.mobileAllowance) || 0,
-        bonusAllowance: Number(data.bonusAllowance) || 0,
-        others: Number((data as any).others) || 0,
-
-        // Deductions
-        providentFund: Number(data.providentFund) || 0,
-        securityDeposit: Number(data.securityDeposit) || 0,
-        personalLoan: Number(data.personalLoan) || 0,
-        earlyLeaving: Number(data.earlyLeaving) || 0,
-
-        // Totals
-        totalEarnings:
-          (Number(data.salaryMonthly) || 0) +
-          (Number(data.dearnessAllowance) || 0) +
-          (Number(data.transportAllowance) || 0) +
-          (Number(data.mobileAllowance) || 0) +
-          (Number(data.bonusAllowance) || 0) +
-          (Number((data as any).others) || 0),
-
-        totalDeductions:
-          (Number(data.providentFund) || 0) +
-          (Number(data.securityDeposit) || 0) +
-          (Number(data.personalLoan) || 0) +
-          (Number(data.earlyLeaving) || 0),
-
-        netPay:
-          ((Number(data.salaryMonthly) || 0) +
-            (Number(data.dearnessAllowance) || 0) +
-            (Number(data.transportAllowance) || 0) +
-            (Number(data.mobileAllowance) || 0) +
-            (Number(data.bonusAllowance) || 0) +
-            (Number((data as any).others) || 0)) -
-          ((Number(data.providentFund) || 0) +
-            (Number(data.securityDeposit) || 0) +
-            (Number(data.personalLoan) || 0) +
-            (Number(data.earlyLeaving) || 0)),
-
-        createdAt: new Date().toISOString(),
-      };
-
-      console.log("Submitting payroll payload:", payload);
-
-      const response = await fetch("/api/payroll", {
+      const res = await fetch("/api/payroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload)
       });
 
-      const result = await response.json();
-
-      if (response.status === 409) {
-        toast.error(result.message || "Payroll already exists for this employee.");
-        return;
+      if (res.ok) {
+        toast.success("Payroll Created Successfully");
+        onSuccess?.();
+        setOpen(false);
+        reset();
       }
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to save payroll");
-      }
-
-      toast.success("Payroll added successfully!");
-      setOpen(false);
-      reset();
-      if (onSuccess) onSuccess();
-
-    } catch (error: any) {
-      console.error("Error adding payroll:", error);
-      toast.error(error?.message || "Failed to save payroll.");
+    } catch (err) {
+      toast.error("Connection error");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const inputClass = "w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all";
+  const labelClass = "block mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500";
+
   return (
-    <Dialog open={open} onClose={handleToggle} fullWidth maxWidth="md">
-      <DialogTitle>
-        <div className="flex justify-between">
-          <h5 className="modal-title">Add Employee Salary</h5>
-          <button onClick={handleToggle} type="button" className="bd-btn-close">
-            <i className="fa-solid fa-xmark-large"></i>
+    <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md" PaperProps={{ className: "dark:bg-[#1e293b] rounded-[2.5rem] border dark:border-slate-800 shadow-2xl" }}>
+      <div className="p-8">
+        <div className="flex justify-between items-center mb-10">
+          <div>
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Generate Payroll</h2>
+            <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">Capture salary and employee metadata.</p>
+          </div>
+          <button onClick={() => setOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors">
+            <i className="fa-solid fa-xmark"></i>
           </button>
         </div>
-      </DialogTitle>
 
-      <DialogContent className="common-scrollbar overflow-y-auto">
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-12 gap-y-2.5">
-            {/* Employee/Admin Selector */}
-            <div className="col-span-12">
-              <div className="card__wrapper">
-                <label className="form-label">Select Employee *</label>
-                <select 
-                  {...register("employeeName", {
-                    required: "Please select an employee/admin"
-                  })}
-                  className="form-control"
-                  disabled={fetchingUsers || submitting}
-                >
-                  <option value="">
-                    {fetchingUsers ? "Loading employees..." : "Select Employee"}
-                  </option>
-                  {employeeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.employeeName && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.employeeName.message}
-                  </p>
-                )}
-              </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-slate-50/50 dark:bg-slate-900/40 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+            <div className="relative">
+              <label className={labelClass}>Select Employee</label>
+              <select {...register("employeeUid", { required: true })} className={inputClass}>
+                <option value="" className="dark:bg-slate-900">Choose an employee...</option>
+                {employeeOptions.map(opt => <option key={opt.value} value={opt.value} className="dark:bg-slate-900">{opt.label} ({opt.employeeId})</option>)}
+              </select>
             </div>
-
-            {/* Earnings */}
-            <div className="col-span-12">
-              <div className="card__wrapper">
-                <h6 className="card__sub-title mb-10">Earning</h6>
-                <div className="grid grid-cols-12 gap-y-5 gap-x-5 maxXs:gap-x-0">
-                  <div className="col-span-12 md:col-span-6">
-                    <InputField
-                      label="Basic Salary (BASIC)"
-                      id="salaryMonthly"
-                      type="number"
-                      register={register("salaryMonthly", {
-                        required: "Basic Salary is required",
-                        valueAsNumber: true,
-                        min: { value: 0, message: "Salary cannot be negative" }
-                      })}
-                      error={errors.salaryMonthly as any}
-                    />
-                  </div>
-                  <div className="col-span-12 md:col-span-6">
-                    <InputField
-                      label="Dearness Allowance (DA)"
-                      id="dearnessAllowance"
-                      type="number"
-                      register={register("dearnessAllowance", { 
-                        valueAsNumber: true,
-                        min: { value: 0, message: "Amount cannot be negative" }
-                      })}
-                      error={errors.dearnessAllowance as any}
-                    />
-                  </div>
-                  <div className="col-span-12 md:col-span-6">
-                    <InputField
-                      label="Transport Allowance (TA)"
-                      id="transportAllowance"
-                      type="number"
-                      register={register("transportAllowance", { 
-                        valueAsNumber: true,
-                        min: { value: 0, message: "Amount cannot be negative" }
-                      })}
-                      error={errors.transportAllowance as any}
-                    />
-                  </div>
-                  <div className="col-span-12 md:col-span-6">
-                    <InputField
-                      label="Mobile Allowance (MA)"
-                      id="mobileAllowance"
-                      type="number"
-                      register={register("mobileAllowance", { 
-                        valueAsNumber: true,
-                        min: { value: 0, message: "Amount cannot be negative" }
-                      })}
-                      error={errors.mobileAllowance as any}
-                    />
-                  </div>
-                  <div className="col-span-12 md:col-span-6">
-                    <InputField
-                      label="Bonus Allowance (BA)"
-                      id="bonusAllowance"
-                      type="number"
-                      register={register("bonusAllowance", { 
-                        valueAsNumber: true,
-                        min: { value: 0, message: "Amount cannot be negative" }
-                      })}
-                      error={errors.bonusAllowance as any}
-                    />
-                  </div>
-                  <div className="col-span-12 md:col-span-6">
-                    <InputField
-                      label="Others"
-                      id="others"
-                      type="number"
-                      register={register("others" as any, { 
-                        valueAsNumber: true,
-                        min: { value: 0, message: "Amount cannot be negative" }
-                      })}
-                      error={(errors as any).others}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Deductions */}
-            <div className="col-span-12">
-              <div className="card__wrapper">
-                <h6 className="card__sub-title mb-10">Deduction</h6>
-                <div className="grid grid-cols-12 gap-y-5 gap-x-5 maxXs:gap-x-0">
-                  <div className="col-span-12 md:col-span-6">
-                    <InputField
-                      label="Provident Fund (PF)"
-                      id="providentFund"
-                      type="number"
-                      register={register("providentFund", { 
-                        valueAsNumber: true,
-                        min: { value: 0, message: "Amount cannot be negative" }
-                      })}
-                      error={errors.providentFund as any}
-                    />
-                  </div>
-                  <div className="col-span-12 md:col-span-6">
-                    <InputField
-                      label="Security Deposit (SD)"
-                      id="securityDeposit"
-                      type="number"
-                      register={register("securityDeposit", { 
-                        valueAsNumber: true,
-                        min: { value: 0, message: "Amount cannot be negative" }
-                      })}
-                      error={errors.securityDeposit as any}
-                    />
-                  </div>
-                  <div className="col-span-12 md:col-span-6">
-                    <InputField
-                      label="Personal Loan (PL)"
-                      id="personalLoan"
-                      type="number"
-                      register={register("personalLoan", { 
-                        valueAsNumber: true,
-                        min: { value: 0, message: "Amount cannot be negative" }
-                      })}
-                      error={errors.personalLoan as any}
-                    />
-                  </div>
-                  <div className="col-span-12 md:col-span-6">
-                    <InputField
-                      label="Early Leaving (EL)"
-                      id="earlyLeaving"
-                      type="number"
-                      register={register("earlyLeaving", { 
-                        valueAsNumber: true,
-                        min: { value: 0, message: "Amount cannot be negative" }
-                      })}
-                      error={errors.earlyLeaving as any}
-                    />
-                  </div>
-                </div>
-              </div>
+            <div>
+              <label className={labelClass}>Base Salary (Monthly)</label>
+              <input type="number" {...register("salaryMonthly")} className={inputClass} placeholder="0" />
             </div>
           </div>
 
-          <div className="submit__btn text-center">
-            <button 
-              className="btn btn-primary" 
-              type="submit" 
-              disabled={fetchingUsers || submitting}
-            >
-              {submitting ? "Adding Payroll..." : fetchingUsers ? "Loading..." : "Submit"}
-            </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="space-y-6">
+               <h6 className="text-[12px] font-black text-emerald-500 uppercase tracking-widest border-b dark:border-slate-800 pb-3 flex justify-between">Earnings <button type="button" onClick={() => appendAdd({ label: "", amount: 0 })} className="text-[10px]">+ Add</button></h6>
+               {addFields.map((f, i) => (
+                 <div key={f.id} className="flex gap-3"><input className={inputClass} {...register(`additions.${i}.label` as any)} /><input className={`${inputClass} w-24`} type="number" {...register(`additions.${i}.amount` as any)} /></div>
+               ))}
+            </div>
+            <div className="space-y-6">
+               <h6 className="text-[12px] font-black text-rose-500 uppercase tracking-widest border-b dark:border-slate-800 pb-3 flex justify-between">Deductions <button type="button" onClick={() => appendDed({ label: "", amount: 0 })} className="text-[10px]">+ Add</button></h6>
+               {dedFields.map((f, i) => (
+                 <div key={f.id} className="flex gap-3"><input className={inputClass} {...register(`deductions.${i}.label` as any)} /><input className={`${inputClass} w-24`} type="number" {...register(`deductions.${i}.amount` as any)} /></div>
+               ))}
+            </div>
+          </div>
+
+          <div className="bg-slate-900 dark:bg-blue-600 p-10 rounded-[2.5rem] flex justify-between items-center text-white">
+             <div><span className="text-[10px] font-black uppercase opacity-60">Total Pay</span><h3 className="text-4xl font-black">{calculateNetPay().toLocaleString()} FCFA</h3></div>
+             <button type="submit" disabled={submitting} className="px-12 py-5 bg-white text-slate-900 font-black rounded-2xl hover:scale-105 transition-all shadow-xl">{submitting ? "Processing..." : "Generate Record"}</button>
           </div>
         </form>
-      </DialogContent>
+      </div>
     </Dialog>
   );
 };

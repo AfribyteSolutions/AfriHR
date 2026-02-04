@@ -1,85 +1,75 @@
 import ErrorMessage from "@/components/error-message/ErrorMessage";
 import React from "react";
-import { FieldError, UseFormRegister } from "react-hook-form";
+import { FieldError } from "react-hook-form";
 
 interface InputFieldProps {
-  label: string;
+  label?: string;
   id: string;
   type?: string;
   required?: boolean;
-  register?: ReturnType<UseFormRegister<any>>;
+  // Using any here allows the component to accept registers from dynamic field arrays
+  register?: any; 
   error?: FieldError;
   groupInput?: boolean;
   groupText?: string;
   isTextArea?: boolean;
   defaultValue?: string | number;
+  placeholder?: string;
+  readOnly?: boolean;
 }
 
 const InputField: React.FC<InputFieldProps> = ({
   label,
   id,
   type = "text",
-  groupText = "USD",
-  required = true,
+  groupText = "FCFA",
+  required = false,
   register,
   error,
   groupInput = false,
   isTextArea = false,
-  defaultValue = "",
+  defaultValue,
+  placeholder,
+  readOnly = false,
 }) => {
+  const inputClass = `form-control ${error ? "is-invalid" : ""}`;
+
   return (
     <div className="form__input-box">
-      <div className="form__input-title">
-        <label htmlFor={id}>
-          {label} {required && <span>*</span>}
-        </label>
-      </div>
-      <>
-        {!isTextArea ? (
-          <>
-            {!groupInput ? (
-              <>
-                <div className="form__input">
-                  <input
-                    className={`form-control ${error ? "is-invalid" : ""}`}
-                    id={id}
-                    type={type}
-                    defaultValue={defaultValue} // Set the default value
-                    {...(register ? register : {})}
-                  />
-                </div>
-                {error && <ErrorMessage error={error.message} />}
-              </>
-            ) : (
-              <>
-                <div className="input-group">
-                  <span className="input-group-text">{groupText}</span>
-                  <input
-                    className={`form-control ${error ? "is-invalid" : ""}`}
-                    id={id}
-                    type={type}
-                    defaultValue={defaultValue} // Set the default value
-                    {...(register ? register : {})}
-                  />
-                </div>
-                {error && <ErrorMessage error={error.message} />}
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            <div className="form__input">
-              <textarea
-                id={id}
-                className={`form-control ${error ? "is-invalid" : ""}`}
-                defaultValue={defaultValue} // Set the default value
-                {...(register ? register : {})}
-              ></textarea>
-            </div>
-            {error && <ErrorMessage error={error.message} />}
-          </>
-        )}
-      </>
+      {label && (
+        <div className="form__input-title">
+          <label htmlFor={id}>
+            {label} {required && <span className="text-danger">*</span>}
+          </label>
+        </div>
+      )}
+      
+      {!isTextArea ? (
+        <div className={groupInput ? "input-group" : "form__input"}>
+          {groupInput && <span className="input-group-text">{groupText}</span>}
+          <input
+            className={inputClass}
+            id={id}
+            type={type}
+            placeholder={placeholder}
+            defaultValue={defaultValue}
+            readOnly={readOnly}
+            {...(register ? register : {})}
+          />
+        </div>
+      ) : (
+        <div className="form__input">
+          <textarea
+            id={id}
+            className={inputClass}
+            placeholder={placeholder}
+            defaultValue={defaultValue}
+            readOnly={readOnly}
+            {...(register ? register : {})}
+          ></textarea>
+        </div>
+      )}
+      {error && <ErrorMessage error={error.message} />}
     </div>
   );
 };

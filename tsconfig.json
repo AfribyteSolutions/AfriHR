@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -20,7 +24,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     },
     "types": [
       "node",
@@ -36,7 +42,6 @@
       "react-transition-group"
     ]
   },
-
   "include": [
     "next-env.d.ts",
     "**/*.ts",
@@ -44,7 +49,11 @@
     ".next/types/**/*.ts",
     "src/data/featureData.ts",
     "src/hooks/ratings-hooks.js",
-    "src/components/pagesUI/project/project-create/ProjectDescription.jsx"
-, "src/scripts/addTestNotification.js"  ],
-  "exclude": ["node_modules"]
+    "src/components/pagesUI/project/project-create/ProjectDescription.jsx",
+    "src/scripts/addTestNotification.js",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

@@ -1,49 +1,49 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import PayrollSummary from "./PayrollSummary";
 import PayrollTable from "./PayrollTable";
 import AddNewSalaryModal from "./AddNewSalaryModal";
 
 const PayrollMainArea = () => {
   const [modalOpen, setModalOpen] = useState(false);
+  
   return (
-    <>
-      {/* -- App side area start -- */}
-      <div className="app__slide-wrapper">
-        <div className="breadcrumb__area">
-          <div className="breadcrumb__wrapper mb-[25px]">
-            <nav>
-              <ol className="breadcrumb flex items-center mb-0">
-                <li className="breadcrumb-item">
-                  <Link href="/">Home</Link>
-                </li>
-                <li className="breadcrumb-item active" aria-current="page">
-                  Payroll
-                </li>
-              </ol>
-            </nav>
-            <div className="breadcrumb__btn">
-              <button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                className="btn btn-primary"
-              >
-                Create
-              </button>
-            </div>
-          </div>
+    <div >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <nav className="flex mb-2" aria-label="Breadcrumb">
+            <ol className="flex items-center space-x-2 text-sm font-medium text-slate-400">
+              <li>
+                <Link href="/" className="hover:text-slate-600 transition-colors">Home</Link>
+              </li>
+              <li className="flex items-center space-x-2">
+                <i className="fa-solid fa-chevron-right text-[10px]"></i>
+                <span className="text-slate-900">Payroll</span>
+              </li>
+            </ol>
+          </nav>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Company Payroll</h1>
         </div>
-        <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0">
-          <PayrollSummary />
-          <PayrollTable />
-        </div>
+        
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all active:scale-95"
+        >
+          <i className="fa-solid fa-plus"></i>
+          Create Payroll
+        </button>
       </div>
-      {/* -- App side area end -- */}
+
+      <div className="w-full">
+        {/* Ensure this component is NOT inside another restricted grid if it's meant to be full width */}
+        <PayrollTable />
+      </div>
+
       {modalOpen && (
         <AddNewSalaryModal open={modalOpen} setOpen={setModalOpen} />
       )}
-    </>
+    </div>
   );
 };
 

@@ -1,4 +1,3 @@
-// app/api/payroll/reset-all/route.ts
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
 
@@ -6,34 +5,32 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    // Optional: Add authentication check
     const { secretKey } = await req.json();
     
-    // Change this to a secure key of your choice
     if (secretKey !== "RESET_MY_PAYROLLS_2026") {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+    }
 
-    // Get all paid payrolls
+    // FIX 1: Search for "Paid" (Capitalized)
     const snapshot = await db.collection("payrolls")
-      .where("status", "==", "paid")
+      .where("status", "==", "Paid") 
       .get();
 
     if (snapshot.empty) {
       return NextResponse.json({ 
         success: true, 
-        message: "No paid payrolls found to reset." 
+        message: "No 'Paid' records found. Check if your database uses 'Paid' or 'paid'." 
       });
     }
 
-    // Batch update for better performance
     const batch = db.batch();
     let count = 0;
 
     snapshot.docs.forEach((doc) => {
+      // FIX 2: Set to "Unpaid" (Capitalized)
       batch.update(doc.ref, {
-        status: "unpaid",
-        emailStatus: null,
+        status: "Unpaid",
+        emailStatus: "Pending", // Set to Pending so you know they need new emails
         lastSentAt: null,
         updatedAt: new Date()
       });
@@ -44,14 +41,12 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `Successfully reset ${count} payroll records to unpaid status.`,
+      message: `Successfully reset ${count} payroll records to Unpaid status.`,
       count 
     });
 
   } catch (error: any) {
     console.error("Error resetting payrolls:", error);
-    return NextResponse.json({ 
-      error: error.message 
-    }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

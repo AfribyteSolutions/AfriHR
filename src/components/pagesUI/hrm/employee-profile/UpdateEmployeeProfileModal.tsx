@@ -65,16 +65,17 @@ const UpdateEmployeeProfileModal = ({
   const onSubmit = async (formData: IEmployeeProfileDetails) => {
     try {
       if (!data?.uid) {
-        toast.error("User ID missing. Cannot update profile.");
+        toast.error("User ID missing.");
         return;
       }
   
       const updatedData = {
+        uid: data.uid, // Required for the API
         fullName: `${formData.firstName || ""} ${formData.lastName || ""}`.trim(),
         email: formData.email,
         phone: formData.contactNumber,
         department: formData.department,
-        position: formData.designation || "", // map form designation → DB position
+        position: formData.designation || "",
         employeeId: formData.employeeId || "",
         gender: formData.gender || "",
         birthday: selectDateOfBirth ? selectDateOfBirth.toISOString() : null,
@@ -83,22 +84,28 @@ const UpdateEmployeeProfileModal = ({
         photoURL: uploadedImage || null,
       };
   
-      console.log("Updating employee:", data.uid, updatedData);
+      // CALL OUR NEW SYNC API INSTEAD OF updateDoc
+      const response = await fetch('/api/user-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData)
+      });
   
-      await updateDoc(doc(db, "users", data.uid), updatedData);
+      const result = await response.json();
   
-      toast.success("Profile updated successfully! 🎉");
-      reset();
-      setSelectDateOfBirth(null);
-      setSelectStartDate(null);
-      setUploadedImage(null);
-      setTimeout(() => setOpen(false), 2000);
-    } catch (error) {
+      if (response.ok && result.success) {
+        toast.success("Profile and Payrolls updated! 🎉");
+        setOpen(false);
+        // FORCE REFRESH TO SHOW NEW DATA REAL-TIME
+        window.location.reload(); 
+      } else {
+        throw new Error(result.message || "Failed to sync");
+      }
+    } catch (error: any) {
       console.error(error);
-      toast.error("Something went wrong. Please try again.");
+      toast.error(error.message || "Something went wrong.");
     }
   };
-  
 
   return (
     <Dialog open={open} onClose={handleToggle} fullWidth maxWidth="md">

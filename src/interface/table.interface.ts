@@ -1,4 +1,246 @@
+// table.interface.ts
 import { StaticImageData } from "next/image";
+
+export interface IPayrollLineItem {
+  label: string;
+  amount: number;
+  description?: string;
+}
+
+export interface IPaylist {
+  [key: string]: any; 
+  id?: string;
+  companyId: string;
+  employeeUid: string;
+  employeeName: string;
+  employeeEmail: string; 
+  employeeId?: string;
+  designation?: string;
+  joiningDate?: string;
+  employeeImg?: StaticImageData;
+  month: string;      
+  year: string | number;
+  salaryMonth: number; 
+  salaryYear: number;  
+  paymentDate: string; 
+  salaryMonthly: number;
+  additions: IPayrollLineItem[];
+  deductions: IPayrollLineItem[];
+  totalEarnings: number;
+  totalDeductions: number;
+  netPay: number;
+  status: "Paid" | "Unpaid";
+  createdAt: any;
+  updatedAt?: any;
+}
+
+export interface IOfficeLoan {
+  bankName: string;
+  amount: number;
+  reason: string;
+  monthYear: string;
+  createdAt: string;
+  emi: number;
+  paid: number;
+  loanType?: string;
+  status: "Pending" | "Reject" | "Approved" | "Paid";
+  bankImg?: StaticImageData;
+}
+
+export interface ITraining {
+  id: number;
+  trainingTitle: string;
+  trainer: string;
+  employees: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  trainingDuration: string;
+  time: string;
+  cost: number;
+  status: "Upcoming" | "Open" | "Complete" | "Cancel";
+  trainerImg?: StaticImageData;
+}
+
+export interface IPersonalLoan {
+  employeeName: string;
+  amount: number;
+  monthYear: string;
+  createdAt: string;
+  oneTimeDeduct: "Yes" | "No";
+  emi: number;
+  paid: number;
+  status: "Paid" | "Partial";
+  employeeImg?: StaticImageData;
+  reason?: string;
+}
+
+export interface IEmployeeLeave {
+  leaveType: string;
+  leaveDuration: string;
+  days: number;
+  reason: string;
+  startDate?: string;
+  endDate?: string;
+  status: "Approved" | "Pending";
+}
+
+export interface IAdminLeave {
+  employeeName: string;
+  designation: string;
+  leaveType: string;
+  leaveDuration: string;
+  days: number;
+  reason: string;
+  status: "Approved" | "Pending";
+  adminImg?: StaticImageData;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface IHoliday {
+  date: string;
+  day: string;
+  holidayName: string;
+}
+
+export interface ITimeSheet {
+  employee: string;
+  date: string;
+  hours: number;
+  remarks: string;
+  employeeImg?: StaticImageData;
+}
+
+export interface IOvertimeRecord {
+  name?: string;
+  employee: string;
+  date: string;
+  hours: number;
+  description: string;
+  approvedBy: string;
+  employeeImg?: StaticImageData;
+  adminImg?: StaticImageData;
+}
+
+export interface IWarningRecord {
+  employee: string;
+  subject: string;
+  warningDate: string;
+  description: string;
+  employeeImg?: StaticImageData;
+}
+
+export interface ILead {
+  createdDate: string;
+  leadName: string;
+  leadType?: string;
+  currency?: string;
+  description?: string;
+  companyName: string;
+  phone: string;
+  email: string;
+  owner: string;
+  status: "Approved" | "Pending" | "Rejected" | "Contacted";
+  employeeImg?: StaticImageData;
+}
+
+export interface IDeal {
+  id: string;
+  dealName: string;
+  phase: string;
+  pipelineType?: string;
+  sourceType?: string;
+  currency?: string;
+  startDate?: string;
+  mobileNumber?: string;
+  endDate?: string;
+  dealAmount: number;
+  email?: number;
+  tags: string;
+  expectedEndDate: string;
+  owner: string;
+  phone: string;
+  chances: string;
+  description?: string;
+  status: "Won" | "Open" | "Lost";
+}
+
+export interface IActivity {
+  title: string;
+  activityType: string;
+  owner: string;
+  createDate: string;
+  deadline: string;
+  employeeImg?: StaticImageData;
+}
+
+export interface IResignation {
+  employee: string;
+  resignationDate: string;
+  lastWorkingDay: string;
+  description?: string;
+  reason: string;
+  employeeImg?: StaticImageData;
+}
+
+export interface IPromotion {
+  promotedEmployee: string;
+  designation: string;
+  promotionTitle: string;
+  promotionDate: string;
+  description: string;
+  employeeImg?: StaticImageData;
+}
+
+export interface IAward {
+  employee: string;
+  awardType: string;
+  date: string;
+  gift: string;
+  giftDate?: string;
+  description: string;
+  employeeImg?: StaticImageData;
+}
+
+export interface IMeeting {
+  meetingTitle: string;
+  meetingDate: string;
+  meetingTime: string;
+  meetingLocation: string;
+}
+
+export interface ITransfer {
+  prevBranch: string;
+  newBranch: string;
+  department: string;
+  transferDate: string;
+  description: string;
+}
+
+export interface ITermination {
+  employee: string;
+  terminationType: string;
+  noticeDate: string;
+  terminationDate: string;
+  description: string;
+  employeeImg?: StaticImageData;
+}
+
+export interface IDocument {
+  fileName: string;
+  document: string;
+  role: string;
+  description: string;
+  employeeImg?: StaticImageData;
+}
+
+export interface IAnnouncement {
+  title: string;
+  startDate: string;
+  endDate: string;
+  description: string;
+}
 
 // Define an interface for the office loan
 export interface IOfficeLoan {
@@ -181,27 +423,12 @@ export interface IPipeline {
   pipeline: string;
 }
 // Define an interface for the paylist
-export interface IPaylist {
-  id?: string;
-  employeeId: string;
-  employeeName: string;
-  designation: string;
-  dearnessAllowance?: string;
-  transportAllowance?: string;
-  mobileAllowance?: string;
-  phone?: string;
-  providentFund?: string;
-  securityDeposit?: string;
-  personalLoan?: string;
-  earlyLeaving?: string;
-  bonusAllowance?: string;
-  email: string;
-  joiningDate: string;
-  salaryMonthly: number;
-  status: "Paid" | "Unpaid";
-  employeeImg?: StaticImageData;
-  others?: string;
+export interface IPayrollLineItem {
+  label: string;
+  amount: number;
+  description?: string;
 }
+
 // Define an interface for the earning
 export interface IEarning {
   earning: string; // The name or category of the earning
