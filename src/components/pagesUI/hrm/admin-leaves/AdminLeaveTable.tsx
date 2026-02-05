@@ -155,6 +155,56 @@ const AdminLeaveTable: React.FC<AdminLeaveTableProps> = ({ leaveData, onRefresh 
                             </TableCell>
                             <TableCell className="table__icon-box">
                               <div className="flex items-center justify-start gap-[10px]">
+                                {row?.status === "pending" && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="table__icon"
+                                      style={{ color: "#22c55e" }}
+                                      title="Approve Leave"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          const res = await fetch(`/api/leaves?id=${row.id}`, {
+                                            method: "PUT",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ status: "approved" }),
+                                          });
+                                          if (!res.ok) throw new Error("Failed to approve");
+                                          toast.success("Leave approved successfully");
+                                          if (onRefresh) onRefresh();
+                                        } catch (error) {
+                                          toast.error("Failed to approve leave");
+                                        }
+                                      }}
+                                    >
+                                      <i className="fa-solid fa-check"></i>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="table__icon"
+                                      style={{ color: "#ef4444" }}
+                                      title="Reject Leave"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          const res = await fetch(`/api/leaves?id=${row.id}`, {
+                                            method: "PUT",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ status: "rejected" }),
+                                          });
+                                          if (!res.ok) throw new Error("Failed to reject");
+                                          toast.success("Leave rejected");
+                                          if (onRefresh) onRefresh();
+                                        } catch (error) {
+                                          toast.error("Failed to reject leave");
+                                        }
+                                      }}
+                                    >
+                                      <i className="fa-solid fa-xmark"></i>
+                                    </button>
+                                  </>
+                                )}
                                 <button
                                   type="button"
                                   className="table__icon edit"
