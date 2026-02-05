@@ -1,13 +1,13 @@
 "use client";
 import Image from "next/image";
-import React, { useState } from "react"; // Removed useEffect as context handles initial fetch
+import React, { useState } from "react";
 import handImg from "../../../../public/assets/images/shape/hand.png";
 import HeaderAction from "./components/HeaderAction";
 import useGlobalContext from "@/hooks/use-context";
 import sidebarData from "@/data/sidebar-data";
 import Link from "next/link";
 import { SidebarCategory } from "@/interface";
-import { useAuthUserContext } from "@/context/UserAuthContext"; // Import your context hook
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
 // Define some common, related search terms to use as suggestions
 const relatedSearchTerms = [
@@ -24,8 +24,7 @@ const relatedSearchTerms = [
 ];
 
 const DashboardHeader = () => {
-  const { sidebarHandle, isCollapse } = useGlobalContext();
-  // Get user data and loading state directly from the AuthUserContext
+  const { sidebarHandle, isCollapse, setIsCollapse } = useGlobalContext();
   const { user: authUser, loading: loadingAuthUser } = useAuthUserContext(); 
   const [searchQuery, setSearchQuery] = useState("");
   const [showResults, setShowResults] = useState(false);
@@ -72,6 +71,11 @@ const DashboardHeader = () => {
     }
   };
 
+  // Toggle sidebar - works for both mobile and desktop
+  const handleSidebarToggle = () => {
+    setIsCollapse(!isCollapse);
+  };
+
   return (
     <>
       {/* -- App header area start -- */}
@@ -81,8 +85,9 @@ const DashboardHeader = () => {
             <div className="flex">
               <button
                 id="sidebar__active"
-                onClick={sidebarHandle}
+                onClick={handleSidebarToggle}
                 className="app__header-toggle"
+                aria-label="Toggle sidebar"
               >
                 <div className="bar-icon-2">
                   <span></span>
@@ -92,10 +97,8 @@ const DashboardHeader = () => {
               </button>
             </div>
             <h2 className="header__title">
-              {/* Display user's name from context, with loading state and fallback */}
               Hello {loadingAuthUser ? "Loading..." : authUser?.fullName || "User"}
               <span>
-                {/* Re-added Image component for handImg */}
                 <Image
                   className="inline-block"
                   src={handImg}
@@ -176,9 +179,11 @@ const DashboardHeader = () => {
           </div>
         </div>
       </div>
+      
+      {/* Overlay - visible when sidebar is open on mobile */}
       <div 
-        className={`body__overlay ${isCollapse ? "overlay-open" : ""}`}
-        onClick={sidebarHandle}
+        className={`body__overlay ${!isCollapse ? "overlay-open" : ""}`}
+        onClick={() => setIsCollapse(true)}
       ></div>
       {/* -- App header area end -- */}
     </>

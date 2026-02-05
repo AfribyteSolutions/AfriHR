@@ -42,7 +42,7 @@ const sidebarData: SidebarCategory[] = [
           // { label: "Time Sheet", link: "/hrm/timesheet" },
           // { label: "Schedule", link: "/hrm/schedule" },
           // { label: "Overtime", link: "/hrm/overtime" },
-          // { label: "Warning", link: "/hrm/warning" },
+          { label: "Warning", link: "/hrm/warning" },
           { label: "Recruitment Flow", link: "/hrm/recruitment-flow" },
         ],
       },

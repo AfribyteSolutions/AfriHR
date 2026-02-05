@@ -1,12 +1,13 @@
-"use client"
+"use client";
 
 import NotificationSvg from "@/svg/header-svg/Profile/Notification";
 import Image from "next/image";
 import Link from "next/link";
-import React from "react";
-import { useAuthUserContext } from "@/context/UserAuthContext"; // CHANGED THIS
+import React, { useMemo } from "react";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import { useNotifications } from "@/hooks/useNotifications";
-import { markNotificationAsRead } from "@/lib/firebase"; // CHANGED THIS
+import { markNotificationAsRead, db } from "@/lib/firebase"; 
+import { collection, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { formatDistanceToNow } from "date-fns";
 
 type TNotificationProps = {
@@ -14,142 +15,102 @@ type TNotificationProps = {
   isOpenNotification: boolean;
 };
 
-const Notification = ({
-  handleShowNotification,
-  isOpenNotification,
-}: TNotificationProps) => {
-  // CHANGED: Use the correct context hook
+const Notification = ({ handleShowNotification, isOpenNotification }: TNotificationProps) => {
   const { user } = useAuthUserContext();
-  
-  // Add debug logging
-  console.log('🔍 Notification Component Debug:');
-  console.log('User from context:', user);
-  console.log('User UID:', user?.uid);
-  
-  // Fetch notifications in real-time
   const { notifications, unreadCount, loading } = useNotifications(user?.uid);
 
-  console.log('📊 Notifications:', notifications);
-  console.log('📊 Unread Count:', unreadCount);
-  console.log('📊 Loading:', loading);
+  // Show only unread. They vanish once clicked/read.
+  const unreadOnly = useMemo(() => {
+    return notifications.filter((n) => !n.isRead);
+  }, [notifications]);
 
-  // Handle notification click
-  const handleNotificationClick = async (notificationId: string, isRead: boolean) => {
-    if (!isRead) {
-      try {
-        await markNotificationAsRead(notificationId);
-      } catch (error) {
-        console.error('Failed to mark notification as read:', error);
-      }
+  const handleMarkAllRead = async () => {
+    if (!user?.uid || unreadOnly.length === 0) return;
+    try {
+      const batch = writeBatch(db);
+      const q = query(collection(db, "notifications"), 
+                where("userId", "==", user.uid), 
+                where("isRead", "==", false));
+      const snapshot = await getDocs(q);
+      snapshot.forEach((doc) => batch.update(doc.ref, { isRead: true }));
+      await batch.commit();
+    } catch (err) {
+      console.error("Batch update failed:", err);
     }
   };
 
-  // Format time ago
-  const formatTimeAgo = (date: Date): string => {
-    return formatDistanceToNow(date, { addSuffix: true });
+  const formatTimeAgo = (date: any) => {
+    if (!date) return "Just now";
+    const d = date?.seconds ? new Date(date.seconds * 1000) : new Date(date);
+    return isNaN(d.getTime()) ? "Recently" : formatDistanceToNow(d, { addSuffix: true });
   };
 
-  // Category badge colors
-  const getCategoryColor = (category: string): string => {
+  const getCategoryColor = (cat: string) => {
     const colors = {
-      task: 'bg-blue-100 text-blue-800',
       hr: 'bg-green-100 text-green-800',
-      leave: 'bg-yellow-100 text-yellow-800',
-      system: 'bg-gray-100 text-gray-800',
+      announcement: 'bg-purple-100 text-purple-800',
+      system: 'bg-gray-100 text-gray-800'
     };
-    return colors[category as keyof typeof colors] || colors.system;
+    return colors[cat as keyof typeof colors] || colors.system;
   };
 
   return (
     <li>
       <div className="nav-item relative">
-        <button id="notifydropdown" className="flex">
-          <div className="notification__icon cursor-pointer relative" onClick={handleShowNotification}>
+        <button className="flex" onClick={handleShowNotification}>
+          <div className="notification__icon cursor-pointer relative">
             <NotificationSvg />
-            {/* Unread badge */}
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
-                {unreadCount > 9 ? '9+' : unreadCount}
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
           </div>
         </button>
 
         {isOpenNotification && (
-          <div
-            className={`notification__dropdown item-two ${
-              isOpenNotification ? "email-enable" : " "
-            }`}
-          >
+          <div className="notification__dropdown item-two email-enable">
             <div className="common-scrollbar h-[420px] overflow-y-auto card__scroll">
-              <div className="notification__header">
-                <div className="notification__inner">
-                  <h5>Notifications</h5>
-                  <span>({notifications.length})</span>
-                </div>
+              <div className="notification__header flex justify-between items-center p-3 border-b">
+                <h5 className="text-sm font-bold">Alerts ({unreadOnly.length})</h5>
+                {unreadOnly.length > 0 && (
+                  <button onClick={handleMarkAllRead} className="text-[10px] text-blue-600 font-medium hover:underline">
+                    Mark all read
+                  </button>
+                )}
               </div>
 
-              {/* Loading state */}
-              {loading && (
-                <div className="p-4 text-center text-gray-500">
-                  Loading notifications...
-                </div>
+              {!loading && unreadOnly.length === 0 && (
+                <div className="p-10 text-center text-gray-400 text-xs italic">Inbox is empty</div>
               )}
 
-              {/* Empty state */}
-              {!loading && notifications.length === 0 && (
-                <div className="p-8 text-center text-gray-500">
-                  <p className="text-sm">No notifications yet</p>
-                  <p className="text-xs mt-2">User ID: {user?.uid}</p>
-                </div>
-              )}
-
-              {/* Notifications list */}
-              {!loading && notifications.map((notification) => (
-                <div 
-                  className={`notification__item ${!notification.isRead ? 'bg-blue-50' : ''}`} 
-                  key={notification.id}
-                >
+              {unreadOnly.map((n) => (
+                <div className="notification__item bg-blue-50 border-b border-white" key={n.id}>
                   <div className="notification__thumb">
-                    {notification.image ? (
-                      <Image 
-                        src={notification.image} 
-                        alt={notification.title}
-                        width={40}
-                        height={40}
-                        className="rounded-full"
-                      />
+                    {n.image ? (
+                      <Image src={n.image} alt="user" width={40} height={40} className="rounded-full" />
                     ) : (
-                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                        <span className="text-gray-500 text-xs">
-                          {notification.category.charAt(0).toUpperCase()}
-                        </span>
+                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-500">
+                        {/* FIX: Crash guard for charAt */}
+                        {(n.category?.charAt(0) ?? "N").toUpperCase()}
                       </div>
                     )}
                   </div>
                   <div className="notification__content flex-1">
+                    {/* FIX: Crash guard for Link href */}
                     <Link
-                      href={notification.link}
-                      onClick={() => handleNotificationClick(notification.id, notification.isRead)}
+                      href={n.link || "#"}
+                      onClick={() => markNotificationAsRead(n.id)}
                       className="block"
                     >
-                      <h6 className="font-medium text-sm">
-                        {notification.title}
-                      </h6>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {notification.message}
-                      </p>
+                      <h6 className="font-semibold text-xs text-gray-800">{n.title || "Notice"}</h6>
+                      <p className="text-[11px] text-gray-600 leading-tight mt-1">{n.message}</p>
                     </Link>
-                    <div className="notification__time mt-2 flex items-center gap-2">
-                      <span className="text-xs text-gray-500">
-                        {formatTimeAgo(notification.createdAt)}
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-[10px] text-gray-400">{formatTimeAgo(n.createdAt)}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full capitalize ${getCategoryColor(n.category || "system")}`}>
+                        {n.category || "hr"}
                       </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${getCategoryColor(notification.category)}`}>
-                        {notification.category}
-                      </span>
-                      {!notification.isRead && (
-                        <span className="w-2 h-2 bg-blue-500 rounded-full ml-auto"></span>
-                      )}
                     </div>
                   </div>
                 </div>

@@ -2,7 +2,6 @@
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import sidebarImg from "@/../public/assets/images/bg/side-bar.png";
 import useGlobalContext from "@/hooks/use-context";
 import { Company } from "@/types/company";
 import Cookies from "js-cookie";
@@ -23,6 +22,24 @@ const HRMSidebar = () => {
   const [linkId, setlinkId] = useState<number | null>(null);
   const [linkIdTwo, setlinkIdTwo] = useState<number | null>(null);
   const [linkIdThree, setlinkIdThree] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Track mobile viewport - only consider screens below 1200px as mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      const windowWidth = window.innerWidth;
+      const isMobileSize = windowWidth < 1200;
+      setIsMobile(isMobileSize);
+    };
+    
+    // Initial check
+    checkMobile();
+    
+    // Listen for resize events
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const fetchCompany = async () => {
@@ -49,7 +66,6 @@ const HRMSidebar = () => {
       // Find and include specific items from sidebarData
       const includeItems = [
         "HRM",
-        // "Dashboard", // Remove from here since we're adding it separately
         "Add Employee",
         "Recruitment Flow",
         "Chat",
@@ -102,10 +118,10 @@ const HRMSidebar = () => {
     setHrmMenuItems(getHrmMenuItems());
   }, []);
 
-  // Utility function to handle collapse behavior for mobile screens
-  const handleCollapse = (shouldCollapse: boolean) => {
-    if (window.matchMedia("(max-width: 1199px)").matches) {
-      setIsCollapse(shouldCollapse);
+  // Close sidebar ONLY on mobile when navigating
+  const closeSidebarOnMobile = () => {
+    if (isMobile) {
+      setIsCollapse(true);
     }
   };
 
@@ -117,7 +133,6 @@ const HRMSidebar = () => {
       setlinkIdTwo(null);
       setlinkIdThree(null);
     }
-    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   const handleClickTwo = (id: number) => {
@@ -127,7 +142,6 @@ const HRMSidebar = () => {
       setlinkIdTwo(id);
       setlinkIdThree(null);
     }
-    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   const handleClickThree = (id: number) => {
@@ -136,7 +150,6 @@ const HRMSidebar = () => {
     } else {
       setlinkIdThree(id);
     }
-    handleCollapse(false); // Close sidebar on mobile after clicking
   };
 
   return (
@@ -144,7 +157,7 @@ const HRMSidebar = () => {
       <div className={`app-sidebar ${isCollapse ? "collapsed close_sidebar" : ""}`}>
         {/* Sidebar Header with company logo and name */}
         <div className="main-sidebar-header">
-          <Link href="/" className="header-logo flex items-center gap-3 w-full min-w-0">
+          <Link href="/" className="header-logo flex items-center gap-3 w-full min-w-0" onClick={closeSidebarOnMobile}>
             {company?.branding?.logoUrl && (
               <div className={`relative ${isCollapse ? "h-10 w-10" : "h-12 w-12"} flex-shrink-0`}>
                 <Image
@@ -163,6 +176,15 @@ const HRMSidebar = () => {
               </span>
             )}
           </Link>
+          {/* Close button for mobile - only visible on screens < 1200px */}
+          <button
+            className="sidebar-close-btn"
+            style={{ display: isMobile ? 'block' : 'none' }}
+            onClick={() => setIsCollapse(true)}
+            aria-label="Close sidebar"
+          >
+            <i className="icon-xmark"></i>
+          </button>
         </div>
 
         <div className="common-scrollbar max-h-screen overflow-y-auto">
@@ -177,7 +199,7 @@ const HRMSidebar = () => {
                 <Link
                   href="/dashboard/hrm-dashboard"
                   className="sidebar__menu-item"
-                  onClick={() => handleCollapse(false)}
+                  onClick={closeSidebarOnMobile}
                 >
                   <div className="side-menu__icon">
                     <i className="icon-house"></i>
@@ -193,7 +215,7 @@ const HRMSidebar = () => {
                   className={
                     item.subItems?.length
                       ? `slide has-sub ${linkId === item.id ? "open" : ""}`
-                      : ""
+                      : "slide"
                   }
                 >
                   <Link
@@ -202,8 +224,7 @@ const HRMSidebar = () => {
                         e.preventDefault();
                         handleClick(item.id);
                       } else {
-                        // Close sidebar on mobile when navigating
-                        handleCollapse(false);
+                        closeSidebarOnMobile();
                       }
                     }}
                     href={item.link || "#"}
@@ -235,9 +256,9 @@ const HRMSidebar = () => {
                       {item.subItems.map((subOne, index) => (
                         <li
                           key={index}
-                          className={`slide has-sub ${
-                            linkIdTwo === index ? "open" : ""
-                          }`}
+                          className={`slide ${
+                            subOne.subItems ? "has-sub" : ""
+                          } ${linkIdTwo === index ? "open" : ""}`}
                         >
                           <Link
                             onClick={(e) => {
@@ -245,8 +266,7 @@ const HRMSidebar = () => {
                                 e.preventDefault();
                                 handleClickTwo(index);
                               } else {
-                                // Close sidebar on mobile when navigating
-                                handleCollapse(false);
+                                closeSidebarOnMobile();
                               }
                             }}
                             href={subOne.link || "/"}
@@ -270,9 +290,9 @@ const HRMSidebar = () => {
                               {subOne.subItems.map((subTwo, subIndex) => (
                                 <li
                                   key={subIndex}
-                                  className={`slide has-sub ${
-                                    linkIdThree === subIndex ? "open" : ""
-                                  }`}
+                                  className={`slide ${
+                                    subTwo.subItems ? "has-sub" : ""
+                                  } ${linkIdThree === subIndex ? "open" : ""}`}
                                 >
                                   <Link
                                     onClick={(e) => {
@@ -280,8 +300,7 @@ const HRMSidebar = () => {
                                         e.preventDefault();
                                         handleClickThree(subIndex);
                                       } else {
-                                        // Close sidebar on mobile when navigating
-                                        handleCollapse(false);
+                                        closeSidebarOnMobile();
                                       }
                                     }}
                                     href={subTwo.link || "#"}
@@ -308,12 +327,10 @@ const HRMSidebar = () => {
                                         (subThree, subThreeIndex) => (
                                           <li
                                             key={subThreeIndex}
-                                            className={`slide ${
-                                              subThree.subItems ? "has-sub" : ""
-                                            }`}
+                                            className="slide"
                                           >
                                             <Link
-                                              onClick={() => handleCollapse(false)}
+                                              onClick={closeSidebarOnMobile}
                                               href={subThree.link || "#"}
                                               className="sidebar__menu-item"
                                             >
@@ -339,11 +356,13 @@ const HRMSidebar = () => {
         </div>
       </div>
 
-      {/* Overlay for mobile - visible when sidebar is open */}
-      <div
-        className={`app__offcanvas-overlay ${!isCollapse ? "overlay-open" : ""}`}
-        onClick={() => setIsCollapse(true)}
-      ></div>
+      {/* Overlay for mobile - only render on mobile when sidebar is open */}
+      {isMobile && !isCollapse && (
+        <div
+          className="app__offcanvas-overlay overlay-open"
+          onClick={() => setIsCollapse(true)}
+        ></div>
+      )}
     </>
   );
 };

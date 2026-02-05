@@ -44,6 +44,13 @@ export interface EmployeeSidebarItem {
       link: "/announcement",
       icon: "icon-announcement",
     },
+    {
+      id: 7,
+      label: "Warnings",
+      link: "/hrm/warning",
+      icon: "icon-fire",
+    },
+
 
     
   ];

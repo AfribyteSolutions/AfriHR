@@ -1,133 +1,92 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
-import { IWarningRecord } from "@/interface/table.interface";
-import FormLabel from "@/components/elements/SharedInputs/FormLabel";
-import { warningData } from "@/data/hrm/warning-data";
 import { useForm } from "react-hook-form";
 import InputField from "@/components/elements/SharedInputs/InputField";
-import DatePicker from "react-datepicker";
-import { statePropsType } from "@/interface/common.interface";
-import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage";
 import { toast } from "sonner";
+import { auth, db } from "@/lib/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { collection, getDocs } from "firebase/firestore";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
-const AddWarningModal = ({ open, setOpen }: statePropsType) => {
-  const [selectWarningDate, setSelectWarningDate] = useState<Date | null>(new Date());
-  const { register, handleSubmit, formState: { errors } } = useForm<IWarningRecord>();
-  const [selectedWarning, setSelectedWarning] = useState<IWarningRecord | null>(null);
-  const handleToggle = () => setOpen(!open);
+const AddWarningModal = ({ open, setOpen }: { open: boolean; setOpen: (o: boolean) => void }) => {
+  const [user] = useAuthState(auth);
+  const { user: userData } = useAuthUserContext(); // Pulls companyId/role from context
+  const [loading, setLoading] = useState(false);
+  const [employees, setEmployees] = useState<{ uid: string; displayName: string }[]>([]);
+  
+  const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
-  //handle submit form
-  const onSubmit = async (data: IWarningRecord) => {
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      const snap = await getDocs(collection(db, "users"));
+      setEmployees(snap.docs.map(doc => ({
+        uid: doc.id,
+        displayName: doc.data().name || doc.data().fullName || "Unknown"
+      })));
+    };
+    if (open) fetchEmployees();
+  }, [open]);
+
+  const onSubmit = async (data: any) => {
+    if (!user || !userData?.companyId) {
+      toast.error("User context not fully loaded. Try again.");
+      return;
+    }
+    setLoading(true);
+
     try {
-      // Simulate API call or processing
-      toast.success("Add Warning successfully!");
-      // Close modal after submission
-      setTimeout(() => setOpen(false), 2000);
-    } catch (error: any) {
-      toast.error(
-        error?.message || "An error occurred while add the warning. Please try again!");
+      const payload = {
+        companyId: userData.companyId, // Matches your API requirement
+        employeeId: data.employeeId,
+        managerId: user.uid,            // Matches your API requirement
+        subject: data.subject,
+        description: data.description,
+        warningDate: new Date().toISOString(),
+      };
+
+      const res = await fetch("/api/warnings/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+      if (res.ok && result.success) {
+        toast.success("Warning issued!");
+        reset();
+        setOpen(false);
+      } else {
+        toast.error(result.message || "Failed to create");
+      }
+    } catch (err) {
+      toast.error("Network error");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <>
-      <Dialog open={open} onClose={handleToggle} fullWidth maxWidth="sm" sx={{
-        "& .MuiDialog-paper": {
-          width: "500px",
-        },
-      }}>
-        <DialogTitle>
-          <div className="flex justify-between">
-            <h5 className="modal-title">Edit Warning</h5>
-            <button
-              onClick={handleToggle}
-              type="button"
-              className="bd-btn-close"
-            >
-              <i className="fa-solid fa-xmark-large"></i>
-            </button>
+    <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+      <DialogTitle className="font-bold">Issue New Warning</DialogTitle>
+      <DialogContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
+          <div>
+            <label className="text-sm font-medium">Employee</label>
+            <select {...register("employeeId", { required: true })} className="w-full p-2 border rounded">
+              <option value="">-- Select --</option>
+              {employees.map(e => <option key={e.uid} value={e.uid}>{e.displayName}</option>)}
+            </select>
           </div>
-        </DialogTitle>
-        <DialogContent>
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="card__wrapper">
-              <div className="grid grid-cols-12 items-center gap-y-5">
-                <div className="col-span-12">
-                  <div className="from__input-box select-wrapper">
-                    <div className="form__input-title">
-                      <label htmlFor="lastname">Warning</label>
-                    </div>
-                    <div className="relative">
-                      <div className="mz-default-select">
-                        <SelectWithImage
-                          data={warningData}
-                          selectedValue={selectedWarning}
-                          valueKey="employee"
-                          displayKey="employee"
-                          imageKey="employeeImg"
-                          placeholder="Select Owner"
-                          onChange={setSelectedWarning}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-span-12">
-                  <InputField
-                    label="Subject"
-                    id="subject"
-                    type="text"
-                    register={register("subject", {
-                      required: "Subject is required",
-                    })}
-                    error={errors.subject}
-                  />
-                </div>
-                <div className="col-span-12">
-                  <FormLabel label="Warning Date" id="selectWarningDate" />
-                  <div className="datepicker-style">
-                    <DatePicker
-                      id="selectWarningDate"
-                      selected={selectWarningDate}
-                      onChange={(date) => setSelectWarningDate(date)}
-                      showYearDropdown
-                      showMonthDropdown
-                      useShortMonthInDropdown
-                      showPopperArrow={false}
-                      peekNextMonth
-                      dropdownMode="select"
-                      isClearable
-                      dateFormat="dd/MM/yyyy"
-                      placeholderText="Warning date"
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="col-span-12">
-                  <InputField
-                    label="Description"
-                    id="description"
-                    isTextArea={true}
-                    required={true}
-                    register={register("description", {
-                      required: "Reason is required",
-                    })}
-                    error={errors.description}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="submit__btn text-center">
-              <button type="submit" className="btn btn-primary">
-                Submit
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+          <InputField label="Subject" id="subject" register={register("subject", { required: true })} error={errors.subject as any} />
+          <InputField label="Description" id="description" isTextArea register={register("description", { required: true })} error={errors.description as any} />
+          <div className="flex justify-end gap-2 pt-4">
+            <button type="button" onClick={() => setOpen(false)} className="btn btn-secondary">Cancel</button>
+            <button type="submit" disabled={loading} className="btn btn-primary">{loading ? "Saving..." : "Submit"}</button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

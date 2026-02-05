@@ -22,10 +22,27 @@ const EmployeeSidebar = () => {
   const [user, loadingAuth, errorAuth] = useAuthState(auth);
   const [userPermissions, setUserPermissions] = useState<SidebarPermissions | null>(null);
   const [loadingPermissions, setLoadingPermissions] = useState(true);
+  const [company, setCompany] = useState<Company | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
-  const [company, setCompany] = useState<Company | null>(null); // <-- Added
+  // Track mobile viewport - only consider screens below 1200px as mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      const windowWidth = window.innerWidth;
+      const isMobileSize = windowWidth < 1200;
+      setIsMobile(isMobileSize);
+    };
+    
+    // Initial check
+    checkMobile();
+    
+    // Listen for resize events
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-  // Fetch company info (same logic as HRMSidebar)
+  // Fetch company info
   useEffect(() => {
     const fetchCompany = async () => {
       const subdomain = Cookies.get("subdomain");
@@ -88,6 +105,13 @@ const EmployeeSidebar = () => {
     }
   }, [userPermissions, loadingPermissions]);
 
+  // Handle link clicks - close sidebar ONLY on mobile
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setIsCollapse(true);
+    }
+  };
+
   // Loading state
   if (loadingAuth || loadingPermissions) {
     return (
@@ -126,28 +150,38 @@ const EmployeeSidebar = () => {
     <>
       {/* Sidebar Menu */}
       <aside className={`app-sidebar ${isCollapse ? "collapsed close_sidebar" : ""}`}>
-         {/* Company Logo + Name */}
-      <div className="main-sidebar-header">
-        <Link href="/" className="header-logo flex items-center gap-3 w-full min-w-0">
-          {company?.branding?.logoUrl && (
-            <div className={`relative ${isCollapse ? "h-10 w-10" : "h-12 w-12"} flex-shrink-0`}>
-              <Image
-                src={company.branding.logoUrl}
-                alt={`${company.name} Logo`}
-                fill
-                className="object-contain"
-                priority
-                sizes="(max-width: 768px) 40px, 48px"
-              />
-            </div>
-          )}
-          {!isCollapse && company?.name && (
-            <span className="text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
-              {company.name}
-            </span>
-          )}
-        </Link>
-      </div>
+        {/* Company Logo + Name */}
+        <div className="main-sidebar-header">
+          <Link href="/" className="header-logo flex items-center gap-3 w-full min-w-0" onClick={handleLinkClick}>
+            {company?.branding?.logoUrl && (
+              <div className={`relative ${isCollapse ? "h-10 w-10" : "h-12 w-12"} flex-shrink-0`}>
+                <Image
+                  src={company.branding.logoUrl}
+                  alt={`${company.name} Logo`}
+                  fill
+                  className="object-contain"
+                  priority
+                  sizes="(max-width: 768px) 40px, 48px"
+                />
+              </div>
+            )}
+            {!isCollapse && company?.name && (
+              <span className="text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+                {company.name}
+              </span>
+            )}
+          </Link>
+          {/* Close button for mobile - only visible on screens < 1200px */}
+          <button
+            className="sidebar-close-btn"
+            style={{ display: isMobile ? 'block' : 'none' }}
+            onClick={() => setIsCollapse(true)}
+            aria-label="Close sidebar"
+          >
+            <i className="icon-xmark"></i>
+          </button>
+        </div>
+        
         <div className="common-scrollbar max-h-screen overflow-y-auto">
           <nav className="main-menu-container nav nav-pills flex-column sub-open mt-[80px]">
             <ul className="main-menu">
@@ -159,12 +193,7 @@ const EmployeeSidebar = () => {
                   <Link 
                     href={item.link} 
                     className="sidebar__menu-item"
-                    onClick={() => {
-                      // Close sidebar on mobile when navigating
-                      if (window.matchMedia("(max-width: 1199px)").matches) {
-                        setIsCollapse(false);
-                      }
-                    }}
+                    onClick={handleLinkClick}
                   >
                     <div className="side-menu__icon">
                       <i className={item.icon}></i>
@@ -178,11 +207,13 @@ const EmployeeSidebar = () => {
         </div>
       </aside>
 
-      {/* Overlay for mobile - visible when sidebar is open */}
-      <div
-        className={`app__offcanvas-overlay ${!isCollapse ? "overlay-open" : ""}`}
-        onClick={() => setIsCollapse(true)}
-      ></div>
+      {/* Overlay for mobile - only render on mobile when sidebar is open */}
+      {isMobile && !isCollapse && (
+        <div
+          className="app__offcanvas-overlay overlay-open"
+          onClick={() => setIsCollapse(true)}
+        ></div>
+      )}
     </>
   );
 };

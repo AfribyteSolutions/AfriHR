@@ -354,14 +354,28 @@ export interface IOvertimeRecord {
   employeeImg?: StaticImageData;
   adminImg?: StaticImageData;
 }
-// Define an interface for the warning record
-export interface IWarningRecord {
-  employee: string;
+// Updated IWarningRecord interface
+export interface IWarningData {
+  id?: string;
+  employee?: string;
+  employeeName?: string;
+  employeeId?: string;
+  employeeImg?: string | StaticImageData;
+  managerId?: string;
+  managerName?: string;
   subject: string;
-  warningDate: string;
+  warningDate: string; 
   description: string;
-  employeeImg?: StaticImageData;
+  status?: string;
+  companyId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
 }
+
+export type IWarningFormInput = Omit<IWarningData, "warningDate"> & {
+  warningDate: string | Date;
+};
 // Define an interface for the lead
 export interface ILead {
   createdDate: string;
