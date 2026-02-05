@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { ITrainer } from "@/interface/dropdown.interface";
 import { trainersData } from "@/data/dropdown-data";
@@ -11,8 +11,15 @@ import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
 import { statePropsType } from "@/interface/common.interface";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
-const AddNewResignationModal = ({ open, setOpen }: statePropsType) => {
+interface AddNewResignationModalProps extends statePropsType {
+  onRefresh?: () => void;
+}
+
+const AddNewResignationModal = ({ open, setOpen, onRefresh }: AddNewResignationModalProps) => {
+  const { user: authUser } = useAuthUserContext();
+  const [employees, setEmployees] = useState<any[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<ITrainer | null>(null);
   const [selectResignationDate, setSelectResignationDate] =
     useState<Date | null>(new Date());
@@ -24,15 +31,74 @@ const AddNewResignationModal = ({ open, setOpen }: statePropsType) => {
     formState: { errors },
   } = useForm<IResignation>();
 
+  // Fetch employees for the company
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      if (!authUser?.companyId) return;
+
+      try {
+        const res = await fetch(`/api/company-employees?companyId=${authUser.companyId}`);
+        const data = await res.json();
+
+        if (data.success && Array.isArray(data.employees)) {
+          setEmployees(data.employees);
+        }
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+      }
+    };
+
+    fetchEmployees();
+  }, [authUser]);
+
   const handleToggle = () => setOpen(!open);
+
   const onSubmit = async (data: IResignation) => {
+    if (!authUser || !authUser.companyId) {
+      toast.error("You must be logged in");
+      return;
+    }
+
+    if (!selectedOwner) {
+      toast.error("Please select an employee");
+      return;
+    }
+
     try {
-      toast.success("Resignation added successfully!");
-      setTimeout(() => setOpen(false), 2000);
+      const resignationData = {
+        employeeId: selectedOwner.uid || selectedOwner.id,
+        employeeName: selectedOwner.name,
+        resignationDate: selectResignationDate?.toISOString(),
+        lastWorkingDay: selectLastWorkingDate?.toISOString(),
+        reason: data.reason,
+        description: data.description,
+        companyId: authUser.companyId,
+        submittedBy: authUser.uid,
+      };
+
+      const res = await fetch("/api/resignation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(resignationData),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Failed to submit resignation");
+      }
+
+      toast.success("Resignation submitted successfully!");
+
+      if (onRefresh) {
+        onRefresh();
+      }
+
+      setTimeout(() => setOpen(false), 800);
     } catch (error: any) {
       toast.error(
         error?.message ||
-          "An error occurred while updating the Resignation. Please try again!"
+          "An error occurred while submitting the resignation. Please try again!"
       );
     }
   };

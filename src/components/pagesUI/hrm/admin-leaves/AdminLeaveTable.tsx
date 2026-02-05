@@ -21,16 +21,21 @@ import { adminLeaveHeadCells } from "@/data/table-head-cell/table-head";
 import { useTableStatusHook } from "@/hooks/use-condition-class";
 import Link from "next/link";
 import Image from "next/image";
-import { adminLeaveData } from "@/data/hrm/admin-leave-data";
 import AdminLeaveEditModal from "./AdminLeaveEditModal";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
+import { toast } from "sonner";
 
-const AdminLeaveTable = () => {
+interface AdminLeaveTableProps {
+  leaveData: any[];
+  onRefresh?: () => void;
+}
+
+const AdminLeaveTable: React.FC<AdminLeaveTableProps> = ({ leaveData, onRefresh }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState<IAdminLeave | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string>("");
   const {
     order,
     orderBy,
@@ -40,13 +45,13 @@ const AdminLeaveTable = () => {
     searchQuery,
     paginatedRows,
     filteredRows,
-    handleDelete,
+    handleDelete: handleDeleteLocal,
     handleRequestSort,
     handleClick,
     handleChangePage,
     handleChangeRowsPerPage,
     handleSearchChange,
-  } = useMaterialTableHook<IAdminLeave | any>(adminLeaveData, 10);
+  } = useMaterialTableHook<IAdminLeave | any>(leaveData, 10);
 
   return (
     <>
@@ -165,7 +170,7 @@ const AdminLeaveTable = () => {
                                   className="removeBtn table__icon delete"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setDeleteId(index);
+                                    setDeleteId(row.id);
                                     setModalDeleteOpen(true);
                                   }}
                                 >
@@ -206,6 +211,7 @@ const AdminLeaveTable = () => {
           open={modalOpen}
           setOpen={setModalOpen}
           editData={editData}
+          onRefresh={onRefresh}
         />
       )}
 
@@ -213,7 +219,25 @@ const AdminLeaveTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={async () => {
+            try {
+              const res = await fetch(`/api/leaves?id=${deleteId}`, {
+                method: "DELETE",
+              });
+
+              if (!res.ok) throw new Error("Delete failed");
+
+              toast.success("Leave deleted successfully");
+              setModalDeleteOpen(false);
+
+              if (onRefresh) {
+                onRefresh();
+              }
+            } catch (error) {
+              toast.error("Failed to delete leave");
+              console.error("Delete error:", error);
+            }
+          }}
           deleteId={deleteId}
         />
       )}

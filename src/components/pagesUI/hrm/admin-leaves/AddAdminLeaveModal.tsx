@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import { IAdminLeave } from "@/interface/table.interface";
@@ -8,8 +8,16 @@ import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { statePropsType } from "@/interface/common.interface";
 import { toast } from "sonner";
+import { useAuthUserContext } from "@/context/UserAuthContext";
+import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 
-const AddAdminLeaveModal = ({ open, setOpen }: statePropsType) => {
+interface AddAdminLeaveModalProps extends statePropsType {
+  onRefresh?: () => void;
+}
+
+const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProps) => {
+  const { user: authUser } = useAuthUserContext();
+  const [employees, setEmployees] = useState<any[]>([]);
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(
     new Date()
   );
@@ -17,22 +25,89 @@ const AddAdminLeaveModal = ({ open, setOpen }: statePropsType) => {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<IAdminLeave>();
+
+  // Fetch employees for the company
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      if (!authUser?.companyId) return;
+
+      try {
+        const res = await fetch(`/api/company-employees?companyId=${authUser.companyId}`);
+        const data = await res.json();
+
+        if (data.success && Array.isArray(data.employees)) {
+          const employeeOptions = data.employees.map((emp: any) => ({
+            value: emp.uid || emp.id,
+            label: emp.fullName || emp.name,
+          }));
+          setEmployees(employeeOptions);
+        }
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+      }
+    };
+
+    fetchEmployees();
+  }, [authUser]);
+
   const handleToggle = () => setOpen(!open);
 
-  //handle submit
   const onSubmit = async (data: IAdminLeave) => {
+    if (!authUser || !authUser.companyId) {
+      toast.error("You must be logged in");
+      return;
+    }
+
     try {
-      // Simulate API call or processing
-      toast.success("Admin Leave Add successfully!");
-      // Close modal after submission
-      setTimeout(() => setOpen(false), 2000);
+      // Find employee name from selection
+      const selectedEmployee = employees.find((emp) => emp.value === data.employeeName);
+
+      // Calculate days between dates
+      const start = selectStartDate;
+      const end = selectEndDate;
+      const days = start && end
+        ? Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        : 1;
+
+      const leaveData = {
+        employeeId: data.employeeName,
+        employeeName: selectedEmployee?.label || data.employeeName,
+        leaveType: data.leaveType,
+        leaveDuration: data.leaveDuration,
+        startDate: selectStartDate?.toISOString(),
+        endDate: selectEndDate?.toISOString(),
+        days: days,
+        reason: data.reason,
+        companyId: authUser.companyId,
+        managerId: authUser.uid,
+      };
+
+      const res = await fetch("/api/leaves", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(leaveData),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Failed to create leave");
+      }
+
+      toast.success("Leave added successfully!");
+
+      if (onRefresh) {
+        onRefresh();
+      }
+
+      setTimeout(() => setOpen(false), 800);
     } catch (error: any) {
-      // Show error toast message
       toast.error(
         error?.message ||
-          "An error occurred while updating the leave. Please try again!"
+          "An error occurred while creating the leave. Please try again!"
       );
     }
   };

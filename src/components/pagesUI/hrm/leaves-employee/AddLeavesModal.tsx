@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { IEmployeeLeave } from "@/interface/table.interface";
 import { useForm } from "react-hook-form";
@@ -8,8 +8,15 @@ import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { statePropsType } from "@/interface/common.interface";
 import { toast } from "sonner";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
-const AddLeavesModal = ({ open, setOpen }: statePropsType) => {
+interface AddLeavesModalProps extends statePropsType {
+  onRefresh?: () => void;
+}
+
+const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
+  const { user: authUser } = useAuthUserContext();
+  const [managerInfo, setManagerInfo] = useState<any>(null);
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(
     new Date()
   );
@@ -19,20 +26,83 @@ const AddLeavesModal = ({ open, setOpen }: statePropsType) => {
     handleSubmit,
     formState: { errors },
   } = useForm<IEmployeeLeave>();
+
+  // Fetch manager info for the employee
+  useEffect(() => {
+    const fetchManagerInfo = async () => {
+      if (!authUser?.uid) return;
+
+      try {
+        // Get employee's manager from their profile
+        const res = await fetch(`/api/user-data?uid=${authUser.uid}`);
+        const data = await res.json();
+
+        if (data.success && data.user?.managerId) {
+          setManagerInfo({
+            id: data.user.managerId,
+            name: data.user.managerName,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching manager info:", error);
+      }
+    };
+
+    fetchManagerInfo();
+  }, [authUser]);
+
   const handleToggle = () => setOpen(!open);
 
-  // Handle added leave
   const onSubmit = async (data: IEmployeeLeave) => {
+    if (!authUser || !authUser.companyId) {
+      toast.error("You must be logged in");
+      return;
+    }
+
     try {
-      // Simulate API call or processing
-      toast.success("Leave added successfully!");
-      // Close modal after submission
-      setTimeout(() => setOpen(false), 2000);
+      // Calculate days between dates
+      const start = selectStartDate;
+      const end = selectEndDate;
+      const days = start && end
+        ? Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        : 1;
+
+      const leaveData = {
+        employeeId: authUser.uid,
+        employeeName: authUser.displayName || authUser.email,
+        leaveType: data.leaveType,
+        leaveDuration: data.leaveDuration,
+        startDate: selectStartDate?.toISOString(),
+        endDate: selectEndDate?.toISOString(),
+        days: days,
+        reason: data.reason,
+        companyId: authUser.companyId,
+        managerId: managerInfo?.id,
+      };
+
+      const res = await fetch("/api/leaves", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(leaveData),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Failed to submit leave request");
+      }
+
+      toast.success("Leave request submitted successfully!");
+
+      if (onRefresh) {
+        onRefresh();
+      }
+
+      setTimeout(() => setOpen(false), 800);
     } catch (error: any) {
-      // Show error toast message
       toast.error(
         error?.message ||
-          "An error occurred while updating the leave. Please try again!"
+          "An error occurred while submitting the leave request. Please try again!"
       );
     }
   };

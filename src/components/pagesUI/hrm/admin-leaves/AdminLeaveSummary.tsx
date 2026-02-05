@@ -1,12 +1,21 @@
 import React from "react";
 import SummarySingleCard from "@/components/common/SummarySingleCard";
 
-const AdminLeaveSummary: React.FC = () => {
-  const leaveData = [
+interface AdminLeaveSummaryProps {
+  leaveData: any[];
+}
+
+const AdminLeaveSummary: React.FC<AdminLeaveSummaryProps> = ({ leaveData = [] }) => {
+  const totalLeaves = leaveData.length;
+  const approvedLeaves = leaveData.filter((leave) => leave.status === "approved").length;
+  const rejectedLeaves = leaveData.filter((leave) => leave.status === "rejected").length;
+  const pendingLeaves = leaveData.filter((leave) => leave.status === "pending").length;
+
+  const summaryData = [
     {
       iconClass: "fa-light fa-ban",
       title: "Total Leave",
-      value: "15",
+      value: totalLeaves.toString(),
       description: "",
       percentageChange: "",
       isIncrease: true,
@@ -14,7 +23,7 @@ const AdminLeaveSummary: React.FC = () => {
     {
       iconClass: "fa-light fa-badge-check",
       title: "Approve",
-      value: "12",
+      value: approvedLeaves.toString(),
       description: "",
       percentageChange: "",
       isIncrease: false,
@@ -22,7 +31,7 @@ const AdminLeaveSummary: React.FC = () => {
     {
       iconClass: "fa-sharp fa-regular fa-user",
       title: "Rejected",
-      value: "2",
+      value: rejectedLeaves.toString(),
       description: "",
       percentageChange: "",
       isIncrease: false,
@@ -30,7 +39,7 @@ const AdminLeaveSummary: React.FC = () => {
     {
       iconClass: "fa-sharp fa-regular fa-house-person-leave",
       title: "Pending",
-      value: "5",
+      value: pendingLeaves.toString(),
       description: "",
       percentageChange: "",
       isIncrease: true,
@@ -39,7 +48,7 @@ const AdminLeaveSummary: React.FC = () => {
 
   return (
     <>
-      {leaveData.map((item, index) => (
+      {summaryData.map((item, index) => (
         <div className="col-span-12 sm:col-span-6 xxl:col-span-3" key={index}>
           <SummarySingleCard {...item} />
         </div>
