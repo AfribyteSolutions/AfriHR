@@ -15,6 +15,30 @@ interface AddAdminLeaveModalProps extends statePropsType {
   onRefresh?: () => void;
 }
 
+// Predefined leave types
+const leaveTypes = [
+  { value: "Annual Leave", label: "Annual Leave" },
+  { value: "Sick Leave", label: "Sick Leave" },
+  { value: "Maternity Leave", label: "Maternity Leave" },
+  { value: "Paternity Leave", label: "Paternity Leave" },
+  { value: "Study Leave", label: "Study Leave" },
+  { value: "Unpaid Leave", label: "Unpaid Leave" },
+  { value: "Emergency Leave", label: "Emergency Leave" },
+  { value: "Bereavement Leave", label: "Bereavement Leave" },
+  { value: "Custom", label: "Other/Custom" },
+];
+
+// Predefined durations
+const leaveDurations = [
+  { value: "0.5", label: "Half Day" },
+  { value: "1", label: "1 Day" },
+  { value: "2", label: "2 Days" },
+  { value: "3", label: "3 Days" },
+  { value: "5", label: "1 Week (5 Days)" },
+  { value: "10", label: "2 Weeks (10 Days)" },
+  { value: "Custom", label: "Custom Duration" },
+];
+
 const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProps) => {
   const { user: authUser } = useAuthUserContext();
   const [employees, setEmployees] = useState<any[]>([]);
@@ -22,11 +46,15 @@ const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProp
     new Date()
   );
   const [selectEndDate, setSelectEndDate] = useState<Date | null>(new Date());
+  const [selectedLeaveType, setSelectedLeaveType] = useState<string>("");
+  const [customLeaveType, setCustomLeaveType] = useState<string>("");
+  const [selectedDuration, setSelectedDuration] = useState<string>("");
   const {
     register,
     handleSubmit,
     control,
     formState: { errors },
+    setValue,
   } = useForm<IAdminLeave>();
 
   // Fetch employees for the company
@@ -52,6 +80,31 @@ const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProp
 
     fetchEmployees();
   }, [authUser]);
+
+  // Auto-calculate end date when duration is selected
+  useEffect(() => {
+    if (selectedDuration && selectedDuration !== "Custom" && selectStartDate) {
+      const days = parseFloat(selectedDuration);
+      const endDate = new Date(selectStartDate);
+
+      if (days < 1) {
+        // For half day, end date is same as start date
+        setSelectEndDate(endDate);
+      } else {
+        // Add days (excluding weekends for business days)
+        let addedDays = 0;
+        while (addedDays < days - 1) {
+          endDate.setDate(endDate.getDate() + 1);
+          // Skip weekends (optional - remove this if you want to include weekends)
+          if (endDate.getDay() !== 0 && endDate.getDay() !== 6) {
+            addedDays++;
+          }
+        }
+        setSelectEndDate(endDate);
+      }
+      setValue("leaveDuration", `${days} ${days === 0.5 ? "Half Day" : days === 1 ? "Day" : "Days"}`);
+    }
+  }, [selectedDuration, selectStartDate, setValue]);
 
   const handleToggle = () => setOpen(!open);
 
@@ -134,29 +187,101 @@ const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProp
                 <div className="card__wrapper mb-20">
                   <div className="grid grid-cols-12 gap-x-5 maxXs:gap-x-0 gap-y-5">
                     <div className="col-span-12 md:col-span-6">
-                      <InputField
-                        label="Leave Type"
-                        id="leaveType"
-                        type="text"
-                        required={false}
-                        register={register("leaveType", {
-                          required: "Leave Type is required",
-                        })}
-                        error={errors.leaveType}
+                      <SelectBox
+                        id="employeeName"
+                        label="Select Employee"
+                        options={employees}
+                        control={control}
+                        error={errors.employeeName}
+                        isRequired={true}
                       />
                     </div>
                     <div className="col-span-12 md:col-span-6">
-                      <InputField
-                        label="Leave Duration"
-                        id="leaveDuration"
-                        type="text"
-                        required={false}
-                        register={register("leaveDuration", {
-                          required: "Leave Duration is required",
-                        })}
-                        error={errors.leaveDuration}
-                      />
+                      <FormLabel label="Leave Type" id="leaveTypeSelect" />
+                      <select
+                        id="leaveTypeSelect"
+                        className="form-control"
+                        value={selectedLeaveType}
+                        onChange={(e) => {
+                          setSelectedLeaveType(e.target.value);
+                          if (e.target.value !== "Custom") {
+                            setValue("leaveType", e.target.value);
+                          }
+                        }}
+                      >
+                        <option value="">Select Leave Type</option>
+                        {leaveTypes.map((type) => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.leaveType && (
+                        <span className="text-red-500 text-sm">{errors.leaveType.message}</span>
+                      )}
                     </div>
+
+                    {selectedLeaveType === "Custom" && (
+                      <div className="col-span-12 md:col-span-6">
+                        <InputField
+                          label="Custom Leave Type"
+                          id="customLeaveType"
+                          type="text"
+                          value={customLeaveType}
+                          onChange={(e) => {
+                            setCustomLeaveType(e.target.value);
+                            setValue("leaveType", e.target.value);
+                          }}
+                          required={true}
+                          register={register("leaveType", {
+                            required: "Custom leave type is required",
+                          })}
+                          error={errors.leaveType}
+                        />
+                      </div>
+                    )}
+
+                    <div className="col-span-12 md:col-span-6">
+                      <FormLabel label="Duration" id="durationSelect" />
+                      <select
+                        id="durationSelect"
+                        className="form-control"
+                        value={selectedDuration}
+                        onChange={(e) => {
+                          setSelectedDuration(e.target.value);
+                          if (e.target.value !== "Custom") {
+                            const days = parseFloat(e.target.value);
+                            setValue("leaveDuration", `${days} ${days === 0.5 ? "Half Day" : days === 1 ? "Day" : "Days"}`);
+                          }
+                        }}
+                      >
+                        <option value="">Select Duration</option>
+                        {leaveDurations.map((duration) => (
+                          <option key={duration.value} value={duration.value}>
+                            {duration.label}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.leaveDuration && (
+                        <span className="text-red-500 text-sm">{errors.leaveDuration.message}</span>
+                      )}
+                    </div>
+
+                    {selectedDuration === "Custom" && (
+                      <div className="col-span-12 md:col-span-6">
+                        <InputField
+                          label="Custom Duration"
+                          id="customDuration"
+                          type="text"
+                          placeholder="e.g., 3 Days, 1 Month"
+                          required={true}
+                          register={register("leaveDuration", {
+                            required: "Custom duration is required",
+                          })}
+                          error={errors.leaveDuration}
+                        />
+                      </div>
+                    )}
 
                     <div className="col-span-12 md:col-span-6">
                       <FormLabel label="Start Date" id="selectStartDate" />
