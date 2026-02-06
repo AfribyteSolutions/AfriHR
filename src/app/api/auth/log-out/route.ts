@@ -4,7 +4,10 @@ import { cookies } from 'next/headers';
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = cookies();
-    
+
+    // Determine cookie domain for cross-subdomain auth
+    const cookieDomain = process.env.NODE_ENV === 'production' ? '.afrihrm.com' : 'localhost';
+
     // List of all cookies to clear
     const cookiesToClear = [
       'authToken',
@@ -19,14 +22,20 @@ export async function POST(request: NextRequest) {
       'rememberMe'
     ];
 
-    // Delete all session cookies
+    // Delete all session cookies with domain to clear across subdomains
+    const clearCookieOptions = {
+      domain: cookieDomain,
+      path: '/',
+      maxAge: 0,
+    };
+
     cookiesToClear.forEach(cookieName => {
-      cookieStore.delete(cookieName);
+      cookieStore.set(cookieName, '', clearCookieOptions);
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      message: 'Logged out successfully' 
+      message: 'Logged out successfully'
     });
 
   } catch (error) {

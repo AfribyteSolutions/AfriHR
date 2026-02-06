@@ -37,6 +37,9 @@ export function middleware(req: NextRequest) {
   const subdomain = getSubdomain(hostname);
   const isLocalhost = hostname.includes('localhost') || hostname.includes('127.0.0.1');
 
+  // Determine cookie domain for cross-subdomain auth
+  const cookieDomain = process.env.NODE_ENV === 'production' ? '.afrihrm.com' : 'localhost';
+
   const res = NextResponse.next();
 
   // Set subdomain as a request header for server components
@@ -50,7 +53,7 @@ export function middleware(req: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      domain: process.env.NODE_ENV === 'production' ? '.afrihrm.com' : undefined,
+      domain: cookieDomain,
       maxAge: 60 * 60 * 24 * 7
     });
   }
@@ -80,15 +83,19 @@ export function middleware(req: NextRequest) {
       const signInUrl = new URL('/auth/signin-basic', req.url);
       signInUrl.searchParams.set('error', 'session_expired');
       signInUrl.searchParams.set('message', 'Your session has expired. Please sign in again.');
-      
-      // Clear cookies
+
+      // Clear cookies with domain to ensure they're removed across subdomains
       const response = NextResponse.redirect(signInUrl);
-      response.cookies.delete('authToken');
-      response.cookies.delete('role');
-      response.cookies.delete('userId');
-      response.cookies.delete('userEmail');
-      response.cookies.delete('subdomain');
-      response.cookies.delete('lastActivity');
+      const clearCookieOptions = {
+        domain: cookieDomain,
+        path: '/',
+      };
+      response.cookies.set('authToken', '', { ...clearCookieOptions, maxAge: 0 });
+      response.cookies.set('role', '', { ...clearCookieOptions, maxAge: 0 });
+      response.cookies.set('userId', '', { ...clearCookieOptions, maxAge: 0 });
+      response.cookies.set('userEmail', '', { ...clearCookieOptions, maxAge: 0 });
+      response.cookies.set('subdomain', '', { ...clearCookieOptions, maxAge: 0 });
+      response.cookies.set('lastActivity', '', { ...clearCookieOptions, maxAge: 0 });
 
       return response;
     }
@@ -126,6 +133,7 @@ export function middleware(req: NextRequest) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
+    domain: cookieDomain,
     maxAge: 60 * 60 * 24 * 30
   });
 

@@ -17,13 +17,17 @@ export async function POST(request: NextRequest) {
     const maxAge = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 1; // 30 days or 1 day
 
     const cookieStore = cookies();
-    
-    // Set cookies with proper options
+
+    // Determine cookie domain for cross-subdomain auth
+    const cookieDomain = process.env.NODE_ENV === 'production' ? '.afrihrm.com' : 'localhost';
+
+    // Set cookies with proper options including shared domain
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       path: '/',
+      domain: cookieDomain,
       maxAge: maxAge,
     };
 
@@ -41,7 +45,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      domain: process.env.NODE_ENV === 'production' ? '.afrihrm.com' : undefined,
+      domain: cookieDomain,
       maxAge: maxAge,
     });
 
@@ -51,6 +55,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
+      domain: cookieDomain,
       maxAge: maxAge,
     });
 
