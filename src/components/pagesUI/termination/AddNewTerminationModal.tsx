@@ -4,7 +4,7 @@ import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { ITermination } from "@/interface/table.interface";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
-import { trainersData, trainingStatuses } from "@/data/dropdown-data";
+import { trainingStatuses } from "@/data/dropdown-data";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import { ITrainer } from "@/interface";
 import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage";
@@ -70,7 +70,7 @@ const AddNewTerminationModal = ({ open, setOpen, onRefresh }: AddNewTerminationM
     try {
       const terminationData = {
         employeeId: selectedOwner.uid || selectedOwner.id,
-        employeeName: selectedOwner.name,
+        employeeName: selectedOwner.fullName || selectedOwner.name,
         terminationType: data.terminationType,
         noticeDate: selectNoticeDate?.toISOString(),
         terminationDate: selectTerminationDate?.toISOString(),
@@ -138,12 +138,12 @@ const AddNewTerminationModal = ({ open, setOpen, onRefresh }: AddNewTerminationM
                         <div className="relative">
                           <div className="mz-default-select">
                             <SelectWithImage
-                              data={trainersData}
+                              data={employees}
                               selectedValue={selectedOwner}
-                              valueKey="name"
-                              displayKey="name"
-                              imageKey="userImg"
-                              placeholder="Select Owner"
+                              valueKey="fullName"
+                              displayKey="fullName"
+                              imageKey="profilePictureUrl"
+                              placeholder="Select Employee"
                               onChange={setSelectedOwner}
                             />
                           </div>

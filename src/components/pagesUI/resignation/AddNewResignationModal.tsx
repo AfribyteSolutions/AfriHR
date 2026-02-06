@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { ITrainer } from "@/interface/dropdown.interface";
-import { trainersData } from "@/data/dropdown-data";
 import { IResignation } from "@/interface/table.interface";
 import { useForm } from "react-hook-form";
 import InputField from "@/components/elements/SharedInputs/InputField";
@@ -67,7 +66,7 @@ const AddNewResignationModal = ({ open, setOpen, onRefresh }: AddNewResignationM
     try {
       const resignationData = {
         employeeId: selectedOwner.uid || selectedOwner.id,
-        employeeName: selectedOwner.name,
+        employeeName: selectedOwner.fullName || selectedOwner.name,
         resignationDate: selectResignationDate?.toISOString(),
         lastWorkingDay: selectLastWorkingDate?.toISOString(),
         reason: data.reason,
@@ -131,12 +130,12 @@ const AddNewResignationModal = ({ open, setOpen, onRefresh }: AddNewResignationM
                     <div className="relative">
                       <div className="mz-default-select">
                         <SelectWithImage
-                          data={trainersData}
+                          data={employees}
                           selectedValue={selectedOwner}
-                          valueKey="name"
-                          displayKey="name"
-                          imageKey="userImg"
-                          placeholder="Select Owner"
+                          valueKey="fullName"
+                          displayKey="fullName"
+                          imageKey="profilePictureUrl"
+                          placeholder="Select Employee"
                           onChange={setSelectedOwner}
                         />
                       </div>

@@ -16,16 +16,21 @@ import Link from "next/link";
 import Image from "next/image";
 import { IResignation } from "@/interface/table.interface";
 import { resignationHeadCells } from "@/data/table-head-cell/table-head";
-import { resignationData } from "@/data/resignation-data";
 import UpdateResignationModal from "./UpdateResignationModal";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
+import { toast } from "sonner";
 
-const ResignationTable = () => {
+interface ResignationTableProps {
+  resignationData: any[];
+  onRefresh?: () => void;
+}
+
+const ResignationTable: React.FC<ResignationTableProps> = ({ resignationData, onRefresh }) => {
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editData, setEditData] = useState<IResignation | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string>("");
   const {
     order,
     orderBy,
@@ -37,7 +42,7 @@ const ResignationTable = () => {
     filteredRows,
     handleRequestSort,
     handleClick,
-    handleDelete,
+    handleDelete: handleDeleteLocal,
     handleChangePage,
     handleChangeRowsPerPage,
     handleSearchChange,
@@ -140,7 +145,7 @@ const ResignationTable = () => {
                                 className="removeBtn table__icon delete"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setDeleteId(index);
+                                  setDeleteId(row.id);
                                   setModalDeleteOpen(true);
                                 }}
                               >
@@ -180,6 +185,7 @@ const ResignationTable = () => {
           open={modalOpen}
           setOpen={setModalOpen}
           editData={editData}
+          onRefresh={onRefresh}
         />
       )}
 
@@ -187,7 +193,25 @@ const ResignationTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={async () => {
+            try {
+              const res = await fetch(`/api/resignation?id=${deleteId}`, {
+                method: "DELETE",
+              });
+
+              if (!res.ok) throw new Error("Delete failed");
+
+              toast.success("Resignation deleted successfully");
+              setModalDeleteOpen(false);
+
+              if (onRefresh) {
+                onRefresh();
+              }
+            } catch (error) {
+              toast.error("Failed to delete resignation");
+              console.error("Delete error:", error);
+            }
+          }}
           deleteId={deleteId}
         />
       )}
