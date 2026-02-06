@@ -50,6 +50,12 @@ export interface EmployeeSidebarItem {
       link: "/hrm/warning",
       icon: "icon-fire",
     },
+    {
+      id: 8,
+      label: "Document",
+      icon: "icon-document",
+      link: "/document",
+    },
 
 
     

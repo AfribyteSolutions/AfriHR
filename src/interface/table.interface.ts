@@ -184,12 +184,16 @@ export interface IResignation {
 }
 
 export interface IPromotion {
+  [key: string]: any;
+  id: string;
+  employeeId: string;
   promotedEmployee: string;
   designation: string;
   promotionTitle: string;
   promotionDate: string;
   description: string;
   employeeImg?: StaticImageData;
+  isManagerPromotion?: boolean;
 }
 
 export interface IAward {
@@ -227,6 +231,7 @@ export interface ITermination {
 }
 
 export interface IDocument {
+  id: string;
   fileName: string;
   document: string;
   role: string;

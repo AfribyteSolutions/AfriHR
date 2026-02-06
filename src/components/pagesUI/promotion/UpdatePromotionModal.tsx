@@ -1,160 +1,89 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
-import { IPromotion } from "@/interface/table.interface";
 import { useForm } from "react-hook-form";
-import InputField from "@/components/elements/SharedInputs/InputField";
-import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage";
-import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
+import { IPromotion } from "@/interface/table.interface";
 import { promotionstatePropsType } from "@/interface/common.interface";
-import { promotionData } from "@/data/promotion-data";
+import InputField from "@/components/elements/SharedInputs/InputField";
+import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 
-const UpdatePromotionModal = ({
-  open,
-  setOpen,
-  editData,
-}: promotionstatePropsType) => {
-  const [selectedOwner, setSelectedOwner] = useState<IPromotion | null>(null);
-  const [selectPromotionDate, setSelectPromotionDate] = useState<Date | null>(
-    new Date()
-  );
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<IPromotion>();
+const UpdatePromotionModal = ({ open, setOpen, editData }: promotionstatePropsType) => {
+  const [loading, setLoading] = useState(false);
+  const [selectDate, setSelectDate] = useState<Date | null>(new Date());
+  const [isManager, setIsManager] = useState(false);
 
-  const handleToggle = () => setOpen(!open);
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<IPromotion>();
+
+  useEffect(() => {
+    if (editData) {
+      reset(editData);
+      setIsManager(!!editData.isManagerPromotion);
+      if (editData.promotionDate) setSelectDate(new Date(editData.promotionDate));
+    }
+  }, [editData, reset]);
 
   const onSubmit = async (data: IPromotion) => {
+    if (!editData?.id) return;
+    setLoading(true);
     try {
-      toast.success("Promotion Update successfully!");
-      setTimeout(() => setOpen(false), 2000);
-    } catch (error: any) {
-      toast.error(
-        error?.message ||
-          "An error occurred while updating the Promotion. Please try again!"
-      );
+      const payload = {
+        ...data,
+        promotionDate: selectDate?.toISOString(),
+        isManagerPromotion: isManager,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const res = await fetch(`/api/promotions?id=${editData.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Update failed");
+      toast.success("Updated!");
+      setOpen(false);
+      window.location.reload();
+    } catch (err) {
+      toast.error("Error updating");
+    } finally {
+      setLoading(false);
     }
   };
-  return (
-    <>
-      <Dialog open={open} onClose={handleToggle} fullWidth maxWidth="sm">
-        <DialogTitle>
-          <div className="flex justify-between">
-            <h5 className="modal-title">Edit Promotion</h5>
-            <button
-              onClick={handleToggle}
-              type="button"
-              className="bd-btn-close"
-            >
-              <i className="fa-solid fa-xmark-large"></i>
-            </button>
-          </div>
-        </DialogTitle>
-        <DialogContent>
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="card__wrapper">
-              <div className="grid grid-cols-12 gap-y-5 gap-x-5 maxXs:gap-x-0">
-                <div className="col-span-12 md:col-span-6">
-                  <div className="from__input-box select-wrapper">
-                    <div className="form__input-title">
-                      <label htmlFor="lastname">Employee Name</label>
-                    </div>
-                    <div className="relative">
-                      <div className="mz-default-select">
-                        <SelectWithImage
-                          data={promotionData}
-                          selectedValue={selectedOwner}
-                          valueKey="promotedEmployee"
-                          displayKey="promotedEmployee"
-                          imageKey="employeeImg"
-                          placeholder="Select Owner"
-                          onChange={setSelectedOwner}
-                          title={editData?.promotedEmployee}
-                          image={editData?.employeeImg}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="col-span-12 md:col-span-6">
-                  <InputField
-                    label="Designation"
-                    id="designation"
-                    defaultValue={editData?.designation}
-                    type="text"
-                    required={false}
-                    register={register("designation")}
-                    error={errors.designation}
-                  />
-                </div>
-                <div className="col-span-12 md:col-span-6">
-                  <InputField
-                    label="Promotion Title"
-                    id="promotionTitle"
-                    defaultValue={editData?.promotionTitle}
-                    type="text"
-                    required={false}
-                    register={register("promotionTitle")}
-                    error={errors.promotionTitle}
-                  />
-                </div>
-                <div className="col-span-12 md:col-span-6">
-                  <FormLabel
-                    label="Promotion Date"
-                    id="selectPromotionDate"
-                    optional
-                  />
-                  <div className="datepicker-style">
-                    <DatePicker
-                      id="selectPromotionDate"
-                      selected={selectPromotionDate}
-                      onChange={(date) => setSelectPromotionDate(date)}
-                      showYearDropdown
-                      showMonthDropdown
-                      useShortMonthInDropdown
-                      showPopperArrow={false}
-                      peekNextMonth
-                      dropdownMode="select"
-                      isClearable
-                      dateFormat="dd/MM/yyyy"
-                      placeholderText="Promotion date"
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-                <div className="col-span-12">
-                  <InputField
-                    label="Description"
-                    id="description"
-                    defaultValue={editData?.description}
-                    isTextArea={true}
-                    required={false}
-                    register={register("description")}
-                    error={errors.description}
-                  />
-                </div>
-              </div>
+  return (
+    <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+      <DialogTitle className="font-bold">Edit Promotion</DialogTitle>
+      <DialogContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-12 gap-5 pt-4">
+          <div className="col-span-12 md:col-span-6">
+            <InputField label="Designation" id="designation" register={register("designation", { required: true })} error={errors.designation} />
+          </div>
+          <div className="col-span-12 md:col-span-6">
+            <InputField label="Promotion Title" id="promotionTitle" register={register("promotionTitle", { required: true })} error={errors.promotionTitle} />
+          </div>
+          <div className="col-span-12 md:col-span-6">
+            <FormLabel label="Date" id="date" />
+            <DatePicker selected={selectDate} onChange={setSelectDate} className="w-full border p-2 rounded h-[45px]" />
+          </div>
+          <div className="col-span-12">
+            <div className="flex items-center gap-3 p-3 bg-blue-50 border rounded">
+              <input type="checkbox" checked={isManager} onChange={(e) => setIsManager(e.target.checked)} className="w-5 h-5" />
+              <label className="font-bold">Manager Role?</label>
             </div>
-            <div className="submit__btn flex items-center justify-end gap-[10px]">
-              <button
-                className="btn btn-danger"
-                type="button"
-                onClick={handleToggle}
-              >
-                Cancel
-              </button>
-              <button className="btn btn-primary" type="submit">
-                Submit
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+          </div>
+          <div className="col-span-12">
+            <InputField label="Description" id="description" isTextArea register={register("description", { required: true })} error={errors.description} />
+          </div>
+          <div className="col-span-12 flex justify-end gap-3">
+            <button className="btn btn-secondary" type="button" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit" disabled={loading}>Save</button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

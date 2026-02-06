@@ -125,12 +125,12 @@ const sidebarData: SidebarCategory[] = [
         icon: "fa-sharp fa-light fa-comments",
         link: "/feedback",
       },
-      // {
-      //   id: 13,
-      //   label: "Promotion",
-      //   icon: "icon-promotion",
-      //   link: "/promotion",
-      // },
+      {
+        id: 13,
+        label: "Promotion",
+        icon: "icon-promotion",
+        link: "/promotion",
+      },
       // {
       //   id: 14,
       //   label: "Award",
@@ -164,12 +164,12 @@ const sidebarData: SidebarCategory[] = [
         icon: "icon-termination",
         link: "/termination",
       },
-      // {
-      //   id: 19,
-      //   label: "Document",
-      //   icon: "icon-document",
-      //   link: "/document",
-      // },
+      {
+        id: 19,
+        label: "Document",
+        icon: "icon-document",
+        link: "/document",
+      },
       {
         id: 20,
         label: "Announcement",
