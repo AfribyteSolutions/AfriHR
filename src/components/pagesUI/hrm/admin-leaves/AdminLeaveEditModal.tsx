@@ -9,23 +9,57 @@ import DatePicker from "react-datepicker";
 import { adminLeaveStatePropsType } from "@/interface/common.interface";
 import { toast } from "sonner";
 
-const AdminLeaveEditModal = ({ open, setOpen, editData }: adminLeaveStatePropsType) => {
+interface AdminLeaveEditModalProps extends adminLeaveStatePropsType {
+  onRefresh?: () => void;
+}
+
+const AdminLeaveEditModal = ({ open, setOpen, editData, onRefresh }: AdminLeaveEditModalProps) => {
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(
-    new Date()
+    editData?.startDate ? new Date(editData.startDate) : new Date()
   );
-  const [selectEndDate, setSelectEndDate] = useState<Date | null>(new Date());
-  const { register, handleSubmit, formState: { errors } } = useForm<IAdminLeave>();
+  const [selectEndDate, setSelectEndDate] = useState<Date | null>(
+    editData?.endDate ? new Date(editData.endDate) : new Date()
+  );
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<IAdminLeave>({
+    defaultValues: {
+      leaveType: editData?.leaveType,
+      leaveDuration: editData?.leaveDuration,
+      reason: editData?.reason,
+    },
+  });
   const handleToggle = () => setOpen(!open);
 
   //handle submit
   const onSubmit = async (data: IAdminLeave) => {
     try {
-      // Simulate API call or processing
-      toast.success("Admin Leave updated successfully!");
-      // Close modal after submission
-      setTimeout(() => setOpen(false), 2000);
+      const updateData = {
+        leaveType: data.leaveType,
+        startDate: selectStartDate?.toISOString(),
+        endDate: selectEndDate?.toISOString(),
+        reason: data.reason,
+        status: editData?.status || "pending",
+      };
+
+      const res = await fetch(`/api/leaves?id=${editData?.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Failed to update leave");
+      }
+
+      toast.success("Leave updated successfully!");
+
+      if (onRefresh) {
+        onRefresh();
+      }
+
+      setTimeout(() => setOpen(false), 800);
     } catch (error: any) {
-      // Show error toast message
       toast.error(
         error?.message || "An error occurred while updating the leave. Please try again!");
     }
@@ -132,8 +166,8 @@ const AdminLeaveEditModal = ({ open, setOpen, editData }: adminLeaveStatePropsTy
               </div>
             </div>
             <div className="submit__btn text-center">
-              <button type="submit" className="btn btn-primary">
-                Submit
+              <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                {isSubmitting ? "Updating..." : "Submit"}
               </button>
             </div>
           </form>

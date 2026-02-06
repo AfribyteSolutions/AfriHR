@@ -17,15 +17,20 @@ import { terminationHeadCells } from "@/data/table-head-cell/table-head";
 import UpdateTerminationModal from "./UpdateTerminationModal";
 import Link from "next/link";
 import Image from "next/image";
-import { terminationData } from "@/data/termination-data";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
+import { toast } from "sonner";
 
-const TerminationTable = () => {
+interface TerminationTableProps {
+  terminationData: any[];
+  onRefresh?: () => void;
+}
+
+const TerminationTable: React.FC<TerminationTableProps> = ({ terminationData, onRefresh }) => {
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editData, setEditData] = useState<ITermination | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string>("");
   const {
     order,
     orderBy,
@@ -37,7 +42,7 @@ const TerminationTable = () => {
     filteredRows,
     handleRequestSort,
     handleClick,
-    handleDelete,
+    handleDelete: handleDeleteLocal,
     handleChangePage,
     handleChangeRowsPerPage,
     handleSearchChange,
@@ -140,7 +145,7 @@ const TerminationTable = () => {
                                 className="removeBtn table__icon delete"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setDeleteId(index);
+                                  setDeleteId(row.id);
                                   setModalDeleteOpen(true);
                                 }}
                               >
@@ -180,6 +185,7 @@ const TerminationTable = () => {
           open={modalOpen}
           setOpen={setModalOpen}
           editData={editData}
+          onRefresh={onRefresh}
         />
       )}
 
@@ -187,7 +193,25 @@ const TerminationTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={async () => {
+            try {
+              const res = await fetch(`/api/termination?id=${deleteId}`, {
+                method: "DELETE",
+              });
+
+              if (!res.ok) throw new Error("Delete failed");
+
+              toast.success("Termination deleted successfully");
+              setModalDeleteOpen(false);
+
+              if (onRefresh) {
+                onRefresh();
+              }
+            } catch (error) {
+              toast.error("Failed to delete termination");
+              console.error("Delete error:", error);
+            }
+          }}
           deleteId={deleteId}
         />
       )}

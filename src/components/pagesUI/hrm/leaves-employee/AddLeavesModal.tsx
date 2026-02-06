@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { IEmployeeLeave } from "@/interface/table.interface";
 import { useForm } from "react-hook-form";
@@ -8,31 +8,154 @@ import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { statePropsType } from "@/interface/common.interface";
 import { toast } from "sonner";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
-const AddLeavesModal = ({ open, setOpen }: statePropsType) => {
+interface AddLeavesModalProps extends statePropsType {
+  onRefresh?: () => void;
+}
+
+// Predefined leave types
+const leaveTypes = [
+  { value: "Annual Leave", label: "Annual Leave" },
+  { value: "Sick Leave", label: "Sick Leave" },
+  { value: "Maternity Leave", label: "Maternity Leave" },
+  { value: "Paternity Leave", label: "Paternity Leave" },
+  { value: "Study Leave", label: "Study Leave" },
+  { value: "Unpaid Leave", label: "Unpaid Leave" },
+  { value: "Emergency Leave", label: "Emergency Leave" },
+  { value: "Bereavement Leave", label: "Bereavement Leave" },
+  { value: "Custom", label: "Other/Custom" },
+];
+
+// Predefined durations
+const leaveDurations = [
+  { value: "0.5", label: "Half Day" },
+  { value: "1", label: "1 Day" },
+  { value: "2", label: "2 Days" },
+  { value: "3", label: "3 Days" },
+  { value: "5", label: "1 Week (5 Days)" },
+  { value: "10", label: "2 Weeks (10 Days)" },
+  { value: "Custom", label: "Custom Duration" },
+];
+
+const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
+  const { user: authUser } = useAuthUserContext();
+  const [managerInfo, setManagerInfo] = useState<any>(null);
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(
     new Date()
   );
   const [selectEndDate, setSelectEndDate] = useState<Date | null>(new Date());
+  const [selectedLeaveType, setSelectedLeaveType] = useState<string>("");
+  const [customLeaveType, setCustomLeaveType] = useState<string>("");
+  const [selectedDuration, setSelectedDuration] = useState<string>("");
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<IEmployeeLeave>();
+
+  // Fetch manager info for the employee
+  useEffect(() => {
+    const fetchManagerInfo = async () => {
+      if (!authUser?.uid) return;
+
+      try {
+        // Get employee's manager from their profile
+        const res = await fetch(`/api/user-data?uid=${authUser.uid}`);
+        const data = await res.json();
+
+        if (data.success && data.user?.managerId) {
+          setManagerInfo({
+            id: data.user.managerId,
+            name: data.user.managerName,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching manager info:", error);
+      }
+    };
+
+    fetchManagerInfo();
+  }, [authUser]);
+
+  // Auto-calculate end date when duration is selected
+  useEffect(() => {
+    if (selectedDuration && selectedDuration !== "Custom" && selectStartDate) {
+      const days = parseFloat(selectedDuration);
+      const endDate = new Date(selectStartDate);
+
+      if (days < 1) {
+        // For half day, end date is same as start date
+        setSelectEndDate(endDate);
+      } else {
+        // Add days (excluding weekends for business days)
+        let addedDays = 0;
+        while (addedDays < days - 1) {
+          endDate.setDate(endDate.getDate() + 1);
+          // Skip weekends (optional - remove this if you want to include weekends)
+          if (endDate.getDay() !== 0 && endDate.getDay() !== 6) {
+            addedDays++;
+          }
+        }
+        setSelectEndDate(endDate);
+      }
+      setValue("leaveDuration", `${days} ${days === 0.5 ? "Half Day" : days === 1 ? "Day" : "Days"}`);
+    }
+  }, [selectedDuration, selectStartDate, setValue]);
+
   const handleToggle = () => setOpen(!open);
 
-  // Handle added leave
   const onSubmit = async (data: IEmployeeLeave) => {
+    if (!authUser || !authUser.companyId) {
+      toast.error("You must be logged in");
+      return;
+    }
+
     try {
-      // Simulate API call or processing
-      toast.success("Leave added successfully!");
-      // Close modal after submission
-      setTimeout(() => setOpen(false), 2000);
+      // Calculate days between dates
+      const start = selectStartDate;
+      const end = selectEndDate;
+      const days = start && end
+        ? Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        : 1;
+
+      const leaveData = {
+        employeeId: authUser.uid,
+        employeeName: authUser.displayName || authUser.email,
+        leaveType: data.leaveType,
+        leaveDuration: data.leaveDuration,
+        startDate: selectStartDate?.toISOString(),
+        endDate: selectEndDate?.toISOString(),
+        days: days,
+        reason: data.reason,
+        companyId: authUser.companyId,
+        managerId: managerInfo?.id,
+      };
+
+      const res = await fetch("/api/leaves", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(leaveData),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Failed to submit leave request");
+      }
+
+      toast.success("Leave request submitted successfully!");
+
+      if (onRefresh) {
+        onRefresh();
+      }
+
+      setTimeout(() => setOpen(false), 800);
     } catch (error: any) {
-      // Show error toast message
       toast.error(
         error?.message ||
-          "An error occurred while updating the leave. Please try again!"
+          "An error occurred while submitting the leave request. Please try again!"
       );
     }
   };
@@ -59,29 +182,91 @@ const AddLeavesModal = ({ open, setOpen }: statePropsType) => {
                 <div className="card__wrapper mb-20">
                   <div className="grid grid-cols-12 gap-x-5 gap-y-5 maxXs:gap-x-0">
                     <div className="col-span-12 md:col-span-6">
-                      <InputField
-                        label="Leave Type"
-                        id="leaveType"
-                        type="text"
-                        required={false}
-                        register={register("leaveType", {
-                          required: "Leave Type is required",
-                        })}
-                        error={errors.leaveType}
-                      />
+                      <FormLabel label="Leave Type" id="leaveTypeSelect" />
+                      <select
+                        id="leaveTypeSelect"
+                        className="form-control"
+                        value={selectedLeaveType}
+                        onChange={(e) => {
+                          setSelectedLeaveType(e.target.value);
+                          if (e.target.value !== "Custom") {
+                            setValue("leaveType", e.target.value);
+                          }
+                        }}
+                      >
+                        <option value="">Select Leave Type</option>
+                        {leaveTypes.map((type) => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.leaveType && (
+                        <span className="text-red-500 text-sm">{errors.leaveType.message}</span>
+                      )}
                     </div>
+
+                    {selectedLeaveType === "Custom" && (
+                      <div className="col-span-12 md:col-span-6">
+                        <InputField
+                          label="Custom Leave Type"
+                          id="customLeaveType"
+                          type="text"
+                          value={customLeaveType}
+                          onChange={(e) => {
+                            setCustomLeaveType(e.target.value);
+                            setValue("leaveType", e.target.value);
+                          }}
+                          required={true}
+                          register={register("leaveType", {
+                            required: "Custom leave type is required",
+                          })}
+                          error={errors.leaveType}
+                        />
+                      </div>
+                    )}
+
                     <div className="col-span-12 md:col-span-6">
-                      <InputField
-                        label="Leave Duration"
-                        id="leaveDuration"
-                        type="text"
-                        required={false}
-                        register={register("leaveDuration", {
-                          required: "Leave Duration is required",
-                        })}
-                        error={errors.leaveDuration}
-                      />
+                      <FormLabel label="Duration" id="durationSelect" />
+                      <select
+                        id="durationSelect"
+                        className="form-control"
+                        value={selectedDuration}
+                        onChange={(e) => {
+                          setSelectedDuration(e.target.value);
+                          if (e.target.value !== "Custom") {
+                            const days = parseFloat(e.target.value);
+                            setValue("leaveDuration", `${days} ${days === 0.5 ? "Half Day" : days === 1 ? "Day" : "Days"}`);
+                          }
+                        }}
+                      >
+                        <option value="">Select Duration</option>
+                        {leaveDurations.map((duration) => (
+                          <option key={duration.value} value={duration.value}>
+                            {duration.label}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.leaveDuration && (
+                        <span className="text-red-500 text-sm">{errors.leaveDuration.message}</span>
+                      )}
                     </div>
+
+                    {selectedDuration === "Custom" && (
+                      <div className="col-span-12 md:col-span-6">
+                        <InputField
+                          label="Custom Duration"
+                          id="customDuration"
+                          type="text"
+                          placeholder="e.g., 3 Days, 1 Month"
+                          required={true}
+                          register={register("leaveDuration", {
+                            required: "Custom duration is required",
+                          })}
+                          error={errors.leaveDuration}
+                        />
+                      </div>
+                    )}
 
                     <div className="col-span-12 md:col-span-6">
                       <FormLabel label="Start Date" id="selectStartDate" />

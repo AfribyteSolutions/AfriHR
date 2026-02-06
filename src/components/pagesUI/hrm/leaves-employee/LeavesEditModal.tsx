@@ -9,31 +9,66 @@ import DatePicker from "react-datepicker";
 import { leaveEmployeeStatePropsType } from "@/interface/common.interface";
 import { toast } from "sonner";
 
+interface LeavesEditModalProps extends leaveEmployeeStatePropsType {
+  onRefresh?: () => void;
+}
+
 const LeavesEditModal = ({
   open,
   setOpen,
   editData,
-}: leaveEmployeeStatePropsType) => {
+  onRefresh,
+}: LeavesEditModalProps) => {
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(
-    new Date()
+    editData?.startDate ? new Date(editData.startDate) : new Date()
   );
-  const [selectEndDate, setSelectEndDate] = useState<Date | null>(new Date());
+  const [selectEndDate, setSelectEndDate] = useState<Date | null>(
+    editData?.endDate ? new Date(editData.endDate) : new Date()
+  );
   const {
     register,
     handleSubmit,
-    formState: { errors },
-  } = useForm<IEmployeeLeave>();
+    formState: { errors, isSubmitting },
+  } = useForm<IEmployeeLeave>({
+    defaultValues: {
+      leaveType: editData?.leaveType,
+      leaveDuration: editData?.leaveDuration,
+      reason: editData?.reason,
+    },
+  });
   const handleToggle = () => setOpen(!open);
 
   // Handle update leave
   const onSubmit = async (data: IEmployeeLeave) => {
     try {
-      // Simulate API call or processing
+      const updateData = {
+        leaveType: data.leaveType,
+        startDate: selectStartDate?.toISOString(),
+        endDate: selectEndDate?.toISOString(),
+        reason: data.reason,
+        status: editData?.status || "pending",
+      };
+
+      const res = await fetch(`/api/leaves?id=${editData?.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Failed to update leave");
+      }
+
       toast.success("Leave updated successfully!");
-      // Close modal after submission
-      setTimeout(() => setOpen(false), 2000);
+
+      if (onRefresh) {
+        onRefresh();
+      }
+
+      setTimeout(() => setOpen(false), 800);
     } catch (error: any) {
-      // Show error toast message
       toast.error(
         error?.message ||
           "An error occurred while updating the leave. Please try again!"
@@ -143,8 +178,8 @@ const LeavesEditModal = ({
               </div>
             </div>
             <div className="submit__btn text-center">
-              <button type="submit" className="btn btn-primary">
-                Submit
+              <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                {isSubmitting ? "Updating..." : "Submit"}
               </button>
             </div>
           </form>

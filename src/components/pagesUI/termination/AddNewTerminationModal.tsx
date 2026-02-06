@@ -1,10 +1,10 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { ITermination } from "@/interface/table.interface";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
-import { trainersData, trainingStatuses } from "@/data/dropdown-data";
+import { trainingStatuses } from "@/data/dropdown-data";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import { ITrainer } from "@/interface";
 import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage";
@@ -12,8 +12,15 @@ import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
 import { statePropsType } from "@/interface/common.interface";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
-const AddNewTerminationModal = ({ open, setOpen }: statePropsType) => {
+interface AddNewTerminationModalProps extends statePropsType {
+  onRefresh?: () => void;
+}
+
+const AddNewTerminationModal = ({ open, setOpen, onRefresh }: AddNewTerminationModalProps) => {
+  const { user: authUser } = useAuthUserContext();
+  const [employees, setEmployees] = useState<any[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<ITrainer | null>(null);
   const [selectNoticeDate, setSelectNoticeDate] = useState<Date | null>(
     new Date()
@@ -27,16 +34,75 @@ const AddNewTerminationModal = ({ open, setOpen }: statePropsType) => {
     formState: { errors },
   } = useForm<ITermination>();
 
+  // Fetch employees for the company
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      if (!authUser?.companyId) return;
+
+      try {
+        const res = await fetch(`/api/company-employees?companyId=${authUser.companyId}`);
+        const data = await res.json();
+
+        if (data.success && Array.isArray(data.employees)) {
+          setEmployees(data.employees);
+        }
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+      }
+    };
+
+    fetchEmployees();
+  }, [authUser]);
+
   const handleToggle = () => setOpen(!open);
 
   const onSubmit = async (data: ITermination) => {
+    if (!authUser || !authUser.companyId) {
+      toast.error("You must be logged in");
+      return;
+    }
+
+    if (!selectedOwner) {
+      toast.error("Please select an employee");
+      return;
+    }
+
     try {
+      const terminationData = {
+        employeeId: selectedOwner.uid || selectedOwner.id,
+        employeeName: selectedOwner.fullName || selectedOwner.name,
+        terminationType: data.terminationType,
+        noticeDate: selectNoticeDate?.toISOString(),
+        terminationDate: selectTerminationDate?.toISOString(),
+        reason: data.terminationType,
+        description: data.description,
+        companyId: authUser.companyId,
+        createdBy: authUser.uid,
+      };
+
+      const res = await fetch("/api/termination", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(terminationData),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Failed to create termination");
+      }
+
       toast.success("Termination added successfully!");
-      setTimeout(() => setOpen(false), 2000);
+
+      if (onRefresh) {
+        onRefresh();
+      }
+
+      setTimeout(() => setOpen(false), 800);
     } catch (error: any) {
       toast.error(
         error?.message ||
-          "An error occurred while updating the Termination. Please try again!"
+          "An error occurred while creating the termination. Please try again!"
       );
     }
   };
@@ -72,12 +138,12 @@ const AddNewTerminationModal = ({ open, setOpen }: statePropsType) => {
                         <div className="relative">
                           <div className="mz-default-select">
                             <SelectWithImage
-                              data={trainersData}
+                              data={employees}
                               selectedValue={selectedOwner}
-                              valueKey="name"
-                              displayKey="name"
-                              imageKey="userImg"
-                              placeholder="Select Owner"
+                              valueKey="fullName"
+                              displayKey="fullName"
+                              imageKey="profilePictureUrl"
+                              placeholder="Select Employee"
                               onChange={setSelectedOwner}
                             />
                           </div>

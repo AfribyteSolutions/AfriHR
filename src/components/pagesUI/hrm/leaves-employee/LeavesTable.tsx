@@ -20,17 +20,22 @@ import { IEmployeeLeave } from "@/interface/table.interface";
 import { adminLeaveHeadCells } from "@/data/table-head-cell/table-head";
 import { useTableStatusHook } from "@/hooks/use-condition-class";
 import LeavesEditModal from "./LeavesEditModal";
-import { employeeLeaveData } from "@/data/hrm/employee-leave";
 import Link from "next/link";
 import Image from "next/image";
 import DeleteModal from "@/components/common/DeleteModal";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
+import { toast } from "sonner";
 
-const LeavesTable = () => {
+interface LeavesTableProps {
+  leaveData: any[];
+  onRefresh?: () => void;
+}
+
+const LeavesTable: React.FC<LeavesTableProps> = ({ leaveData, onRefresh }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState<IEmployeeLeave | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string>("");
   const {
     order,
     orderBy,
@@ -40,13 +45,13 @@ const LeavesTable = () => {
     searchQuery,
     paginatedRows,
     filteredRows,
-    handleDelete,
+    handleDelete: handleDeleteLocal,
     handleRequestSort,
     handleClick,
     handleChangePage,
     handleChangeRowsPerPage,
     handleSearchChange,
-  } = useMaterialTableHook<IEmployeeLeave | any>(employeeLeaveData, 10);
+  } = useMaterialTableHook<IEmployeeLeave | any>(leaveData, 10);
 
   return (
     <>
@@ -165,7 +170,7 @@ const LeavesTable = () => {
                                   className="removeBtn table__icon delete"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setDeleteId(index);
+                                    setDeleteId(row.id);
                                     setModalDeleteOpen(true);
                                   }}
                                 >
@@ -206,6 +211,7 @@ const LeavesTable = () => {
           open={modalOpen}
           setOpen={setModalOpen}
           editData={editData}
+          onRefresh={onRefresh}
         />
       )}
 
@@ -213,7 +219,25 @@ const LeavesTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={async () => {
+            try {
+              const res = await fetch(`/api/leaves?id=${deleteId}`, {
+                method: "DELETE",
+              });
+
+              if (!res.ok) throw new Error("Delete failed");
+
+              toast.success("Leave deleted successfully");
+              setModalDeleteOpen(false);
+
+              if (onRefresh) {
+                onRefresh();
+              }
+            } catch (error) {
+              toast.error("Failed to delete leave");
+              console.error("Delete error:", error);
+            }
+          }}
           deleteId={deleteId}
         />
       )}
