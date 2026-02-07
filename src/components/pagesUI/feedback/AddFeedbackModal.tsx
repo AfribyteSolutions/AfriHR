@@ -68,7 +68,9 @@ const AddFeedbackModal: React.FC<AddFeedbackModalProps> = ({
       if (!authUser?.companyId) return;
 
       try {
-        const res = await fetch(`/api/company-employees?companyId=${authUser.companyId}`);
+        const res = await fetch(
+          `/api/company-employees?companyId=${authUser.companyId}`,
+        );
         const data = await res.json();
 
         if (data.success && Array.isArray(data.employees)) {
@@ -98,7 +100,9 @@ const AddFeedbackModal: React.FC<AddFeedbackModalProps> = ({
 
     try {
       // Find employee name
-      const selectedEmployee = employees.find((emp) => emp.value === data.toEmployeeId);
+      const selectedEmployee = employees.find(
+        (emp) => emp.value === data.toEmployeeId,
+      );
 
       const feedbackData = {
         toEmployeeId: data.toEmployeeId,
@@ -254,7 +258,7 @@ const AddFeedbackModal: React.FC<AddFeedbackModalProps> = ({
                         {...register("isPrivate")}
                       />
                       <label className="form-check-label" htmlFor="isPrivate">
-                        Keep this feedback private (employee won't see it)
+                        Keep this feedback private (employee won&apos;t see it)
                       </label>
                     </div>
                   </div>
