@@ -75,67 +75,106 @@ const SignInBasicForm = () => {
         return;
       }
 
-      // 5. Call API route to set HTTP-only cookies SERVER-SIDE
-      console.log("🍪 Setting cookies via API...");
-      const setCookieResponse = await fetch("/api/auth/set-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token: idToken,
-          role: userData.role,
-          userId: user.uid,
-          email: userData.email,
-          subdomain: subdomain,
-          rememberMe: data.rememberMe || false
-        }),
-      });
-
-      if (!setCookieResponse.ok) {
-        const errorData = await setCookieResponse.json();
-        toast.error(errorData.error || "Failed to set session");
-        await auth.signOut();
-        return;
-      }
-
-      console.log("✅ Cookies set successfully via API");
-
-      // 6. Build dashboard path based on role
-      let dashboardPath = "";
+      // 5. Determine the base URL for the company subdomain
       const baseUrl = process.env.NODE_ENV === "development"
         ? `http://${subdomain}.localhost:3000`
         : `https://${subdomain}.${process.env.NEXT_PUBLIC_BASE_DOMAIN}`;
 
-      switch (userData.role) {
-        case "admin":
-        case "manager":
-          dashboardPath = `${baseUrl}/dashboard/hrm-dashboard`;
-          break;
-        case "employee":
-          dashboardPath = `${baseUrl}/dashboard/employee-dashboard`;
-          break;
-        case "super-admin":
-          dashboardPath = `${baseUrl}/super-admin/dashboard`;
-          break;
-        default:
-          toast.error("Unknown role. Contact admin.");
+      // Check if we're already on the correct subdomain
+      const currentHostname = window.location.hostname;
+      const isOnCorrectSubdomain = currentHostname.includes(subdomain);
+
+      if (isOnCorrectSubdomain) {
+        // We're on the correct subdomain, set cookies directly
+        console.log("🍪 Setting cookies via API (already on correct subdomain)...");
+        const setCookieResponse = await fetch("/api/auth/set-session", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: idToken,
+            role: userData.role,
+            userId: user.uid,
+            email: userData.email,
+            subdomain: subdomain,
+            rememberMe: data.rememberMe || false
+          }),
+        });
+
+        if (!setCookieResponse.ok) {
+          const errorData = await setCookieResponse.json();
+          toast.error(errorData.error || "Failed to set session");
           await auth.signOut();
           return;
-      }
+        }
 
-      toast.success(`Welcome back, ${userData.fullName || "User"}!`);
+        console.log("✅ Cookies set successfully");
 
-      // 7. Check if there's a returnUrl to redirect to (e.g., from pricing page)
-      if (returnUrl) {
-        const decodedReturnUrl = decodeURIComponent(returnUrl);
-        console.log("🔄 Redirecting to returnUrl:", decodedReturnUrl);
-        // For returnUrl, redirect within the same domain (pricing/checkout pages)
-        window.location.href = `${baseUrl}${decodedReturnUrl}`;
+        // Build dashboard path
+        let dashboardPath = "";
+        switch (userData.role) {
+          case "admin":
+          case "manager":
+            dashboardPath = "/dashboard/hrm-dashboard";
+            break;
+          case "employee":
+            dashboardPath = "/dashboard/employee-dashboard";
+            break;
+          case "super-admin":
+            dashboardPath = "/super-admin/dashboard";
+            break;
+          default:
+            toast.error("Unknown role. Contact admin.");
+            await auth.signOut();
+            return;
+        }
+
+        toast.success(`Welcome back, ${userData.fullName || "User"}!`);
+
+        // Redirect to dashboard
+        if (returnUrl) {
+          const decodedReturnUrl = decodeURIComponent(returnUrl);
+          router.push(decodedReturnUrl);
+        } else {
+          router.push(dashboardPath);
+        }
       } else {
-        // 8. Hard redirect to dashboard to ensure cookies are properly recognized
-        console.log("🔄 Redirecting to dashboard:", dashboardPath);
-        window.location.href = dashboardPath;
+        // We need to redirect to the correct subdomain with a session token
+        console.log("🔄 Creating session token for subdomain redirect...");
+
+        // Create a one-time session token
+        const sessionTokenResponse = await fetch("/api/auth/create-session-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: idToken,
+            role: userData.role,
+            userId: user.uid,
+            email: userData.email,
+            subdomain: subdomain,
+            rememberMe: data.rememberMe || false
+          }),
+        });
+
+        if (!sessionTokenResponse.ok) {
+          const errorData = await sessionTokenResponse.json();
+          toast.error(errorData.error || "Failed to create session");
+          await auth.signOut();
+          return;
+        }
+
+        const { sessionToken } = await sessionTokenResponse.json();
+        console.log("✅ Session token created");
+
+        toast.success(`Welcome back, ${userData.fullName || "User"}! Redirecting...`);
+
+        // Redirect to the subdomain's session restore page
+        const restoreUrl = `${baseUrl}/auth/session-restore?token=${sessionToken}`;
+        console.log("🔄 Redirecting to:", restoreUrl);
+        window.location.href = restoreUrl;
       }
 
     } catch (error: any) {

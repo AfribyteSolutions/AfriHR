@@ -18,16 +18,13 @@ export async function POST(request: NextRequest) {
 
     const cookieStore = cookies();
 
-    // Determine cookie domain for cross-subdomain auth
-    const cookieDomain = process.env.NODE_ENV === 'production' ? '.afrihrm.com' : 'localhost';
-
-    // Set cookies with proper options including shared domain
+    // Set cookies with proper options
+    // No domain attribute - cookies are subdomain-specific for security
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       path: '/',
-      domain: cookieDomain,
       maxAge: maxAge,
     };
 
@@ -45,7 +42,6 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      domain: cookieDomain,
       maxAge: maxAge,
     });
 
@@ -55,7 +51,6 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      domain: cookieDomain,
       maxAge: maxAge,
     });
 

@@ -5,9 +5,6 @@ export async function POST(request: NextRequest) {
   try {
     const cookieStore = cookies();
 
-    // Determine cookie domain for cross-subdomain auth
-    const cookieDomain = process.env.NODE_ENV === 'production' ? '.afrihrm.com' : 'localhost';
-
     // List of all cookies to clear
     const cookiesToClear = [
       'authToken',
@@ -22,15 +19,9 @@ export async function POST(request: NextRequest) {
       'rememberMe'
     ];
 
-    // Delete all session cookies with domain to clear across subdomains
-    const clearCookieOptions = {
-      domain: cookieDomain,
-      path: '/',
-      maxAge: 0,
-    };
-
+    // Delete all session cookies
     cookiesToClear.forEach(cookieName => {
-      cookieStore.set(cookieName, '', clearCookieOptions);
+      cookieStore.delete(cookieName);
     });
 
     return NextResponse.json({
