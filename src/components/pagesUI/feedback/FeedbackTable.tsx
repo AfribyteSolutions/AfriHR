@@ -150,7 +150,7 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
                   </TableHead>
                   <TableBody>
                     {(paginatedRows as unknown as IFeedback[]).map((row) => {
-                      const isItemSelected = isSelected(row.id);
+                      const isItemSelected = isSelected(row.id as any);
 
                       return (
                         <TableRow
