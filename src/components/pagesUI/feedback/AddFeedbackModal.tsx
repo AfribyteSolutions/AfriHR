@@ -108,7 +108,7 @@ const AddFeedbackModal: React.FC<AddFeedbackModalProps> = ({
         toEmployeeId: data.toEmployeeId,
         toEmployeeName: selectedEmployee?.label || "Unknown",
         fromManagerId: authUser.uid,
-        fromManagerName: authUser.displayName || authUser.email || "Manager",
+        fromManagerName: (authUser as any).displayName || authUser.email || "Manager",
         feedbackType: data.feedbackType,
         category: data.category,
         rating: parseInt(data.rating.toString()),
