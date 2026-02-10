@@ -16,6 +16,8 @@ interface InputFieldProps {
   defaultValue?: string | number;
   placeholder?: string;
   readOnly?: boolean;
+  value?: string | number;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 }
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -31,6 +33,8 @@ const InputField: React.FC<InputFieldProps> = ({
   defaultValue,
   placeholder,
   readOnly = false,
+  value,
+  onChange,
 }) => {
   const inputClass = `form-control ${error ? "is-invalid" : ""}`;
 
@@ -54,6 +58,8 @@ const InputField: React.FC<InputFieldProps> = ({
             placeholder={placeholder}
             defaultValue={defaultValue}
             readOnly={readOnly}
+            {...(value !== undefined ? { value } : {})}
+            {...(onChange ? { onChange } : {})}
             {...(register ? register : {})}
           />
         </div>
@@ -65,6 +71,8 @@ const InputField: React.FC<InputFieldProps> = ({
             placeholder={placeholder}
             defaultValue={defaultValue}
             readOnly={readOnly}
+            {...(value !== undefined ? { value } : {})}
+            {...(onChange ? { onChange } : {})}
             {...(register ? register : {})}
           ></textarea>
         </div>
