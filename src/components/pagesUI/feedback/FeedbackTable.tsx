@@ -47,17 +47,14 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
   const {
     order,
     orderBy,
-    selected,
-    page,
     rowsPerPage,
+    searchQuery,
     handleRequestSort,
-    handleSelectAllClick,
-    handleClick,
-    handleChangePage,
     handleChangeRowsPerPage,
+    handleSearchChange,
     paginatedRows,
     isSelected,
-  } = useMaterialTableHook(feedbackData);
+  } = useMaterialTableHook(feedbackData as any);
 
   const handleEdit = (feedback: IFeedback) => {
     setEditData(feedback);
@@ -121,9 +118,10 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
       <div className="table__wrapper">
         <div className="table__inner">
           <TableControls
-            numSelected={selected.length}
-            totalRows={feedbackData.length}
-            filterLabel="Feedback"
+            rowsPerPage={rowsPerPage}
+            searchQuery={searchQuery}
+            handleChangeRowsPerPage={handleChangeRowsPerPage}
+            handleSearchChange={handleSearchChange}
           />
           <Box sx={{ width: "100%" }}>
             <Paper sx={{ width: "100%", mb: 2 }}>
@@ -141,7 +139,7 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
                           <TableSortLabel
                             active={orderBy === headCell.id}
                             direction={orderBy === headCell.id ? order : "asc"}
-                            onClick={(event) => handleRequestSort(event, headCell.id)}
+                            onClick={() => handleRequestSort(headCell.id)}
                           >
                             {headCell.label}
                           </TableSortLabel>
@@ -151,9 +149,8 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {paginatedRows.map((row: IFeedback, index) => {
+                    {(paginatedRows as unknown as IFeedback[]).map((row) => {
                       const isItemSelected = isSelected(row.id);
-                      const labelId = `table-checkbox-${index}`;
 
                       return (
                         <TableRow
@@ -164,7 +161,7 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
                           key={row.id}
                           selected={isItemSelected}
                         >
-                          <TableCell component="th" id={labelId} scope="row" padding="none">
+                          <TableCell component="th" scope="row" padding="none">
                             <div className="table__user-info">
                               <div className="table__user-name">
                                 <span>{row.toEmployeeName}</span>
