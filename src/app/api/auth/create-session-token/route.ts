@@ -15,11 +15,11 @@ const sessionTokens = new Map<string, {
 // Clean up expired tokens every minute
 setInterval(() => {
   const now = Date.now();
-  for (const [key, value] of sessionTokens.entries()) {
+  sessionTokens.forEach((value, key) => {
     if (value.expiresAt < now) {
       sessionTokens.delete(key);
     }
-  }
+  });
 }, 60000);
 
 export async function POST(request: NextRequest) {
