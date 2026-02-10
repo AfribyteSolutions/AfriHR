@@ -19,7 +19,7 @@ interface AddNewResignationModalProps extends statePropsType {
 const AddNewResignationModal = ({ open, setOpen, onRefresh }: AddNewResignationModalProps) => {
   const { user: authUser } = useAuthUserContext();
   const [employees, setEmployees] = useState<any[]>([]);
-  const [selectedOwner, setSelectedOwner] = useState<ITrainer | null>(null);
+  const [selectedOwner, setSelectedOwner] = useState<any>(null);
   const [selectResignationDate, setSelectResignationDate] =
     useState<Date | null>(new Date());
   const [selectLastWorkingDate, setSelectLastWorkingDate] =
@@ -65,8 +65,8 @@ const AddNewResignationModal = ({ open, setOpen, onRefresh }: AddNewResignationM
 
     try {
       const resignationData = {
-        employeeId: selectedOwner.uid || selectedOwner.id,
-        employeeName: selectedOwner.fullName || selectedOwner.name,
+        employeeId: (selectedOwner as any).uid || (selectedOwner as any).id,
+        employeeName: (selectedOwner as any).fullName || (selectedOwner as any).name,
         resignationDate: selectResignationDate?.toISOString(),
         lastWorkingDay: selectLastWorkingDate?.toISOString(),
         reason: data.reason,

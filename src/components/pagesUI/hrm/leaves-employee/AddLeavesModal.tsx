@@ -122,7 +122,7 @@ const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
 
       const leaveData = {
         employeeId: authUser.uid,
-        employeeName: authUser.displayName || authUser.email,
+        employeeName: (authUser as any).displayName || authUser.email,
         leaveType: data.leaveType,
         leaveDuration: data.leaveDuration,
         startDate: selectStartDate?.toISOString(),

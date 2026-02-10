@@ -21,7 +21,7 @@ interface AddNewTerminationModalProps extends statePropsType {
 const AddNewTerminationModal = ({ open, setOpen, onRefresh }: AddNewTerminationModalProps) => {
   const { user: authUser } = useAuthUserContext();
   const [employees, setEmployees] = useState<any[]>([]);
-  const [selectedOwner, setSelectedOwner] = useState<ITrainer | null>(null);
+  const [selectedOwner, setSelectedOwner] = useState<any>(null);
   const [selectNoticeDate, setSelectNoticeDate] = useState<Date | null>(
     new Date()
   );

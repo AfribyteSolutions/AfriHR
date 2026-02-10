@@ -159,6 +159,7 @@ export interface resignationstatePropsType {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   editData: IResignation;
+  onRefresh?: () => void;
 }
 // Define an interface for the Promotion update modal state props
 export interface promotionstatePropsType {
@@ -200,6 +201,7 @@ export interface terminationStatePropsType {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   editData: ITermination;
+  onRefresh?: () => void;
 }
 
 // Define an interface for the Termination update modal state props

@@ -75,6 +75,7 @@ export interface IPersonalLoan {
 }
 
 export interface IEmployeeLeave {
+  id?: string;
   leaveType: string;
   leaveDuration: string;
   days: number;
@@ -85,6 +86,7 @@ export interface IEmployeeLeave {
 }
 
 export interface IAdminLeave {
+  id?: string;
   employeeName: string;
   designation: string;
   leaveType: string;
@@ -185,8 +187,8 @@ export interface IResignation {
 
 export interface IPromotion {
   [key: string]: any;
-  id: string;
-  employeeId: string;
+  id?: string;
+  employeeId?: string;
   promotedEmployee: string;
   designation: string;
   promotionTitle: string;
@@ -231,7 +233,7 @@ export interface ITermination {
 }
 
 export interface IDocument {
-  id: string;
+  id?: string;
   fileName: string;
   document: string;
   role: string;
@@ -299,6 +301,7 @@ export interface IPersonalLoan {
 }
 // Define an interface for the employee leave
 export interface IEmployeeLeave {
+  id?: string;
   leaveType: string; // Type of leave (e.g., "Bereavement Leave")
   leaveDuration: string; // Duration of leave (e.g., "01 September 2024 - 03 September 2024")
   days: number; // Number of days
@@ -309,6 +312,7 @@ export interface IEmployeeLeave {
 }
 // Define an interface for the admin leave
 export interface IAdminLeave {
+  id?: string;
   employeeName: string;
   designation: string;
   leaveType: string;
