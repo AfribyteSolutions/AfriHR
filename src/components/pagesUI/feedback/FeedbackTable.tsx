@@ -55,7 +55,7 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
     handleClick,
     handleChangePage,
     handleChangeRowsPerPage,
-    visibleRows,
+    paginatedRows,
     isSelected,
   } = useMaterialTableHook(feedbackData);
 
@@ -151,7 +151,7 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {visibleRows.map((row: IFeedback, index) => {
+                    {paginatedRows.map((row: IFeedback, index) => {
                       const isItemSelected = isSelected(row.id);
                       const labelId = `table-checkbox-${index}`;
 
