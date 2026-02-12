@@ -1,133 +1,124 @@
-// app/api/add-employee/route.ts
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { admin, db } from "@/lib/firebase-admin";
+import crypto from "crypto";
 
 export async function POST(req: Request) {
   try {
-    // Check if Firebase is properly initialized
-    if (!admin.apps.length) {
-      return NextResponse.json(
-        { success: false, error: "Firebase Admin not initialized" },
-        { status: 500 }
-      );
+    const formData = await req.formData();
+    
+    // Extract text fields
+    const fullName = formData.get("fullName") as string;
+    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
+    const role = formData.get("role") as string;
+    const department = formData.get("department") as string;
+    const position = formData.get("position") as string;
+    const managerId = formData.get("managerId") as string;
+    const companyId = formData.get("companyId") as string;
+    const createdBy = formData.get("createdBy") as string;
+    
+    // Extract file
+    const file = formData.get("file") as File | null;
+
+    const tempPassword = crypto.randomBytes(4).toString("hex");
+
+    // Get Company Name for email
+    let companyName = "the Company";
+    const companyDoc = await db.collection("companies").doc(companyId).get();
+    if (companyDoc.exists) {
+      companyName = companyDoc.data()?.companyName || "the Company";
     }
 
-    const body = await req.json();
-    const {
+    // 1. Create Auth User
+    const userRecord = await admin.auth().createUser({
+      email,
+      password: tempPassword,
+      displayName: fullName,
+    });
+
+    let contractUrl = null;
+
+    // 2. Upload file to Storage if provided
+    if (file) {
+      const bucket = admin.storage().bucket("afrihr2025.firebasestorage.app");
+      // Multi-tenant path: files / {companyId} / {userId} / {filename}
+      const filePath = `files/${companyId}/${userRecord.uid}/${file.name}`;
+      const fileRef = bucket.file(filePath);
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      await fileRef.save(buffer, {
+        metadata: {
+          contentType: file.type,
+        },
+      });
+
+      // Generate a public URL for the file
+      contractUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+    }
+
+    const sharedData = {
+      uid: userRecord.uid,
       fullName,
       email,
-      phone,
-      role,
-      department,
-      position,
-      managerId,
+      phone: phone || "N/A",
+      role: role || "employee",
+      department: department || "N/A",
+      position: position || "N/A",
       companyId,
-      branchName,
-      departmentName,
-      managerType,
-      permissions,
-      contract,
-      contractHistory,
-      createdBy
-    } = body;
-
-    // Validate required fields
-    if (!fullName || !email || !role) {
-      return NextResponse.json(
-        { success: false, error: "Missing required fields: fullName, email, or role" },
-        { status: 400 }
-      );
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid email format" },
-        { status: 400 }
-      );
-    }
-
-    // Save employee in Firestore
-    const employeeData: any = {
-      fullName,
-      email,
-      phone: phone || "",
-      role,
-      department: department || "",
-      position: position || "",
-      companyId: companyId || "",
-      branchName: branchName || "",
-      departmentName: departmentName || "",
-      managerType: managerType || "",
-      permissions: permissions || { approveLeaves: false, confirmProfileChanges: false },
-      createdBy: createdBy || "",
+      managerId: managerId || "",
+      contractUrl: contractUrl, // Path to the file in storage
+      createdBy,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    // Add manager ID if provided
-    if (managerId) {
-      employeeData.managerId = managerId;
-    }
+    // 3. Batch commit to Firestore
+    const batch = db.batch();
+    const userRef = db.collection("users").doc(userRecord.uid);
+    const employeeRef = db.collection("employees").doc(userRecord.uid);
 
-    // Add contract data if provided
-    if (contract) {
-      employeeData.contract = contract;
-    }
+    batch.set(userRef, sharedData);
+    batch.set(employeeRef, sharedData);
+    await batch.commit();
 
-    // Add contract history if provided
-    if (contractHistory && Array.isArray(contractHistory)) {
-      employeeData.contractHistory = contractHistory;
-    }
-
-    const docRef = await db.collection("employees").add(employeeData);
-
-    // Send welcome email (optional)
+    // 4. Send the Email
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      try {
-        const transporter = nodemailer.createTransport({
-          service: "gmail",
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
-          },
-        });
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+      });
 
-        await transporter.sendMail({
-          from: `"HR Team" <${process.env.EMAIL_USER}>`,
-          to: email,
-          subject: "Welcome to the Company",
-          html: `
-            <h2>Welcome to the Company!</h2>
-            <p>Hi <strong>${fullName}</strong>,</p>
-            <p>You have been successfully added to our system as a <strong>${position || role}</strong>.</p>
-            ${department ? `<p>Department: <strong>${department}</strong></p>` : ''}
-            <p>We look forward to working with you!</p>
-            <br>
-            <p>Best regards,<br>HR Team</p>
-          `,
-        });
-      } catch (emailError) {
-        console.error("Failed to send welcome email:", emailError);
-      }
+      await transporter.sendMail({
+        from: `"${companyName} HR" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `Welcome to ${companyName}!`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
+            <h2 style="color: #2563eb;">Welcome, ${fullName}!</h2>
+            <p>You have been added to <strong>${companyName}</strong> as a <strong>${position}</strong>.</p>
+            
+            <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 14px; color: #64748b;">Login Email:</p>
+              <p style="margin: 5px 0 15px 0; font-weight: bold;">${email}</p>
+              <p style="margin: 0; font-size: 14px; color: #64748b;">Temporary Password:</p>
+              <p style="margin: 5px 0 0 0; font-weight: bold;">${tempPassword}</p>
+            </div>
+
+            <p style="color: #d97706;"><strong>Next Steps:</strong></p>
+            <ol>
+              <li>Log in and update your password.</li>
+              <li>Complete your profile information.</li>
+            </ol>
+            <p>Best regards,<br><strong>${companyName} HR Team</strong></p>
+          </div>
+        `,
+      });
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Employee added successfully",
-        employeeId: docRef.id,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, uid: userRecord.uid });
   } catch (error: any) {
-    console.error("Error in /api/add-employee:", error);
-
-    return NextResponse.json(
-      { success: false, error: "Failed to add employee" },
-      { status: 500 }
-    );
+    console.error("Onboarding Error:", error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }

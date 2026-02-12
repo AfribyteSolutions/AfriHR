@@ -1,7 +1,8 @@
 "use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import UpdateEmployeeProfileModal from "./UpdateEmployeeProfileModal";
 import { IEmployee } from "@/interface";
 
@@ -11,6 +12,28 @@ interface PropsType {
 
 const PersonalInformation = ({ data }: PropsType) => {
   const [modalOpen, setModalOpen] = useState(false);
+  const [managerName, setManagerName] = useState<string>("N/A");
+
+  useEffect(() => {
+    const getManagerInfo = async () => {
+      if (!data.managerId) {
+        setManagerName("None (Top Level)");
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/user-data?uid=${data.managerId}`);
+        const result = await response.json();
+        if (result.success && result.user?.fullName) {
+          setManagerName(result.user.fullName);
+        }
+      } catch (error) {
+        console.error("Error fetching manager name", error);
+      }
+    };
+
+    getManagerInfo();
+  }, [data.managerId]);
 
   return (
     <>
@@ -27,42 +50,51 @@ const PersonalInformation = ({ data }: PropsType) => {
                 <i className="fa-solid fa-pencil"></i>
               </button>
             </div>
+
             <div className="profile-view flex flex-wrap justify-between items-start">
+              {/* LEFT SIDE */}
               <div className="flex flex-wrap items-start gap-[10px] sm:gap-[20px]">
                 <div className="profile-img-wrap">
                   <div className="profile-img">
-                    <Link href="#">
-                      <Image
-                        src={data.photoURL || "/images/default-avatar.png"}
-                        priority
-                        width={120}
-                        height={120}
-                        alt={`${data.fullName || "Employee"} image`}
-                      />
-                    </Link>
+                    <Image
+                      src={data.photoURL || "/images/default-avatar.png"}
+                      priority
+                      width={120}
+                      height={120}
+                      alt={`${data.fullName || "Employee"} image`}
+                    />
                   </div>
                 </div>
+
                 <div className="profile-info">
-                  <h3 className="user-name mb-[15px]">
+                  <h3 className="user-name mb-[10px]">
                     {data.fullName || "N/A"}
                   </h3>
-                  <h6 className="text-muted mb-[5px]">
+
+                  <h6 className="text-muted mb-[4px]">
                     {data.position || "No Position"}
                   </h6>
-                  <span className="block text-muted">
+
+                  <span className="block text-muted mb-[4px]">
                     {data.department || "No Department"}
                   </span>
-                  <h6 className="small employee-id text-black mb-[5px] mt-[5px]">
-                    Employee ID: {data.uid}
+
+                  {/* 👇 MOVED HERE */}
+                  <span className="block text-primary font-semibold mb-[6px]">
+                    Reports To: {managerName}
+                  </span>
+
+                  <h6 className="small employee-id text-black mt-[8px]">
+                    Employee ID: {data.employeeId || data.uid}
                   </h6>
+
                   <span className="block text-muted">
                     Date of Join: {data.dateOfJoining || "N/A"}
                   </span>
-                  {/* <div className="employee-msg mt-[20px]">
-                    <button className="btn btn-primary">Send Message</button>
-                  </div> */}
                 </div>
               </div>
+
+              {/* RIGHT SIDE */}
               <div className="personal-info-wrapper pe-5">
                 <ul className="personal-info">
                   <li>
@@ -73,6 +105,7 @@ const PersonalInformation = ({ data }: PropsType) => {
                       </Link>
                     </div>
                   </li>
+
                   <li>
                     <div className="title">Email:</div>
                     <div className="text text-link-hover">
@@ -81,23 +114,20 @@ const PersonalInformation = ({ data }: PropsType) => {
                       </Link>
                     </div>
                   </li>
+
                   <li>
                     <div className="title">Birthday:</div>
-                    <div className="text">
-                      {data.birthday || "N/A"}
-                    </div>
+                    <div className="text">{data.birthday || "N/A"}</div>
                   </li>
+
                   <li>
                     <div className="title">Address:</div>
-                    <div className="text">
-                      {data.address || "N/A"}
-                    </div>
+                    <div className="text">{data.address || "N/A"}</div>
                   </li>
+
                   <li>
                     <div className="title">Gender:</div>
-                    <div className="text">
-                      {data.gender || "N/A"}
-                    </div>
+                    <div className="text">{data.gender || "N/A"}</div>
                   </li>
                 </ul>
               </div>

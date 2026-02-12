@@ -1,232 +1,80 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import toast from "react-hot-toast"; // For user feedback
-import { IEmployee } from "@/interface"; // Import your IEmployee interface
-import { useAuthUserContext } from "@/context/UserAuthContext"; // Import your context hook
-
-import Breadcrumb from "@/common/Breadcrumb/breadcrumb"; // Keep Breadcrumb
-import EmployeeFilter from "./EmployeeFilter"; // Keep EmployeeFilter
-import EmployeeSingleCard from "@/components/common/EmployeeSingleCard"; // Keep EmployeeSingleCard
+import { useAuthUserContext } from "@/context/UserAuthContext";
+import Breadcrumb from "@/common/Breadcrumb/breadcrumb";
+import EmployeeFilter from "./EmployeeFilter";
+import EmployeeSingleCard from "@/components/common/EmployeeSingleCard";
 
 const EmployeeMainArea = () => {
-  // Get user data, loading, and error states directly from the AuthUserContext
-  const {
-    user: authUser,
-    loading: loadingAuthUser,
-    error: authUserError,
-  } = useAuthUserContext();
-
-  const [employees, setEmployees] = useState<IEmployee[]>([]);
-  const [loadingEmployees, setLoadingEmployees] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const { user: authUser } = useAuthUserContext();
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [total, setTotal] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Effect to fetch employees once the authUser and their companyId are available
+  const fetchList = useCallback(async (currentOffset: number, isNew: boolean) => {
+    if (!authUser?.companyId) return;
+    if (isNew) setLoading(true);
+
+    try {
+      const url = `/api/company-employees?companyId=${authUser.companyId}&limit=12&offset=${currentOffset}&name=${searchTerm}&sortOrder=${sortOrder}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success) {
+        setEmployees(prev => isNew ? data.employees : [...prev, ...data.employees]);
+        setHasMore(data.hasMore);
+      }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  }, [authUser, searchTerm, sortOrder]);
+
   useEffect(() => {
-    const fetchEmployeesList = async (currentOffset: number = 0) => {
-      // 1. Handle loading state of the authenticated user from context
-      if (loadingAuthUser) {
-        setLoadingEmployees(true); // Keep loading if AuthUserContext is still loading
-        return;
-      }
-
-      // 2. Handle errors from authenticated user context (e.g., Firebase auth error)
-      if (authUserError) {
-        setFetchError(authUserError.message || "Authentication error.");
-        setLoadingEmployees(false);
-        setEmployees([]); // Clear employees on error
-        return;
-      }
-
-      // 3. Check if user is logged in and has a company ID
-      if (!authUser || !authUser.companyId) {
-        setFetchError(
-          "User not logged in or company ID not found. Please log in.",
-        );
-        setLoadingEmployees(false);
-        setEmployees([]); // Clear employees if no companyId
-        return;
-      }
-
-      setLoadingEmployees(true);
-      setFetchError(null); // Clear previous errors before a new fetch
-      try {
-        // Use authUser.companyId directly from the context for the API call
-        const res = await fetch(
-          `/api/company-employees?companyId=${authUser.companyId}&limit=10&offset=${currentOffset}`,
-        );
-        if (!res.ok) {
-          throw new Error("Failed to fetch employees.");
-        }
-
-        const data = await res.json();
-        console.log("=== EMPLOYEES API RESPONSE ===");
-        console.log("Response data:", data);
-        console.log("Employees array:", data.employees);
-        console.log("Has more:", data.hasMore);
-        console.log("Total:", data.total);
-        console.log("=== END API RESPONSE ===");
-
-        if (data.success && Array.isArray(data.employees)) {
-          // Debug each employee
-          data.employees.forEach((emp: any, index: number) => {
-            console.log(`Employee ${index + 1}:`, emp);
-            console.log(`Employee ${index + 1} UID:`, emp.uid);
-            console.log(`Employee ${index + 1} UID type:`, typeof emp.uid);
-          });
-          setEmployees((prev) =>
-            currentOffset === 0 ? data.employees : [...prev, ...data.employees],
-          );
-          setHasMore(data.hasMore);
-          setTotal(data.total);
-        } else {
-          setFetchError(
-            data.message || "No employees found or failed to fetch.",
-          );
-          if (currentOffset === 0) setEmployees([]); // Clear employees if data is not successful or not an array
-        }
-      } catch (err: any) {
-        setFetchError(err.message || "Error fetching employee list.");
-        console.error("Error fetching employees:", err);
-        if (currentOffset === 0) setEmployees([]); // Clear employees on fetch error
-      } finally {
-        setLoadingEmployees(false);
-      }
-    };
-
-    fetchEmployeesList(offset);
-  }, [authUser, loadingAuthUser, authUserError, offset, refreshKey]);
-
-  // Display overall loading states before rendering content
-  if (loadingAuthUser || loadingEmployees) {
-    return (
-      <div className="app__slide-wrapper">
-        <Breadcrumb breadTitle="Employee" subTitle="Home" />
-        <div className="p-6 text-center">
-          <p>Loading employee directory...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Display error messages
-  if (fetchError) {
-    return (
-      <div className="app__slide-wrapper">
-        <Breadcrumb breadTitle="Employee" subTitle="Home" />
-        <div className="p-6 text-center text-red-600">Error: {fetchError}</div>
-      </div>
-    );
-  }
-
-  // If we reach here, it means loading is complete and no errors occurred,
-  // but we still need to check if authUser exists before proceeding to render.
-  // This check also covers the case where authUser becomes null after loading.
-  if (!authUser) {
-    return (
-      <div className="app__slide-wrapper">
-        <Breadcrumb breadTitle="Employee" subTitle="Home" />
-        <div className="p-6 text-center">
-          Please log in to view the employee directory.
-        </div>
-      </div>
-    );
-  }
-
-  // Function to refresh employee list
-  const refreshEmployeeList = () => {
     setOffset(0);
-    setRefreshKey(prev => prev + 1);
-  };
+    const delay = setTimeout(() => fetchList(0, true), 300);
+    return () => clearTimeout(delay);
+  }, [searchTerm, sortOrder, fetchList]);
 
-  // Render the employee list once data is ready
+  useEffect(() => {
+    if (offset > 0) fetchList(offset, false);
+  }, [offset, fetchList]);
+
   return (
-    <>
-      <div className="app__slide-wrapper">
-        <Breadcrumb breadTitle="Employee" subTitle="Home" />
-        <EmployeeFilter onRefresh={refreshEmployeeList} />{" "}
-        {/* EmployeeFilter is retained as per your request */}
-        <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0">
-          {employees.length === 0 ? (
-            <p className="col-span-12 p-6 text-center text-gray-600">
-              No employees found in your company. Add some new employees!
-            </p>
-          ) : (
-            employees.map((employee, index) => {
-              // Debug logging for each employee before rendering
-              console.log(`=== RENDERING EMPLOYEE ${index + 1} ===`);
-              console.log("Employee object:", employee);
-              console.log("Employee UID:", employee.uid);
-              console.log("Employee UID type:", typeof employee.uid);
-              console.log("Employee name:", employee.fullName);
-              console.log(
-                "Generated link:",
-                `/hrm/employee-profile?uid=${employee.uid}`,
-              );
-              console.log("=== END EMPLOYEE RENDER DEBUG ===");
+    <div className="app__slide-wrapper p-6 lg:p-10">
+      <Breadcrumb breadTitle="Employee Directory" subTitle="Home" />
+      
+      <EmployeeFilter 
+        searchTerm={searchTerm} setSearchTerm={setSearchTerm} 
+        sortOrder={sortOrder} setSortOrder={setSortOrder} 
+      />
 
-              return (
-                <li
-                  key={employee.uid || `employee-${index}`}
-                  className="col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-3"
-                >
-                  <Link
-                    href={`/hrm/employee-profile?uid=${employee.uid}`}
-                    className="block hover:no-underline"
-                    onClick={(e) => {
-                      console.log("=== LINK CLICKED ===");
-                      console.log("Clicked employee UID:", employee.uid);
-                      console.log(
-                        "Navigation URL:",
-                        `/hrm/employee-profile?uid=${employee.uid}`,
-                      );
-                      console.log(
-                        "Current window location before nav:",
-                        window.location.href,
-                      );
-                      console.log("=== END LINK CLICK ===");
-
-                      // Check if UID is valid before navigation
-                      if (
-                        !employee.uid ||
-                        employee.uid === "undefined" ||
-                        employee.uid === "null"
-                      ) {
-                        e.preventDefault();
-                        console.error(
-                          "Invalid UID detected, preventing navigation",
-                        );
-                        toast.error("Invalid employee ID. Please try again.");
-                        return false;
-                      }
-                    }}
-                  >
-                    <EmployeeSingleCard employee={employee} />
-                  </Link>
-                </li>
-              );
-            })
-          )}
-        </div>
-        {/* The "Load More" button would typically involve pagination logic,
-            which is outside the scope of this update but kept for structure. */}
-        {hasMore && ( // Only show Load More if there are more employees
-          <div className="flex justify-center mt-[20px] mb-[20px]">
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => setOffset((prev) => prev + 10)}
-            >
-              Load More
-            </button>
+      <div className="grid grid-cols-12 gap-6 mt-8">
+        {loading && offset === 0 ? (
+          <div className="col-span-12 text-center py-20 opacity-50">Syncing directory...</div>
+        ) : employees.length === 0 ? (
+          <div className="col-span-12 text-center py-20 border-2 border-dashed rounded-3xl text-gray-400">
+            No results match your search.
           </div>
+        ) : (
+          employees.map((emp) => (
+            <div key={emp.uid} className="col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-3">
+              <Link href={`/hrm/employee-profile?uid=${emp.uid}`}>
+                <EmployeeSingleCard employee={emp} />
+              </Link>
+            </div>
+          ))
         )}
       </div>
-    </>
+
+      {hasMore && !loading && (
+        <div className="flex justify-center mt-12">
+          <button className="btn btn-primary px-10" onClick={() => setOffset(prev => prev + 12)}>
+            Load More
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
 

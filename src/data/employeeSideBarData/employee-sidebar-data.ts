@@ -56,6 +56,12 @@ export interface EmployeeSidebarItem {
       icon: "icon-document",
       link: "/document",
     },
+    {
+      id: 22,
+      label: "Company Organogram",
+      icon: "fa-light fa-sitemap", // Best choice for a company tree
+      link: "/organogram",
+    },
 
 
     

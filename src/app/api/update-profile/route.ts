@@ -1,35 +1,56 @@
 import { NextResponse } from "next/server";
-import { admin } from "@/lib/firebase-admin"; // Adjust path if needed
+import { admin } from "@/lib/firebase-admin";
 
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   try {
-    const body = await req.json();
-    const { uid, ...profileData } = body; // Destructure uid, and collect all other data into profileData
+    const { searchParams } = new URL(req.url);
+    const companyId = searchParams.get("companyId");
+    const nameSearch = searchParams.get("name")?.toLowerCase() || "";
+    const sortOrder = (searchParams.get("sortOrder") as "asc" | "desc") || "desc";
+    const limit = parseInt(searchParams.get("limit") || "12");
+    const offset = parseInt(searchParams.get("offset") || "0");
 
-    if (!uid) {
-      return NextResponse.json(
-        { success: false, message: "User UID is required." },
-        { status: 400 }
-      );
+    if (!companyId) {
+      return NextResponse.json({ success: false, message: "Company ID missing" }, { status: 400 });
     }
 
-    // Use set with { merge: true } to update only the provided fields
-    // This is powerful: you can send { fullName: "New Name" } or { bankAccount: { ...newBankDetails } }
-    // or { education: [...newEducationArray] } and it will update just that part of the document.
-    await admin.firestore().collection("users").doc(uid).set(profileData, { merge: true });
+    const db = admin.firestore();
+    
+    // Query the 'employees' collection to get access to 'createdAt'
+    let queryRef = db.collection("employees")
+      .where("companyId", "==", companyId)
+      .orderBy("createdAt", sortOrder);
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Profile updated successfully.",
-      },
-      { status: 200 }
-    );
+    const snapshot = await queryRef.get();
+    let allEmployees: any[] = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      const fullName = data.fullName || "N/A";
+
+      // Filter by name if searching
+      if (nameSearch && !fullName.toLowerCase().includes(nameSearch)) return;
+
+      allEmployees.push({
+        uid: doc.id,
+        fullName,
+        email: data.email || "N/A",
+        position: data.position || "N/A",
+        department: data.department || "N/A",
+        // photoURL is the field in your Firestore screenshot
+        photoURL: data.photoURL || null, 
+        createdAt: data.createdAt
+      });
+    });
+
+    const employees = allEmployees.slice(offset, offset + limit);
+    return NextResponse.json({
+      success: true,
+      employees,
+      hasMore: offset + limit < allEmployees.length,
+      total: allEmployees.length
+    });
   } catch (error: any) {
-    console.error("Error updating profile:", error);
-    return NextResponse.json(
-      { success: false, message: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }

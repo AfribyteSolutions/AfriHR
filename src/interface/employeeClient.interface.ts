@@ -150,7 +150,7 @@ export interface IEmployeeProfileDetails {
   address: string;
   department: string;
   employeeDesignation: string;
-  designation?: string;
+  position: string;
 }
 
 // Main Employee Interface (Consolidated)

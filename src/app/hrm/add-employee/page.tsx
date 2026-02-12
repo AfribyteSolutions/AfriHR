@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
 import toast from "react-hot-toast";
+import { auth } from "@/lib/firebase";
+import Wrapper from "@/components/layouts/DefaultWrapper";
+import MetaData from "@/hooks/useMetaData";
 
 interface Manager {
   uid: string;
@@ -12,341 +14,316 @@ interface Manager {
   position: string;
   department: string;
 }
+
 interface GroupedManagers {
   [department: string]: Manager[];
 }
-type ManagerType = "branch" | "department" | "";
+
+interface FormState {
+  fullName: string;
+  email: string;
+  phone: string;
+  position: string;
+  department: string;
+  role: string;
+  managerId: string;
+}
 
 export default function AddEmployeePage() {
-  const [user, loadingAuth] = useAuthState(auth);
   const router = useRouter();
+  const [user, loadingAuth] = useAuthState(auth);
+
   const [loading, setLoading] = useState(false);
-
-  const [groupedManagers, setGroupedManagers] = useState<GroupedManagers>({});
   const [fetchingManagers, setFetchingManagers] = useState(true);
+  const [groupedManagers, setGroupedManagers] = useState<GroupedManagers>({});
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
-  const [loadingCompanyId, setLoadingCompanyId] = useState(true);
 
-  const [formData, setFormData] = useState({
+  const [contractFile, setContractFile] = useState<File | null>(null);
+
+  const [formData, setFormData] = useState<FormState>({
     fullName: "",
     email: "",
     phone: "",
     position: "",
     department: "",
-    role: "employee", // "employee" | "manager" | "admin"
+    role: "employee",
     managerId: "",
-    managerType: "" as ManagerType,
-    branchName: "",
-    departmentName: "",
   });
 
-  const [contractFile, setContractFile] = useState<File | null>(null);
-  const [contractFileName, setContractFileName] = useState<string>("");
-  const commonDepartments = [
-    "Human Resources",
-    "Finance",
-    "Marketing",
-    "Sales",
-    "Operations",
-    "IT",
-    "Customer Support",
-    "Administration",
-    "Legal",
-    "Product Development",
-    "Procurement",
-    "Quality Assurance",
-  ];
-  
-
-  // Fetch current user's companyId
   useEffect(() => {
-    const fetchUserCompanyId = async () => {
-      if (loadingAuth) return;
-      if (!user) {
-        setLoadingCompanyId(false);
-        return;
-      }
+    const init = async () => {
+      if (!user || loadingAuth) return;
+
       try {
         const res = await fetch(`/api/user-data?uid=${user.uid}`);
         const data = await res.json();
-        if (data.success && data.user?.companyId) {
-          setUserCompanyId(data.user.companyId);
-        } else {
-          toast.error("No company ID found for your account.");
+
+        if (!data?.user?.companyId) return;
+
+        setUserCompanyId(data.user.companyId);
+
+        const mRes = await fetch(
+          `/api/company-employees?companyId=${data.user.companyId}`
+        );
+        const mData = await mRes.json();
+
+        if (mData.success) {
+          const grouped = mData.employees.reduce(
+            (acc: GroupedManagers, emp: Manager) => {
+              const dept = emp.department || "Unassigned";
+              acc[dept] = acc[dept] || [];
+              acc[dept].push(emp);
+              return acc;
+            },
+            {}
+          );
+
+          setGroupedManagers(grouped);
         }
       } catch {
-        toast.error("Error fetching company ID.");
+        toast.error("Failed to load employee data");
       } finally {
-        setLoadingCompanyId(false);
+        setFetchingManagers(false);
       }
     };
-    fetchUserCompanyId();
+
+    init();
   }, [user, loadingAuth]);
 
-  // Fetch managers & group by department
-  useEffect(() => {
-    const fetchAndGroupManagers = async () => {
-      if (!userCompanyId || loadingCompanyId) {
-        setFetchingManagers(false);
-        return;
-      }
-      try {
-        const res = await fetch(`/api/company-employees?companyId=${userCompanyId}`);
-        const data = await res.json();
-        if (res.ok && data.success) {
-          const grouped: GroupedManagers = data.employees.reduce((acc: GroupedManagers, m: Manager) => {
-            const dept = m.department || "Unassigned";
-            if (!acc[dept]) acc[dept] = [];
-            acc[dept].push(m);
-            return acc;
-          }, {});
-          setGroupedManagers(grouped);
-        } else {
-          toast.error(data.message || "Failed to fetch managers.");
-        }
-      } catch {
-        toast.error("Error fetching managers.");
-      } finally {
-        setFetchingManagers(false);
-      }
-    };
-    fetchAndGroupManagers();
-  }, [userCompanyId, loadingCompanyId]);
-
-  // Handle form changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => {
-      if (name === "role" && value !== "manager") {
-        return { ...prev, role: value, managerType: "", branchName: "", departmentName: "" };
-      }
-      if (name === "managerType") {
-        return {
-          ...prev,
-          managerType: value as ManagerType,
-          branchName: value === "branch" ? prev.branchName : "",
-          departmentName: value === "department" ? prev.departmentName : "",
-        };
-      }
-      return { ...prev, [name]: value };
-    });
-  };
-
-  // Submit form
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user) return toast.error("You must be logged in.");
-    if (!userCompanyId) return toast.error("Company ID missing.");
 
-    const { fullName, email, position, department, role, managerType, branchName, departmentName } = formData;
-
-    if (!fullName || !email || !position || !department) {
-      return toast.error("Please fill all required fields.");
-    }
-    if (role === "manager" && !managerType) {
-      return toast.error("Select manager type.");
-    }
-    if (role === "manager" && managerType === "branch" && !branchName.trim()) {
-      return toast.error("Enter branch name.");
-    }
-    if (role === "manager" && managerType === "department" && !departmentName.trim()) {
-      return toast.error("Enter department name.");
+    if (!user || !userCompanyId) {
+      toast.error("User session not found");
+      return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return toast.error("Invalid email format.");
+    if (!formData.managerId) {
+      toast.error("You must assign a manager");
+      return;
+    }
 
     setLoading(true);
-
-    const permissions =
-      role === "manager"
-        ? { approveLeaves: true, confirmProfileChanges: true }
-        : { approveLeaves: false, confirmProfileChanges: false };
-
-    // Contract data (in production, upload file to Firebase Storage first)
-    const contractData = contractFile
-      ? {
-          fileName: contractFile.name,
-          uploadedAt: new Date().toISOString(),
-          uploadedBy: user.uid,
-          fileSize: contractFile.size,
-          // In production, add: fileUrl: <uploaded URL from Firebase Storage>
-        }
-      : null;
-
-    const payload = {
-      ...formData,
-      createdBy: user.uid,
-      companyId: userCompanyId,
-      permissions,
-      contract: contractData,
-      contractHistory: contractData ? [{ ...contractData, version: 1 }] : [],
-    };
+    const toastId = toast.loading("Onboarding employee...");
 
     try {
+      // Use FormData to allow file uploads
+      const data = new FormData();
+      data.append("fullName", formData.fullName);
+      data.append("email", formData.email);
+      data.append("phone", formData.phone);
+      data.append("position", formData.position);
+      data.append("department", formData.department);
+      data.append("role", formData.role);
+      data.append("managerId", formData.managerId);
+      data.append("companyId", userCompanyId);
+      data.append("createdBy", user.uid);
+
+      if (contractFile) {
+        data.append("file", contractFile);
+      }
+
       const res = await fetch("/api/add-employee", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        // Browser automatically sets Content-Type to multipart/form-data with boundary
+        body: data,
       });
+
       const result = await res.json();
-      if (!res.ok || !result.success) throw new Error(result.message || "Failed to add employee.");
-      toast.success(`✅ ${formData.fullName} added successfully!`);
-      // Redirect to employee list page after successful creation
-      setTimeout(() => router.push("/hrm/employee"), 1000);
+
+      if (!res.ok) throw new Error(result.message || "Failed to onboard");
+
+      toast.success("Employee onboarded successfully", { id: toastId });
+      router.push("/hrm/employee");
+      router.refresh();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to onboard employee", { id: toastId });
     } finally {
       setLoading(false);
     }
   };
 
-  if (!user) {
-    return <div className="max-w-3xl mx-auto py-10 px-4 text-center">Please log in to add employees.</div>;
-  }
-  if (loadingCompanyId || fetchingManagers) {
-    return <div className="max-w-3xl mx-auto py-10 px-4 text-center">Loading form data...</div>;
-  }
-
   return (
-    <div className="max-w-3xl mx-auto py-10 px-4">
-      <h1 className="text-2xl font-bold mb-6">Add New Employee</h1>
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white shadow p-6 rounded-lg">
-        {/* Full Name */}
-        <div>
-          <label className="block font-medium mb-1">Full Name *</label>
-          <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className="w-full px-4 py-2 border rounded-md" required />
-        </div>
-        {/* Email */}
-        <div>
-          <label className="block font-medium mb-1">Email *</label>
-          <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-4 py-2 border rounded-md" required />
-        </div>
-        {/* Phone */}
-        <div>
-          <label className="block font-medium mb-1">Phone</label>
-          <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full px-4 py-2 border rounded-md" />
-        </div>
-        {/* Position */}
-        <div>
-          <label className="block font-medium mb-1">Position *</label>
-          <input type="text" name="position" value={formData.position} onChange={handleChange} className="w-full px-4 py-2 border rounded-md" required />
-        </div>
-        {/* Department */}
-        <div>
-          <label className="block font-medium mb-1">Department *</label>
-          <input type="text" name="department" value={formData.department} onChange={handleChange} className="w-full px-4 py-2 border rounded-md" required />
-        </div>
-        {/* Role */}
-        <div>
-          <label className="block font-medium mb-1">Role</label>
-          <select name="role" value={formData.role} onChange={handleChange} className="w-full px-4 py-2 border rounded-md">
-            <option value="admin">Administrator</option>
-            <option value="manager">Manager</option>
-            <option value="employee">Employee</option>
-          </select>
-        </div>
-        {/* Manager Scope */}
-        {formData.role === "manager" && (
-          <div className="border p-4 rounded-md bg-gray-50">
-            <label className="block font-medium mb-1">Manager Type</label>
-            <select name="managerType" value={formData.managerType} onChange={handleChange} className="w-full px-4 py-2 border rounded-md">
-              <option value="">Select Type</option>
-              <option value="branch">Branch Manager</option>
-              <option value="department">Department Manager</option>
-            </select>
-            {formData.managerType === "branch" && (
-              <div className="mt-3">
-                <label className="block font-medium mb-1">Branch Name</label>
-                <input type="text" name="branchName" value={formData.branchName} onChange={handleChange} className="w-full px-4 py-2 border rounded-md" />
+    <MetaData pageTitle="Add Employee">
+      <Wrapper>
+        <main className="min-h-screen bg-[#f1f5f9] dark:bg-[#1a222c] py-10 transition-colors duration-300">
+          <div className="mx-auto max-w-5xl px-4">
+            <div className="rounded-2xl bg-white dark:bg-[#24303f] shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+              
+              <div className="border-b border-slate-100 dark:border-slate-700 px-8 py-6 bg-white dark:bg-[#24303f]">
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+                  Employee Onboarding
+                </h1>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Add a new employee and assign their system permissions.
+                </p>
               </div>
-            )}
-            {formData.managerType === "department" && (
-              <div className="mt-3">
-                <label className="block font-medium mb-1">Department Name</label>
-                <input
-                  list="department-list"
-                  type="text"
-                  name="departmentName"
-                  value={formData.departmentName}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border rounded-md"
-                />
-                <datalist id="department-list">
-                  {commonDepartments.map((dept) => (
-                    <option key={dept} value={dept} />
-                  ))}
-                </datalist>
-              </div>
-            )}
 
-          </div>
-        )}
+              <form onSubmit={handleSubmit} className="px-8 py-8 space-y-10">
+                
+                <section className="space-y-6">
+                  <h2 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    Basic Information
+                  </h2>
 
-        {/* Employment Contract */}
-        <div className="border p-4 rounded-md bg-gray-50">
-          <label className="block font-medium mb-1">Employment Contract (Optional)</label>
-          <p className="text-sm text-gray-600 mb-3">
-            Upload employee contract document (PDF, DOC, DOCX)
-          </p>
-          <input
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setContractFile(file);
-                setContractFileName(file.name);
-              }
-            }}
-            className="w-full px-4 py-2 border rounded-md"
-          />
-          {contractFileName && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-              </svg>
-              <span>{contractFileName}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setContractFile(null);
-                  setContractFileName("");
-                }}
-                className="text-red-600 hover:text-red-800"
-              >
-                ×
-              </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input
+                      label="Full Name"
+                      required
+                      value={formData.fullName}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        setFormData({ ...formData, fullName: e.target.value })
+                      }
+                    />
+
+                    <Input
+                      label="Email Address"
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                    />
+                  </div>
+                </section>
+
+                <section className="space-y-6">
+                  <h2 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    Organization & Permissions
+                  </h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
+                        System Role <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        value={formData.role}
+                        onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                          setFormData({ ...formData, role: e.target.value })
+                        }
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#1a222c] px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      >
+                        <option value="employee">Employee</option>
+                        <option value="manager">Manager</option>
+                      </select>
+                    </div>
+
+                    <Input
+                      label="Position / Job Title"
+                      required
+                      value={formData.position}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        setFormData({ ...formData, position: e.target.value })
+                      }
+                    />
+
+                    <Input
+                      label="Department"
+                      required
+                      value={formData.department}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        setFormData({ ...formData, department: e.target.value })
+                      }
+                    />
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
+                        Reports To <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        value={formData.managerId}
+                        onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                          setFormData({ ...formData, managerId: e.target.value })
+                        }
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#1a222c] px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      >
+                        <option value="">Select a manager</option>
+                        {Object.keys(groupedManagers).map((dept) => (
+                          <optgroup key={dept} label={dept} className="dark:bg-[#24303f]">
+                            {groupedManagers[dept].map((m) => (
+                              <option key={m.uid} value={m.uid}>
+                                {m.fullName} — {m.position}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-4">
+                  <h2 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    Documents
+                  </h2>
+
+                  <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#1a222c] p-8 text-center cursor-pointer hover:border-blue-500 transition-all">
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        setContractFile(e.target.files?.[0] || null)
+                      }
+                    />
+                    <i className="fa-solid fa-cloud-arrow-up text-blue-600 dark:text-blue-400 text-xl"></i>
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                      {contractFile ? contractFile.name : "Upload Employment Contract"}
+                    </span>
+                  </label>
+                </section>
+
+                <div className="flex justify-end gap-4 pt-8 border-t border-slate-100 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => router.back()}
+                    className="rounded-xl px-6 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="rounded-xl bg-blue-600 px-8 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-blue-700 disabled:opacity-60 transition-all"
+                  >
+                    {loading ? "Onboarding..." : "Onboard Employee"}
+                  </button>
+                </div>
+              </form>
             </div>
-          )}
-        </div>
+          </div>
+        </main>
+      </Wrapper>
+    </MetaData>
+  );
+}
 
-        {/* Reports To */}
-        <div>
-          <label className="block font-medium mb-1">Reports To (Manager)</label>
-          <select name="managerId" value={formData.managerId} onChange={handleChange} className="w-full px-4 py-2 border rounded-md">
-            <option value="">No manager (CEO/Head)</option>
-            {Object.keys(groupedManagers)
-              .sort()
-              .map((dept) => (
-                <optgroup key={dept} label={dept}>
-                  {groupedManagers[dept].map((m) => (
-                    <option key={m.uid} value={m.uid}>
-                      {m.fullName} ({m.position})
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-          </select>
-        </div>
-        {/* Submit */}
-        <div className="flex gap-4">
-          <button type="submit" disabled={loading} className={`px-6 py-2 rounded font-medium text-white ${loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"}`}>
-            {loading ? "Adding..." : "Add Employee"}
-          </button>
-          <button type="button" onClick={() => router.back()} className="px-6 py-2 rounded font-medium border border-gray-300">Cancel</button>
-        </div>
-      </form>
+interface InputProps {
+  label: string;
+  value: string;
+  type?: string;
+  required?: boolean;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+}
+
+function Input({ label, value, type = "text", required = false, onChange }: InputProps) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        type={type}
+        required={required}
+        value={value}
+        onChange={onChange}
+        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#1a222c] px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+      />
     </div>
   );
 }

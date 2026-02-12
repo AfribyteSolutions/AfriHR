@@ -189,6 +189,12 @@ const sidebarData: SidebarCategory[] = [
       },
       {
         id: 22,
+        label: "Company Organogram",
+        icon: "fa-light fa-sitemap", // Best choice for a company tree
+        link: "/organogram",
+      },
+      {
+        id: 23,
         label: "Company Settings",
         icon: "fa-light fa-gear",
         link: "/company-settings",

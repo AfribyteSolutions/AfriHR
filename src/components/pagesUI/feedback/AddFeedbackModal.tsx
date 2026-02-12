@@ -16,7 +16,7 @@ interface FeedbackFormData {
   toEmployeeId: string;
   feedbackType: string;
   category: string;
-  rating: number;
+  rating: string | number;
   subject: string;
   message: string;
   isPrivate: boolean;
@@ -52,7 +52,7 @@ const AddFeedbackModal: React.FC<AddFeedbackModalProps> = ({
   onRefresh,
 }) => {
   const { user: authUser } = useAuthUserContext();
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<{ value: string; label: string }[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(true);
 
   const {
@@ -87,8 +87,8 @@ const AddFeedbackModal: React.FC<AddFeedbackModalProps> = ({
       }
     };
 
-    fetchEmployees();
-  }, [authUser]);
+    if (open) fetchEmployees();
+  }, [authUser, open]);
 
   const handleToggle = () => setOpen(!open);
 
@@ -99,7 +99,6 @@ const AddFeedbackModal: React.FC<AddFeedbackModalProps> = ({
     }
 
     try {
-      // Find employee name
       const selectedEmployee = employees.find(
         (emp) => emp.value === data.toEmployeeId,
       );
@@ -108,10 +107,15 @@ const AddFeedbackModal: React.FC<AddFeedbackModalProps> = ({
         toEmployeeId: data.toEmployeeId,
         toEmployeeName: selectedEmployee?.label || "Unknown",
         fromManagerId: authUser.uid,
+<<<<<<< HEAD
         fromManagerName: (authUser as any).displayName || authUser.email || "Manager",
+=======
+        // FIX: Use fullName instead of displayName
+        fromManagerName: (authUser as any).fullName || authUser.email || "Manager",
+>>>>>>> 92f1bb7 (sidebar changes)
         feedbackType: data.feedbackType,
         category: data.category,
-        rating: parseInt(data.rating.toString()),
+        rating: Number(data.rating),
         subject: data.subject,
         message: data.message,
         isPrivate: data.isPrivate,
@@ -130,146 +134,114 @@ const AddFeedbackModal: React.FC<AddFeedbackModalProps> = ({
         throw new Error(result.error || "Failed to submit feedback");
       }
 
-      toast.success("Feedback submitted successfully!");
+      toast.success("Feedback submitted successfully! 🎉");
       reset();
 
-      if (onRefresh) {
-        onRefresh();
-      }
-
+      if (onRefresh) onRefresh();
       setTimeout(() => setOpen(false), 800);
     } catch (error: any) {
       toast.error(error.message || "Failed to submit feedback");
-      console.error("Error submitting feedback:", error);
     }
   };
 
   return (
     <Dialog open={open} onClose={handleToggle} fullWidth maxWidth="md">
       <DialogTitle>
-        <div className="flex justify-between">
-          <h5 className="modal-title">Give Feedback</h5>
-          <button onClick={handleToggle} type="button" className="bd-btn-close">
-            <i className="fa-solid fa-xmark-large"></i>
+        <div className="flex justify-between items-center">
+          <h5 className="modal-title font-bold text-xl">Give Feedback</h5>
+          <button onClick={handleToggle} type="button" className="text-gray-500 hover:text-red-500 transition-colors">
+             <i className="fa-solid fa-xmark text-2xl"></i>
           </button>
         </div>
       </DialogTitle>
       <DialogContent className="common-scrollbar overflow-y-auto">
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-12 gap-y-5 gap-x-5 maxXs:gap-x-0">
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-4">
+          <div className="grid grid-cols-12 gap-5">
+            {/* Employee Selection */}
+            <div className="col-span-12 md:col-span-6">
+              <SelectBox
+                id="toEmployeeId"
+                label="Select Employee"
+                options={employees}
+                control={control}
+                error={errors.toEmployeeId}
+              />
+            </div>
+
+            {/* Feedback Type */}
+            <div className="col-span-12 md:col-span-6">
+              <SelectBox
+                id="feedbackType"
+                label="Feedback Type"
+                options={feedbackTypes}
+                control={control}
+                error={errors.feedbackType}
+              />
+            </div>
+
+            {/* Category */}
+            <div className="col-span-12 md:col-span-6">
+              <SelectBox
+                id="category"
+                label="Category"
+                options={categories}
+                control={control}
+                error={errors.category}
+              />
+            </div>
+
+            {/* Rating */}
+            <div className="col-span-12 md:col-span-6">
+              <SelectBox
+                id="rating"
+                label="Rating"
+                options={ratings}
+                control={control}
+                error={errors.rating}
+              />
+            </div>
+
+            {/* Subject */}
             <div className="col-span-12">
-              <div className="card__wrapper mb-20">
-                <div className="grid grid-cols-12 gap-y-5 gap-x-5 maxXs:gap-x-0">
-                  {/* Employee Selection */}
-                  <div className="col-span-12 md:col-span-6">
-                    <SelectBox
-                      id="toEmployeeId"
-                      label="Select Employee"
-                      options={employees}
-                      control={control}
-                      error={errors.toEmployeeId}
-                      isRequired={true}
-                    />
-                  </div>
+              <InputField
+                label="Subject"
+                id="subject"
+                type="text"
+                register={register("subject", { required: "Subject is required" })}
+                error={errors.subject}
+              />
+            </div>
 
-                  {/* Feedback Type */}
-                  <div className="col-span-12 md:col-span-6">
-                    <SelectBox
-                      id="feedbackType"
-                      label="Feedback Type"
-                      options={feedbackTypes}
-                      control={control}
-                      error={errors.feedbackType}
-                      isRequired={true}
-                    />
-                  </div>
+            {/* Message */}
+            <div className="col-span-12">
+              <label className="block mb-2 text-sm font-medium">Message <span className="text-red-500">*</span></label>
+              <textarea
+                id="message"
+                className={`w-full p-3 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none transition-all ${errors.message ? 'border-red-500' : 'border-gray-300'}`}
+                rows={5}
+                placeholder="Enter your feedback message..."
+                {...register("message", { required: "Message is required" })}
+              />
+              {errors.message && <span className="text-red-500 text-xs mt-1">{errors.message.message}</span>}
+            </div>
 
-                  {/* Category */}
-                  <div className="col-span-12 md:col-span-6">
-                    <SelectBox
-                      id="category"
-                      label="Category"
-                      options={categories}
-                      control={control}
-                      error={errors.category}
-                      isRequired={true}
-                    />
-                  </div>
-
-                  {/* Rating */}
-                  <div className="col-span-12 md:col-span-6">
-                    <SelectBox
-                      id="rating"
-                      label="Rating"
-                      options={ratings}
-                      control={control}
-                      error={errors.rating}
-                    />
-                  </div>
-
-                  {/* Subject */}
-                  <div className="col-span-12">
-                    <InputField
-                      label="Subject"
-                      id="subject"
-                      type="text"
-                      register={register("subject", {
-                        required: "Subject is required",
-                      })}
-                      error={errors.subject}
-                      required={true}
-                    />
-                  </div>
-
-                  {/* Message */}
-                  <div className="col-span-12">
-                    <div className="from__input-box">
-                      <div className="form__input-title">
-                        <label htmlFor="message">
-                          Message <span>*</span>
-                        </label>
-                      </div>
-                      <div className="form__input">
-                        <textarea
-                          id="message"
-                          className="form-control"
-                          rows={5}
-                          placeholder="Enter your feedback message..."
-                          {...register("message", {
-                            required: "Message is required",
-                          })}
-                        />
-                        {errors.message && (
-                          <span className="text-red-500 text-sm">
-                            {errors.message.message}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Private Checkbox */}
-                  <div className="col-span-12">
-                    <div className="form-check">
-                      <input
-                        type="checkbox"
-                        className="form-check-input"
-                        id="isPrivate"
-                        {...register("isPrivate")}
-                      />
-                      <label className="form-check-label" htmlFor="isPrivate">
-                        Keep this feedback private (employee won&apos;t see it)
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {/* Private Checkbox */}
+            <div className="col-span-12 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isPrivate"
+                className="w-4 h-4 text-blue-600 rounded"
+                {...register("isPrivate")}
+              />
+              <label htmlFor="isPrivate" className="text-sm text-gray-600 cursor-pointer">
+                Keep this feedback private (employee won&apos;t see it)
+              </label>
             </div>
           </div>
 
-          <div className="submit__btn text-center">
+          <div className="mt-8 mb-4 text-center">
             <button
-              className="btn btn-primary"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-xl shadow-lg transition-all disabled:opacity-50"
               type="submit"
               disabled={isSubmitting}
             >

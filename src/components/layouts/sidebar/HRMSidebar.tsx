@@ -83,6 +83,7 @@ const HRMSidebar = () => {
         "Award",
         "Document",
         "Announcement",
+        "Company Organogram",
         "Company Settings"
       ];
 

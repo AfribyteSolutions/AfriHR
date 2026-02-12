@@ -77,6 +77,7 @@ export interface ISidebarAddons {
 // The main user/employee profile interface
 export interface IEmployee {
   id?: number; // 👈 Add this line
+  employeeId?: string;
   uid: string; // <--- ADDED THIS LINE to the interface
   fullName: string;
   name: string;
