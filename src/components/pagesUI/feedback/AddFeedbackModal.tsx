@@ -107,12 +107,8 @@ const AddFeedbackModal: React.FC<AddFeedbackModalProps> = ({
         toEmployeeId: data.toEmployeeId,
         toEmployeeName: selectedEmployee?.label || "Unknown",
         fromManagerId: authUser.uid,
-<<<<<<< HEAD
-        fromManagerName: (authUser as any).displayName || authUser.email || "Manager",
-=======
-        // FIX: Use fullName instead of displayName
+        // Using fullName as per the sidebar changes update
         fromManagerName: (authUser as any).fullName || authUser.email || "Manager",
->>>>>>> 92f1bb7 (sidebar changes)
         feedbackType: data.feedbackType,
         category: data.category,
         rating: Number(data.rating),

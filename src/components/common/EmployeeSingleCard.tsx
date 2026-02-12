@@ -1,3 +1,5 @@
+"use client"; // <--- Add this at the very top
+
 import { IEmployee } from "@/interface";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,37 +23,17 @@ const EmployeeSingleCard = ({ employee }: PropsType) => {
 
   // Determine the image source with better validation
   const getImageSrc = (): string => {
-    // Check if photoURL exists and is a valid Base64 string
     if (employee.photoURL) {
-      // Check if it's already a data URL
       if (employee.photoURL.startsWith("data:image")) {
-        console.log(`✓ Valid Base64 image for ${employee.fullName}`);
         return employee.photoURL;
       }
-      // Check if it's a regular URL
       if (employee.photoURL.startsWith("http://") || employee.photoURL.startsWith("https://")) {
-        console.log(`✓ Valid URL image for ${employee.fullName}`);
         return employee.photoURL;
       }
-      // If it exists but doesn't match expected formats
-      console.warn(`⚠ Invalid photoURL format for ${employee.fullName}:`, employee.photoURL.substring(0, 50));
-    } else {
-      console.log(`ℹ No photo for ${employee.fullName}, using default`);
     }
     
-    // Use a reliable placeholder - either UI Avatars or a simple data URL
-    const initials = employee.fullName
-      ?.split(' ')
-      .map(n => n[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase() || 'NA';
-    
-    // Option 1: Use UI Avatars service (requires internet)
+    // Fallback: Use UI Avatars service
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.fullName || 'N A')}&size=120&background=1e293b&color=fff`;
-    
-    // Option 2: If you want to use a local file, make sure it exists first:
-    // return "/assets/images/default-avatar.png";
   };
 
   const imageSrc = getImageSrc();
@@ -59,7 +41,6 @@ const EmployeeSingleCard = ({ employee }: PropsType) => {
   return (
     <div className="card__wrapper h-full flex flex-col justify-between">
       <div className="employee__wrapper text-center">
-        {/* Employee image container */}
         <div className="employee__thumb mb-[15px] flex justify-center">
           <Link 
             href={`/hrm/employee-profile?uid=${employee.uid}`}
@@ -75,20 +56,14 @@ const EmployeeSingleCard = ({ employee }: PropsType) => {
                 unoptimized
                 priority={false}
                 onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-                  console.error(`❌ Image load error for ${employee.fullName}`);
                   const target = e.currentTarget;
-                  // Final fallback to UI Avatars
                   target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.fullName || 'N A')}&size=120&background=ef4444&color=fff`;
-                }}
-                onLoad={() => {
-                  console.log(`✓ Image loaded successfully for ${employee.fullName}`);
                 }}
               />
             </div>
           </Link>
         </div>
 
-        {/* Employee info */}
         <div className="employee__content">
           <div className="employee__meta mb-[15px]">
             <h4 className="text-white mb-1">
@@ -104,7 +79,6 @@ const EmployeeSingleCard = ({ employee }: PropsType) => {
             </p>
           </div>
 
-          {/* Action Buttons */}
           <div className="employee__btn mt-4">
             <div className="flex items-center justify-center gap-3">
               <Link 
