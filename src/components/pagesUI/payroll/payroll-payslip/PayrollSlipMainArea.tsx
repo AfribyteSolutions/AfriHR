@@ -28,43 +28,62 @@ const PayrollSlipMainArea = () => {
 
   useEffect(() => {
     const fetchPayslips = async () => {
-      if (!user?.uid) return;
+      // Exit if we have no user session and no specific ID to look up
+      if (!user?.uid && !activeId) return;
       
       try {
         setLoading(true);
-        // Simple query (no composite index needed)
-        const q = query(
-          collection(db, "payrolls"), 
-          where("employeeUid", "==", user.uid),
-          where("status", "==", "Paid") 
-        );
-        
-        const snap = await getDocs(q);
-        let history = snap.docs.map(d => ({ 
-          id: d.id, 
-          ...d.data(),
-          // Ensure we have numeric values for sorting
-          salaryYear: Number(d.data().salaryYear || d.data().year),
-          salaryMonth: d.data().salaryMonth || monthToNumber(d.data().month)
-        })) as IPaylist[];
 
-        // MANUAL SORT: Arranges correctly by Year then Month (Newest First)
-        history.sort((a, b) => {
-          if (b.salaryYear !== a.salaryYear) return b.salaryYear - a.salaryYear;
-          return b.salaryMonth - a.salaryMonth;
-        });
+        // 1. Fetch the specific record requested in the URL
+        let targetPayroll: IPaylist | null = null;
+        if (activeId) {
+          const targetSnap = await getDoc(doc(db, "payrolls", activeId));
+          if (targetSnap.exists()) {
+            targetPayroll = { 
+              id: targetSnap.id, 
+              ...targetSnap.data() 
+            } as IPaylist;
+          }
+        }
 
-        setAllPayslips(history);
+        /**
+         * 2. Determine whose history to show.
+         * If a manager is viewing an ID, show the history for THAT employee.
+         * Otherwise, show the logged-in user's own history.
+         */
+        const ownerUid = targetPayroll ? targetPayroll.employeeUid : user?.uid;
 
-        // Selection logic
-        let current = activeId ? history.find(p => p.id === activeId) : history[0];
+        if (ownerUid) {
+          const q = query(
+            collection(db, "payrolls"), 
+            where("employeeUid", "==", ownerUid),
+            where("status", "==", "Paid") 
+          );
+          
+          const snap = await getDocs(q);
+          let history = snap.docs.map(d => ({ 
+            id: d.id, 
+            ...d.data(),
+            salaryYear: Number(d.data().salaryYear || d.data().year),
+            salaryMonth: d.data().salaryMonth || monthToNumber(d.data().month)
+          })) as IPaylist[];
 
-        if (current) {
-          setSelectedPayroll(current);
-          const compSnap = await getDoc(doc(db, "companies", current.companyId));
-          if (compSnap.exists()) setCompanyData(compSnap.data());
-        } else {
-          setSelectedPayroll(null);
+          // Sort History Newest First
+          history.sort((a, b) => {
+            if (b.salaryYear !== a.salaryYear) return b.salaryYear - a.salaryYear;
+            return b.salaryMonth - a.salaryMonth;
+          });
+
+          setAllPayslips(history);
+
+          // 3. Selection Logic
+          const current = targetPayroll || (history.length > 0 ? history[0] : null);
+
+          if (current) {
+            setSelectedPayroll(current);
+            const compSnap = await getDoc(doc(db, "companies", current.companyId));
+            if (compSnap.exists()) setCompanyData(compSnap.data());
+          }
         }
       } catch (e) {
         console.error("Load Error:", e);
@@ -73,15 +92,16 @@ const PayrollSlipMainArea = () => {
       }
     };
     fetchPayslips();
-  }, [user, activeId]);
+  }, [user?.uid, activeId]);
 
   if (loading) return <div className="p-10 text-center">Loading Records...</div>;
-  if (allPayslips.length === 0) return <div className="p-10 text-center dark:text-white">No paid records found.</div>;
+  if (!selectedPayroll && allPayslips.length === 0) return <div className="p-10 text-center dark:text-white">No records found.</div>;
 
   return (
     <div className="app__slide-wrapper">
       <Breadcrumb breadTitle="Payment History" subTitle="Home" />
       <div className="grid grid-cols-12 gap-6">
+        {/* Sidebar: Shows history ONLY for the selected employee */}
         <div className="col-span-12 lg:col-span-4">
           <div className="card__wrapper dark:bg-[#1e293b] dark:border-slate-800">
             <h6 className="font-bold mb-4 dark:text-white">Payslip History</h6>
@@ -97,7 +117,10 @@ const PayrollSlipMainArea = () => {
                   }`}
                 >
                   <div className="flex justify-between items-center">
-                    <span className="font-bold dark:text-slate-200">{p.month} {p.year}</span>
+                    <div>
+                      <span className="font-bold block dark:text-slate-200">{p.month} {p.year}</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">{p.employeeName}</span>
+                    </div>
                     <span className="font-bold text-blue-600 dark:text-blue-400">
                       {Number(p.netPay).toLocaleString()}
                     </span>
@@ -108,11 +131,14 @@ const PayrollSlipMainArea = () => {
           </div>
         </div>
         
+        {/* Main View: Correctly scoped to the employee, not the manager */}
         <div className="col-span-12 lg:col-span-8">
           {selectedPayroll && (
             <div className="card__wrapper dark:bg-[#1e293b] dark:border-slate-800" id="printable-area">
               <div className="flex justify-between items-center mb-6 no-print">
-                <h5 className="font-bold dark:text-white">Payslip - {selectedPayroll.month} {selectedPayroll.year}</h5>
+                <h5 className="font-bold dark:text-white">
+                  Payslip - {selectedPayroll.employeeName} ({selectedPayroll.month} {selectedPayroll.year})
+                </h5>
                 <button 
                   onClick={() => window.print()} 
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors"
