@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
           title: "New Leave Request",
           message: `${employeeName} has requested ${calculatedDays} days of ${leaveType} leave`,
           category: "leave",
-          link: `/leaves?id=${docRef.id}`,
+          link: `/hrm/leaves?id=${docRef.id}`,
           read: false,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -191,7 +191,7 @@ export async function PUT(request: NextRequest) {
           title: `Leave Request ${statusText.charAt(0).toUpperCase() + statusText.slice(1)}`,
           message: `Your ${leaveData.leaveType} leave request has been ${statusText}`,
           category: "leave",
-          link: `/leaves?id=${id}`,
+          link: `/hrm/leaves-employee?id=${id}`,
           read: false,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });

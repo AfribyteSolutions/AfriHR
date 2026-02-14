@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import AdminLeaveSummary from "./AdminLeaveSummary";
 import AdminLeaveTable from "./AdminLeaveTable";
 import AddAdminLeaveModal from "./AddAdminLeaveModal";
@@ -8,6 +9,8 @@ import { useAuthUserContext } from "@/context/UserAuthContext";
 
 const AdminLeavesMainArea = () => {
   const { user: authUser, loading: loadingAuthUser } = useAuthUserContext();
+  const searchParams = useSearchParams();
+  const highlightLeaveId = searchParams.get('id');
   const [modalOpen, setModalOpen] = useState(false);
   const [leaveData, setLeaveData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +92,11 @@ const AdminLeavesMainArea = () => {
         </div>
         <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0">
           <AdminLeaveSummary leaveData={leaveData} />
-          <AdminLeaveTable leaveData={leaveData} onRefresh={refreshLeaves} />
+          <AdminLeaveTable
+            leaveData={leaveData}
+            onRefresh={refreshLeaves}
+            highlightLeaveId={highlightLeaveId}
+          />
         </div>
         {modalOpen && (
           <AddAdminLeaveModal

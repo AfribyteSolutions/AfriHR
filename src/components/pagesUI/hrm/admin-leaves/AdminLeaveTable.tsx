@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Box from "@mui/material/Box";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -22,6 +22,7 @@ import { useTableStatusHook } from "@/hooks/use-condition-class";
 import Link from "next/link";
 import Image from "next/image";
 import AdminLeaveEditModal from "./AdminLeaveEditModal";
+import user from "@/assets/img/user/user.jpg";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
 import { toast } from "sonner";
@@ -29,13 +30,29 @@ import { toast } from "sonner";
 interface AdminLeaveTableProps {
   leaveData: any[];
   onRefresh?: () => void;
+  highlightLeaveId?: string | null;
 }
 
-const AdminLeaveTable: React.FC<AdminLeaveTableProps> = ({ leaveData, onRefresh }) => {
+const AdminLeaveTable: React.FC<AdminLeaveTableProps> = ({ leaveData, onRefresh, highlightLeaveId }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState<IAdminLeave | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string>("");
+  const highlightRef = useRef<HTMLTableRowElement>(null);
+
+  // Add debug logging
+  useEffect(() => {
+    console.log("📊 Leave data received in table:", leaveData);
+    console.log("📊 Total leaves:", leaveData.length);
+    console.log("🔍 Highlight leave ID:", highlightLeaveId);
+  }, [leaveData, highlightLeaveId]);
+
+  // Scroll to highlighted leave
+  useEffect(() => {
+    if (highlightLeaveId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightLeaveId, paginatedRows]);
   const {
     order,
     orderBy,
@@ -103,33 +120,45 @@ const AdminLeaveTable: React.FC<AdminLeaveTableProps> = ({ leaveData, onRefresh 
                       </TableRow>
                     </TableHead>
                     <TableBody className="table__body">
-                      {paginatedRows.map((row, index) => {
-                        const stausClass = useTableStatusHook(row?.status);
-                        return (
-                          <TableRow
-                            key={index}
-                            selected={selected.includes(index)}
-                            onClick={() => handleClick(index)}
-                          >
-                            <TableCell className="sorting_1">
-                              <span className="table-avatar flex justify-start items-center">
-                                <Link
-                                  className="avatar-img me-[10px]"
-                                  href={`/hrm/employee-profile/${index + 1}`}
-                                >
-                                  <Image
-                                    className="img-48 border-circle"
-                                    src={row?.adminImg}
-                                    alt="User Image"
-                                  />
-                                </Link>
-                                <Link
-                                  href={`/hrm/employee-profile/${index + 1}`}
-                                >
-                                  {row?.employeeName}
-                                </Link>
-                              </span>
-                            </TableCell>
+                      {paginatedRows.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8">
+                            <p className="text-gray-500">No leave requests found</p>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedRows.map((row, index) => {
+                          const stausClass = useTableStatusHook(row?.status);
+                          const isHighlighted = highlightLeaveId && row?.id === highlightLeaveId;
+                          return (
+                            <TableRow
+                              key={row?.id || index}
+                              ref={isHighlighted ? highlightRef : null}
+                              selected={selected.includes(index)}
+                              onClick={() => handleClick(index)}
+                              className={isHighlighted ? "bg-yellow-50" : ""}
+                            >
+                              <TableCell className="sorting_1">
+                                <span className="table-avatar flex justify-start items-center">
+                                  <Link
+                                    className="avatar-img me-[10px]"
+                                    href={`/hrm/employee-profile/${row?.employeeId || index + 1}`}
+                                  >
+                                    <Image
+                                      className="img-48 border-circle"
+                                      src={row?.adminImg || row?.profilePictureUrl || user}
+                                      alt="User Image"
+                                      width={48}
+                                      height={48}
+                                    />
+                                  </Link>
+                                  <Link
+                                    href={`/hrm/employee-profile/${row?.employeeId || index + 1}`}
+                                  >
+                                    {row?.employeeName || "Unknown Employee"}
+                                  </Link>
+                                </span>
+                              </TableCell>
 
                             <TableCell className="table__loan-amount">
                               {row?.designation}
@@ -228,9 +257,10 @@ const AdminLeaveTable: React.FC<AdminLeaveTableProps> = ({ leaveData, onRefresh 
                                 </button>
                               </div>
                             </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                            </TableRow>
+                          );
+                        })
+                      )}
                     </TableBody>
                   </Table>
                 </TableContainer>
