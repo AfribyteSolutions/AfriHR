@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import AdminLeaveSummary from "./AdminLeaveSummary";
 import AdminLeaveTable from "./AdminLeaveTable";
+import LeaveCalendar from "./LeaveCalendar";
 import AddAdminLeaveModal from "./AddAdminLeaveModal";
 import { useAuthUserContext } from "@/context/UserAuthContext";
 
@@ -14,6 +15,7 @@ const AdminLeavesMainArea = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [leaveData, setLeaveData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
 
   useEffect(() => {
     const fetchLeaves = async () => {
@@ -80,7 +82,25 @@ const AdminLeavesMainArea = () => {
               </li>
             </ol>
           </nav>
-          <div className="breadcrumb__btn">
+          <div className="breadcrumb__btn flex items-center gap-3">
+            <div className="btn-group">
+              <button
+                type="button"
+                className={`btn ${viewMode === "table" ? "btn-primary" : "btn-outline-primary"}`}
+                onClick={() => setViewMode("table")}
+              >
+                <i className="fa-solid fa-table me-2"></i>
+                Table
+              </button>
+              <button
+                type="button"
+                className={`btn ${viewMode === "calendar" ? "btn-primary" : "btn-outline-primary"}`}
+                onClick={() => setViewMode("calendar")}
+              >
+                <i className="fa-solid fa-calendar me-2"></i>
+                Calendar
+              </button>
+            </div>
             <button
               type="button"
               className="btn btn-primary"
@@ -92,11 +112,17 @@ const AdminLeavesMainArea = () => {
         </div>
         <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0">
           <AdminLeaveSummary leaveData={leaveData} />
-          <AdminLeaveTable
-            leaveData={leaveData}
-            onRefresh={refreshLeaves}
-            highlightLeaveId={highlightLeaveId}
-          />
+          {viewMode === "table" ? (
+            <AdminLeaveTable
+              leaveData={leaveData}
+              onRefresh={refreshLeaves}
+              highlightLeaveId={highlightLeaveId}
+            />
+          ) : (
+            <div className="col-span-12">
+              <LeaveCalendar leaveData={leaveData} />
+            </div>
+          )}
         </div>
         {modalOpen && (
           <AddAdminLeaveModal

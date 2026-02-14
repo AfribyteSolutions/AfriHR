@@ -12,6 +12,7 @@ export interface SidebarMenuItem {
 const allowedManagerItems = [
   "Dashboard",
   "Employee List",
+  "Company",
   "Projects",
   "Training",
   "Attendance",

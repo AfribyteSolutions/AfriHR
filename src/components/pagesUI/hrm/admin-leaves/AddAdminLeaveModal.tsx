@@ -39,11 +39,15 @@ const leaveDurations = [
   { value: "Custom", label: "Custom Duration" },
 ];
 
-const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProps) => {
+const AddAdminLeaveModal = ({
+  open,
+  setOpen,
+  onRefresh,
+}: AddAdminLeaveModalProps) => {
   const { user: authUser } = useAuthUserContext();
   const [employees, setEmployees] = useState<any[]>([]);
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(
-    new Date()
+    new Date(),
   );
   const [selectEndDate, setSelectEndDate] = useState<Date | null>(new Date());
   const [selectedLeaveType, setSelectedLeaveType] = useState<string>("");
@@ -63,7 +67,9 @@ const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProp
       if (!authUser?.companyId) return;
 
       try {
-        const res = await fetch(`/api/company-employees?companyId=${authUser.companyId}`);
+        const res = await fetch(
+          `/api/company-employees?companyId=${authUser.companyId}`,
+        );
         const data = await res.json();
 
         if (data.success && Array.isArray(data.employees)) {
@@ -102,7 +108,10 @@ const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProp
         }
         setSelectEndDate(endDate);
       }
-      setValue("leaveDuration", `${days} ${days === 0.5 ? "Half Day" : days === 1 ? "Day" : "Days"}`);
+      setValue(
+        "leaveDuration",
+        `${days} ${days === 0.5 ? "Half Day" : days === 1 ? "Day" : "Days"}`,
+      );
     }
   }, [selectedDuration, selectStartDate, setValue]);
 
@@ -116,14 +125,19 @@ const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProp
 
     try {
       // Find employee name from selection
-      const selectedEmployee = employees.find((emp) => emp.value === data.employeeName);
+      const selectedEmployee = employees.find(
+        (emp) => emp.value === data.employeeName,
+      );
 
       // Calculate days between dates
       const start = selectStartDate;
       const end = selectEndDate;
-      const days = start && end
-        ? Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-        : 1;
+      const days =
+        start && end
+          ? Math.ceil(
+              (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
+            ) + 1
+          : 1;
 
       const leaveData = {
         employeeId: data.employeeName,
@@ -160,7 +174,7 @@ const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProp
     } catch (error: any) {
       toast.error(
         error?.message ||
-          "An error occurred while creating the leave. Please try again!"
+          "An error occurred while creating the leave. Please try again!",
       );
     }
   };
@@ -217,7 +231,9 @@ const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProp
                         ))}
                       </select>
                       {errors.leaveType && (
-                        <span className="text-red-500 text-sm">{errors.leaveType.message}</span>
+                        <span className="text-red-500 text-sm">
+                          {errors.leaveType.message}
+                        </span>
                       )}
                     </div>
 
@@ -251,7 +267,10 @@ const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProp
                           setSelectedDuration(e.target.value);
                           if (e.target.value !== "Custom") {
                             const days = parseFloat(e.target.value);
-                            setValue("leaveDuration", `${days} ${days === 0.5 ? "Half Day" : days === 1 ? "Day" : "Days"}`);
+                            setValue(
+                              "leaveDuration",
+                              `${days} ${days === 0.5 ? "Half Day" : days === 1 ? "Day" : "Days"}`,
+                            );
                           }
                         }}
                       >
@@ -263,7 +282,9 @@ const AddAdminLeaveModal = ({ open, setOpen, onRefresh }: AddAdminLeaveModalProp
                         ))}
                       </select>
                       {errors.leaveDuration && (
-                        <span className="text-red-500 text-sm">{errors.leaveDuration.message}</span>
+                        <span className="text-red-500 text-sm">
+                          {errors.leaveDuration.message}
+                        </span>
                       )}
                     </div>
 
