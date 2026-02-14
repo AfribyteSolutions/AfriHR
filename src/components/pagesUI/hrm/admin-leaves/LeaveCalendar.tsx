@@ -8,6 +8,7 @@ interface LeaveCalendarProps {
 
 const LeaveCalendar: React.FC<LeaveCalendarProps> = ({ leaveData }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -34,6 +35,16 @@ const LeaveCalendar: React.FC<LeaveCalendarProps> = ({ leaveData }) => {
     setCurrentDate(new Date());
   };
 
+  const toggleFilter = (leaveType: string) => {
+    setActiveFilters((prev) => {
+      if (prev.includes(leaveType)) {
+        return prev.filter((type) => type !== leaveType);
+      } else {
+        return [...prev, leaveType];
+      }
+    });
+  };
+
   // Get leaves for the current month
   const leavesInMonth = useMemo(() => {
     return leaveData.filter((leave) => {
@@ -44,9 +55,16 @@ const LeaveCalendar: React.FC<LeaveCalendarProps> = ({ leaveData }) => {
       const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
-      return (startDate <= monthEnd && endDate >= monthStart);
+      const isInMonth = startDate <= monthEnd && endDate >= monthStart;
+
+      // Apply filters if any are active
+      if (activeFilters.length > 0) {
+        return isInMonth && activeFilters.includes(leave.leaveType?.toLowerCase());
+      }
+
+      return isInMonth;
     });
-  }, [leaveData, currentDate]);
+  }, [leaveData, currentDate, activeFilters]);
 
   // Get leaves for a specific day
   const getLeavesForDay = (day: number) => {
@@ -74,6 +92,28 @@ const LeaveCalendar: React.FC<LeaveCalendarProps> = ({ leaveData }) => {
       unpaid: "bg-gray-100 text-gray-800 border-gray-300",
     };
     return colors[leaveType.toLowerCase()] || "bg-yellow-100 text-yellow-800 border-yellow-300";
+  };
+
+  const formatLeaveTooltip = (leave: any) => {
+    const startDate = new Date(leave.startDate).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const endDate = leave.endDate
+      ? new Date(leave.endDate).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : startDate;
+
+    return `${leave.employeeName}
+Email: ${leave.email || "N/A"}
+Type: ${leave.leaveType}
+Dates: ${startDate} - ${endDate}
+Status: ${leave.status || "Pending"}
+Reason: ${leave.reason || "N/A"}`;
   };
 
   const renderCalendar = () => {
@@ -111,7 +151,7 @@ const LeaveCalendar: React.FC<LeaveCalendarProps> = ({ leaveData }) => {
                   key={`${leave.id}-${idx}`}
                   href={`/hrm/leaves?id=${leave.id}`}
                   className={`leave-item ${getLeaveTypeColor(leave.leaveType)}`}
-                  title={`${leave.employeeName} - ${leave.leaveType}`}
+                  title={formatLeaveTooltip(leave)}
                 >
                   <span className="leave-name">{leave.employeeName}</span>
                 </Link>
@@ -276,6 +316,21 @@ const LeaveCalendar: React.FC<LeaveCalendarProps> = ({ leaveData }) => {
           align-items: center;
           gap: 8px;
           font-size: 0.875rem;
+          cursor: pointer;
+          padding: 6px 10px;
+          border-radius: 6px;
+          transition: all 0.2s;
+          border: 2px solid transparent;
+        }
+
+        .legend-item:hover {
+          background: #e5e7eb;
+        }
+
+        .legend-item.active {
+          background: white;
+          border-color: #3b82f6;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .legend-color {
@@ -314,30 +369,59 @@ const LeaveCalendar: React.FC<LeaveCalendarProps> = ({ leaveData }) => {
       <div className="calendar-grid">{renderCalendar()}</div>
 
       <div className="legend">
-        <div className="legend-item">
+        <div className="text-sm text-gray-600 w-full mb-2">
+          Click on leave types to filter (showing {leavesInMonth.length} leaves)
+        </div>
+        <div
+          className={`legend-item ${activeFilters.includes("sick") ? "active" : ""}`}
+          onClick={() => toggleFilter("sick")}
+        >
           <div className="legend-color bg-red-100 border-red-300"></div>
           <span>Sick Leave</span>
         </div>
-        <div className="legend-item">
+        <div
+          className={`legend-item ${activeFilters.includes("casual") ? "active" : ""}`}
+          onClick={() => toggleFilter("casual")}
+        >
           <div className="legend-color bg-blue-100 border-blue-300"></div>
           <span>Casual Leave</span>
         </div>
-        <div className="legend-item">
+        <div
+          className={`legend-item ${activeFilters.includes("annual") ? "active" : ""}`}
+          onClick={() => toggleFilter("annual")}
+        >
           <div className="legend-color bg-green-100 border-green-300"></div>
           <span>Annual Leave</span>
         </div>
-        <div className="legend-item">
+        <div
+          className={`legend-item ${activeFilters.includes("maternity") ? "active" : ""}`}
+          onClick={() => toggleFilter("maternity")}
+        >
           <div className="legend-color bg-purple-100 border-purple-300"></div>
           <span>Maternity Leave</span>
         </div>
-        <div className="legend-item">
+        <div
+          className={`legend-item ${activeFilters.includes("paternity") ? "active" : ""}`}
+          onClick={() => toggleFilter("paternity")}
+        >
           <div className="legend-color bg-indigo-100 border-indigo-300"></div>
           <span>Paternity Leave</span>
         </div>
-        <div className="legend-item">
+        <div
+          className={`legend-item ${activeFilters.includes("unpaid") ? "active" : ""}`}
+          onClick={() => toggleFilter("unpaid")}
+        >
           <div className="legend-color bg-gray-100 border-gray-300"></div>
           <span>Unpaid Leave</span>
         </div>
+        {activeFilters.length > 0 && (
+          <button
+            onClick={() => setActiveFilters([])}
+            className="ml-auto px-4 py-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            Clear Filters
+          </button>
+        )}
       </div>
     </div>
   );

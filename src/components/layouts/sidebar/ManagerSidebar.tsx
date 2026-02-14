@@ -98,7 +98,7 @@ const ManagerSidebar = () => {
 
         <div className="common-scrollbar max-h-screen overflow-y-auto">
           <nav className="main-menu-container nav nav-pills flex-column sub-open mt-[80px]">
-            <ul className="main-menu" style={{ display: "block" }}>
+            <ul className="main-menu" style={{ display: "block", paddingBottom: "100px" }}>
               <li className="sidebar__menu-category">
                 <span className="category-name">Manager Menu</span>
               </li>

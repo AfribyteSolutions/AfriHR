@@ -10,15 +10,21 @@ export interface SidebarMenuItem {
 }
 
 const allowedManagerItems = [
-  "Dashboard",
-  "Employee List",
+  "Dashboards",
+  "HRM",
+  "Chat",
+  "Payroll",
+  "Expense",
   "Company",
   "Projects",
-  "Training",
-  "Attendance",
-  "Tasks",
-  "Meetings",
-  "Reports"
+  "Resignation",
+  "Promotion",
+  "Termination",
+  "Document",
+  "Announcement",
+  "Invoice",
+  "Company Organogram",
+  "Feedback"
 ];
 
 // Accept any item shape that might come from sidebarData
