@@ -12,6 +12,7 @@ import Paper from "@mui/material/Paper";
 import useMaterialTableHook from "@/hooks/useMaterialTableHook";
 import { IFeedback } from "./FeedbackMainArea";
 import UpdateFeedbackModal from "./UpdateFeedbackModal";
+import ReportFeedbackModal from "./ReportFeedbackModal";
 import DeleteModal from "@/components/common/DeleteModal";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import { toast } from "sonner";
@@ -43,6 +44,8 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
   const [editData, setEditData] = useState<IFeedback | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string>("");
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportFeedbackId, setReportFeedbackId] = useState<string>("");
 
   const {
     order,
@@ -64,6 +67,11 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
   const handleDeleteClick = (id: string) => {
     setDeleteId(id);
     setModalDeleteOpen(true);
+  };
+
+  const handleReportClick = (id: string) => {
+    setReportFeedbackId(id);
+    setReportModalOpen(true);
   };
 
   const handleDelete = async () => {
@@ -183,6 +191,14 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
                           <TableCell align="right">
                             <div className="flex items-center justify-end gap-[10px]">
                               <button
+                                onClick={() => handleReportClick(row.id)}
+                                className="table__icon"
+                                style={{ color: "#f59e0b" }}
+                                title="Report Feedback"
+                              >
+                                <i className="fa-regular fa-flag"></i>
+                              </button>
+                              <button
                                 onClick={() => handleEdit(row)}
                                 className="table__icon edit"
                               >
@@ -220,6 +236,14 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
           setOpen={setModalDeleteOpen}
           handleDeleteFunc={handleDelete}
           deleteId={deleteId}
+        />
+      )}
+      {reportModalOpen && (
+        <ReportFeedbackModal
+          open={reportModalOpen}
+          setOpen={setReportModalOpen}
+          feedbackId={reportFeedbackId}
+          onRefresh={onRefresh}
         />
       )}
     </>

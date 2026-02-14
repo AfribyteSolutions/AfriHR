@@ -22,7 +22,6 @@ import { useTableStatusHook } from "@/hooks/use-condition-class";
 import Link from "next/link";
 import Image from "next/image";
 import AdminLeaveEditModal from "./AdminLeaveEditModal";
-import user from "@/assets/img/user/user.jpg";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
 import { toast } from "sonner";
@@ -40,19 +39,6 @@ const AdminLeaveTable: React.FC<AdminLeaveTableProps> = ({ leaveData, onRefresh,
   const [deleteId, setDeleteId] = useState<string>("");
   const highlightRef = useRef<HTMLTableRowElement>(null);
 
-  // Add debug logging
-  useEffect(() => {
-    console.log("📊 Leave data received in table:", leaveData);
-    console.log("📊 Total leaves:", leaveData.length);
-    console.log("🔍 Highlight leave ID:", highlightLeaveId);
-  }, [leaveData, highlightLeaveId]);
-
-  // Scroll to highlighted leave
-  useEffect(() => {
-    if (highlightLeaveId && highlightRef.current) {
-      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [highlightLeaveId, paginatedRows]);
   const {
     order,
     orderBy,
@@ -69,6 +55,20 @@ const AdminLeaveTable: React.FC<AdminLeaveTableProps> = ({ leaveData, onRefresh,
     handleChangeRowsPerPage,
     handleSearchChange,
   } = useMaterialTableHook<IAdminLeave | any>(leaveData, 10);
+
+  // Add debug logging
+  useEffect(() => {
+    console.log("📊 Leave data received in table:", leaveData);
+    console.log("📊 Total leaves:", leaveData.length);
+    console.log("🔍 Highlight leave ID:", highlightLeaveId);
+  }, [leaveData, highlightLeaveId]);
+
+  // Scroll to highlighted leave
+  useEffect(() => {
+    if (highlightLeaveId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightLeaveId, paginatedRows]);
 
   return (
     <>
@@ -146,7 +146,7 @@ const AdminLeaveTable: React.FC<AdminLeaveTableProps> = ({ leaveData, onRefresh,
                                   >
                                     <Image
                                       className="img-48 border-circle"
-                                      src={row?.adminImg || row?.profilePictureUrl || user}
+                                      src={row?.adminImg || row?.profilePictureUrl || "/assets/images/avatar/avatar.png"}
                                       alt="User Image"
                                       width={48}
                                       height={48}

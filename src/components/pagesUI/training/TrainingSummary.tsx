@@ -1,28 +1,51 @@
 import SummarySingleCard from "@/components/common/SummarySingleCard";
-
 import React from "react";
 
-const TrainingSummary: React.FC = () => {
+interface TrainingSummaryProps {
+  trainings: any[];
+}
+
+const TrainingSummary: React.FC<TrainingSummaryProps> = ({ trainings }) => {
+  // Calculate statistics from real data
+  const totalTrainings = trainings.length;
+
+  const completedTrainings = trainings.filter(
+    (t) => t.status === "completed"
+  ).length;
+
+  const upcomingTrainings = trainings.filter(
+    (t) => t.status === "upcoming" || t.status === "open"
+  ).length;
+
+  const inProgressTrainings = trainings.filter(
+    (t) => t.status === "in_progress"
+  ).length;
+
+  const totalTrainees = trainings.reduce(
+    (sum, training) => sum + (training.enrolledEmployees?.length || 0),
+    0
+  );
+
   const trainingData = [
     {
       iconClass: "fa-sharp fa-light fa-book",
       title: "Total Training",
-      value: "25+",
+      value: totalTrainings.toString(),
     },
     {
       iconClass: "fa-sharp fa-light fa-user",
-      title: "Total Trainee",
-      value: "313",
+      title: "Total Trainees",
+      value: totalTrainees.toString(),
     },
     {
       iconClass: "fa-light fa-badge-check",
-      title: "Complete Training",
-      value: "15",
+      title: "Completed",
+      value: completedTrainings.toString(),
     },
     {
       iconClass: "fa-sharp fa-light fa-rectangle-terminal",
-      title: "Upcoming Training",
-      value: "5",
+      title: "Upcoming",
+      value: upcomingTrainings.toString(),
     },
   ];
 

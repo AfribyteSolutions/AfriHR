@@ -80,6 +80,7 @@ const sidebarData: SidebarCategory[] = [
         subItems: [
           { label: "Company List", link: "/company/companies" },
           { label: "Company Details", link: "/company/company-details" },
+          { label: "Create Business", link: "/business/create" },
         ],
       },
       {

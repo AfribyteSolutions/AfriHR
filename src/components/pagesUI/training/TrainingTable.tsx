@@ -19,20 +19,29 @@ import { useTableStatusHook } from "@/hooks/use-condition-class";
 import Link from "next/link";
 import Image from "next/image";
 import { Checkbox } from "@mui/material";
-import avater1 from "../../../../public/assets/images/avatar/avatar3.png";
-import avater2 from "../../../../public/assets/images/avatar/avatar1.png";
-import avater3 from "../../../../public/assets/images/avatar/avatar15.png";
-import { trainingData } from "@/data/training-data";
 import EditTraingModal from "./EditTraingModal";
 import TrainingDetailsModal from "./TrainingDetailsModal";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
-const TrainingTable = () => {
+import { toast } from "sonner";
+
+interface TrainingTableProps {
+  trainingData: any[];
+  onRefresh?: () => void;
+  loading?: boolean;
+}
+
+const TrainingTable: React.FC<TrainingTableProps> = ({
+  trainingData,
+  onRefresh,
+  loading = false,
+}) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editData, setEditData] = useState<ITraining | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<number>(0);
+  const [deleteId, setDeleteId] = useState<string>("");
+
   const {
     order,
     orderBy,
@@ -42,7 +51,7 @@ const TrainingTable = () => {
     searchQuery,
     paginatedRows,
     filteredRows,
-    handleDelete,
+    handleDelete: handleDeleteLocal,
     handleRequestSort,
     handleSelectAllClick,
     handleClick,
@@ -122,152 +131,133 @@ const TrainingTable = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody className="table__body">
-                      {paginatedRows.map((row, index) => {
-                        const stausClass = useTableStatusHook(row?.status);
-                        return (
-                          <TableRow
-                            key={index}
-                            selected={selected.includes(index)}
-                            onClick={() => handleClick(index)}
-                          >
-                            <TableCell padding="checkbox">
-                              <Checkbox
-                                className="custom-checkbox checkbox-small"
-                                checked={selected.includes(index)}
-                                size="small"
-                                onChange={() => handleClick(index)}
-                              />
-                            </TableCell>
+                      {loading ? (
+                        <TableRow>
+                          <TableCell colSpan={10} className="text-center py-8">
+                            <p className="text-gray-500">Loading trainings...</p>
+                          </TableCell>
+                        </TableRow>
+                      ) : paginatedRows.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={10} className="text-center py-8">
+                            <p className="text-gray-500">No trainings found</p>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedRows.map((row, index) => {
+                          const stausClass = useTableStatusHook(row?.status);
+                          const startDate = row?.startDate
+                            ? new Date(row.startDate).toLocaleDateString()
+                            : "N/A";
+                          const endDate = row?.endDate
+                            ? new Date(row.endDate).toLocaleDateString()
+                            : "N/A";
+                          const enrolledCount = row?.enrolledEmployees?.length || 0;
 
-                            <TableCell></TableCell>
-                            <TableCell>{index + 1}</TableCell>
-                            <TableCell className="table__loan-amount">
-                              {row?.trainingTitle}
-                            </TableCell>
+                          return (
+                            <TableRow
+                              key={row?.id || index}
+                              selected={selected.includes(index)}
+                              onClick={() => handleClick(index)}
+                            >
+                              <TableCell padding="checkbox">
+                                <Checkbox
+                                  className="custom-checkbox checkbox-small"
+                                  checked={selected.includes(index)}
+                                  size="small"
+                                  onChange={() => handleClick(index)}
+                                />
+                              </TableCell>
 
-                            <TableCell className="sorting_1">
-                              <span className="table-avatar flex justify-start items-center">
-                                <Link
-                                  className="avatar-img-small me-[10px]"
-                                  href={`/hrm/employee-profile/${index + 1}`}
-                                >
-                                  <Image
-                                    className="img-36 border-circle"
-                                    src={row?.trainerImg}
-                                    alt="User Image"
-                                  />
-                                </Link>
-                                <Link
-                                  href={`/hrm/employee-profile/${index + 1}`}
-                                >
-                                  {row?.trainer}
-                                </Link>
-                              </span>
-                            </TableCell>
+                              <TableCell></TableCell>
+                              <TableCell>{index + 1}</TableCell>
+                              <TableCell className="table__loan-amount">
+                                {row?.title || "N/A"}
+                              </TableCell>
 
-                            <TableCell>
-                              <div className="avatar">
-                                <ul className="flex items-start justify-center">
-                                  <li>
-                                    <Link
-                                      href={`/hrm/employee-profile/${
-                                        index + 1
-                                      }`}
-                                    >
-                                      <Image
-                                        className="img-36 border-circle"
-                                        src={avater1}
-                                        alt="image"
-                                      />
-                                    </Link>
-                                  </li>
-                                  <li>
-                                    <Link
-                                      href={`/hrm/employee-profile/${
-                                        index + 1
-                                      }`}
-                                    >
-                                      <Image
-                                        className="img-36 border-circle"
-                                        src={avater3}
-                                        alt="image"
-                                      />
-                                    </Link>
-                                  </li>
-                                  <li>
-                                    <Link
-                                      href={`/hrm/employee-profile/${
-                                        index + 1
-                                      }`}
-                                    >
-                                      <Image
-                                        className="img-36 border-circle"
-                                        src={avater2}
-                                        alt="image"
-                                      />
-                                    </Link>
-                                  </li>
-                                  <li>
-                                    <span className="avatar-bg">15+</span>
-                                  </li>
-                                </ul>
-                              </div>
-                            </TableCell>
+                              <TableCell className="sorting_1">
+                                <span className="table-avatar flex justify-start items-center">
+                                  <Link
+                                    className="avatar-img-small me-[10px]"
+                                    href={`/hrm/employee-profile/${row?.trainerId || "#"}`}
+                                  >
+                                    <Image
+                                      className="img-36 border-circle"
+                                      src="/assets/images/avatar/avatar.png"
+                                      alt="Trainer Image"
+                                      width={36}
+                                      height={36}
+                                    />
+                                  </Link>
+                                  <Link
+                                    href={`/hrm/employee-profile/${row?.trainerId || "#"}`}
+                                  >
+                                    {row?.trainerName || "N/A"}
+                                  </Link>
+                                </span>
+                              </TableCell>
 
-                            <TableCell className="table__loan-created">
-                              {row?.trainingDuration}
-                            </TableCell>
-                            <TableCell className="table__loan-created">
-                              {row?.time}
-                            </TableCell>
-                            <TableCell className="table__loan-created">
-                              {row?.cost}
-                            </TableCell>
+                              <TableCell>
+                                <span className="text-sm">
+                                  {enrolledCount} participant{enrolledCount !== 1 ? "s" : ""}
+                                </span>
+                              </TableCell>
 
-                            <TableCell className="table__delivery">
-                              <span className={`bd-badge ${stausClass}`}>
-                                {row?.status}
-                              </span>
-                            </TableCell>
-                            <TableCell className="table__icon-box">
-                              <div className="flex items-center justify-start gap-[10px]">
-                                <button
-                                  type="button"
-                                  className="table__icon download"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditData(row);
-                                    setDetailsModalOpen(true);
-                                  }}
-                                >
-                                  <i className="fa-regular fa-eye"></i>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="table__icon edit"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditData(row);
-                                    setModalOpen(true);
-                                  }}
-                                >
-                                  <i className="fa-sharp fa-light fa-pen"></i>
-                                </button>
-                                <button
-                                  className="removeBtn table__icon delete"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteId(index);
-                                    setModalDeleteOpen(true);
-                                  }}
-                                >
-                                  <i className="fa-regular fa-trash"></i>
-                                </button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                              <TableCell className="table__loan-created">
+                                {`${startDate} - ${endDate}`}
+                              </TableCell>
+                              <TableCell className="table__loan-created">
+                                {row?.duration || "N/A"}
+                              </TableCell>
+                              <TableCell className="table__loan-created">
+                                ${row?.cost || 0}
+                              </TableCell>
+
+                              <TableCell className="table__delivery">
+                                <span className={`bd-badge ${stausClass}`}>
+                                  {row?.status || "N/A"}
+                                </span>
+                              </TableCell>
+                              <TableCell className="table__icon-box">
+                                <div className="flex items-center justify-start gap-[10px]">
+                                  <button
+                                    type="button"
+                                    className="table__icon download"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditData(row);
+                                      setDetailsModalOpen(true);
+                                    }}
+                                  >
+                                    <i className="fa-regular fa-eye"></i>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="table__icon edit"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditData(row);
+                                      setModalOpen(true);
+                                    }}
+                                  >
+                                    <i className="fa-sharp fa-light fa-pen"></i>
+                                  </button>
+                                  <button
+                                    className="removeBtn table__icon delete"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeleteId(row.id);
+                                      setModalDeleteOpen(true);
+                                    }}
+                                  >
+                                    <i className="fa-regular fa-trash"></i>
+                                  </button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
                     </TableBody>
                   </Table>
                 </TableContainer>
@@ -298,6 +288,7 @@ const TrainingTable = () => {
           open={modalOpen}
           setOpen={setModalOpen}
           editData={editData}
+          onRefresh={onRefresh}
         />
       )}
       {detailsModalOpen && editData?.id && (
@@ -312,7 +303,25 @@ const TrainingTable = () => {
         <DeleteModal
           open={modalDeleteOpen}
           setOpen={setModalDeleteOpen}
-          handleDeleteFunc={handleDelete}
+          handleDeleteFunc={async () => {
+            try {
+              const res = await fetch(`/api/training?id=${deleteId}`, {
+                method: "DELETE",
+              });
+
+              if (!res.ok) throw new Error("Delete failed");
+
+              toast.success("Training deleted successfully");
+              setModalDeleteOpen(false);
+
+              if (onRefresh) {
+                onRefresh();
+              }
+            } catch (error) {
+              toast.error("Failed to delete training");
+              console.error("Delete error:", error);
+            }
+          }}
           deleteId={deleteId}
         />
       )}

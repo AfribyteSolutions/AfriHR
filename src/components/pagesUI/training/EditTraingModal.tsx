@@ -1,49 +1,102 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
-import {
-  trainersData,
-  trainingStatuses,
-  trainingTitles,
-} from "@/data/dropdown-data";
-import { ITrainer } from "@/interface/dropdown.interface";
+import { trainingStatuses } from "@/data/dropdown-data";
 import { ITraining } from "@/interface/table.interface";
 import { useForm } from "react-hook-form";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 import InputField from "@/components/elements/SharedInputs/InputField";
-import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
 import { traineeStatePropsType } from "@/interface/common.interface";
 
+interface EditTrainingModalProps extends traineeStatePropsType {
+  onRefresh?: () => void;
+}
+
 const EditTraingModal = ({
   open,
   setOpen,
   editData,
-}: traineeStatePropsType) => {
-  const [selectedOwner, setSelectedOwner] = useState<ITrainer | null>(null);
-  const [selectedTrainer, setSelectedTrainer] = useState<ITrainer | null>(null);
-  const [selectStartDate, setSelectStartDate] = useState<Date | null>(
-    new Date()
-  );
-  const [selectEndDate, setSelectEndDate] = useState<Date | null>(new Date());
+  onRefresh,
+}: EditTrainingModalProps) => {
+  const [selectStartDate, setSelectStartDate] = useState<Date | null>(null);
+  const [selectEndDate, setSelectEndDate] = useState<Date | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
   const {
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm<ITraining>();
 
+  // Initialize form with editData
+  useEffect(() => {
+    if (editData) {
+      setValue("title", editData.title);
+      setValue("description", editData.description);
+      setValue("status", editData.status);
+      setValue("duration", editData.duration);
+      setValue("cost", editData.cost);
+      setValue("location", editData.location);
+
+      if (editData.startDate) {
+        setSelectStartDate(new Date(editData.startDate));
+      }
+      if (editData.endDate) {
+        setSelectEndDate(new Date(editData.endDate));
+      }
+    }
+  }, [editData, setValue]);
+
   const handleToggle = () => setOpen(!open);
+
   const onSubmit = async (data: ITraining) => {
+    if (!editData?.id) {
+      toast.error("Training ID is missing");
+      return;
+    }
+
     try {
-      toast.success("Trainee Update successfully!");
-      setTimeout(() => setOpen(false), 2000);
+      setSubmitting(true);
+
+      const updateData: any = {
+        status: data.status,
+      };
+
+      if (data.title) updateData.title = data.title;
+      if (data.description) updateData.description = data.description;
+      if (data.duration) updateData.duration = data.duration;
+      if (data.cost !== undefined) updateData.cost = data.cost;
+      if (data.location) updateData.location = data.location;
+      if (selectStartDate) updateData.startDate = selectStartDate.toISOString();
+      if (selectEndDate) updateData.endDate = selectEndDate.toISOString();
+
+      const res = await fetch(`/api/training?id=${editData.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Failed to update training");
+      }
+
+      toast.success("Training updated successfully!");
+
+      if (onRefresh) {
+        onRefresh();
+      }
+
+      setTimeout(() => setOpen(false), 1000);
     } catch (error: any) {
-      toast.error(
-        error?.message ||
-          "An error occurred while updating the Trainee. Please try again!"
-      );
+      toast.error(error?.message || "Failed to update training. Please try again!");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -52,7 +105,7 @@ const EditTraingModal = ({
       <Dialog open={open} onClose={handleToggle} fullWidth maxWidth="md">
         <DialogTitle>
           <div className="flex justify-between items-center">
-            <h5 className="modal-title font-bold text-lg">Update Trainee</h5>
+            <h5 className="modal-title font-bold text-lg">Update Training</h5>
             <button
               onClick={handleToggle}
               type="button"
@@ -64,69 +117,30 @@ const EditTraingModal = ({
         </DialogTitle>
         <DialogContent>
           <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0 gap-y-6">
+            <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0 gap-y-6 mt-6">
               {/* Training Title */}
               <div className="col-span-12 md:col-span-6">
-                <SelectBox
-                  id="trainingTitle"
+                <InputField
                   label="Training Title"
-                  isRequired={false}
-                  options={trainingTitles}
-                  control={control} // Validation rule
-                  error={errors.trainingTitle}
-                  defaultValue={editData?.trainingTitle}
+                  id="title"
+                  placeholder="Enter training title"
+                  register={register("title")}
+                  error={errors.title}
                 />
               </div>
 
-              {/* Trainer Name */}
+              {/* Status */}
               <div className="col-span-12 md:col-span-6">
-                <div className="from__input-box select-wrapper">
-                  <div className="form__input-title">
-                    <label htmlFor="lastname">Trainer Name</label>
-                  </div>
-                  <div className="relative">
-                    <div className="mz-default-select">
-                      <SelectWithImage
-                        data={trainersData}
-                        selectedValue={selectedOwner}
-                        valueKey="name"
-                        displayKey="name"
-                        imageKey="userImg"
-                        placeholder="Select Owner"
-                        onChange={setSelectedOwner}
-                        title={editData?.trainer}
-                        image={editData?.trainerImg}
-                      />
-                    </div>
-                  </div>
-                </div>
+                <SelectBox
+                  id="status"
+                  label="Status"
+                  isRequired={false}
+                  options={trainingStatuses}
+                  control={control}
+                  error={errors.status}
+                />
               </div>
 
-              {/* Employee Name */}
-
-              <div className="col-span-12 md:col-span-6">
-                <div className="from__input-box select-wrapper">
-                  <div className="form__input-title">
-                    <label htmlFor="lastname">Employee Name</label>
-                  </div>
-                  <div className="relative">
-                    <div className="mz-default-select">
-                      <SelectWithImage
-                        data={trainersData}
-                        selectedValue={selectedTrainer}
-                        valueKey="name"
-                        displayKey="name"
-                        imageKey="userImg"
-                        placeholder="Select Owner"
-                        onChange={setSelectedTrainer}
-                        title={editData?.trainer}
-                        image={editData?.trainerImg}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {/* Start Date */}
               {/* Start Date */}
               <div className="col-span-12 md:col-span-6">
                 <FormLabel label="Start Date" id="selectStartDate" optional />
@@ -148,6 +162,7 @@ const EditTraingModal = ({
                   />
                 </div>
               </div>
+
               {/* End Date */}
               <div className="col-span-12 md:col-span-6">
                 <FormLabel label="End Date" id="selectEndDate" optional />
@@ -170,15 +185,37 @@ const EditTraingModal = ({
                 </div>
               </div>
 
-              {/* Status */}
+              {/* Duration */}
               <div className="col-span-12 md:col-span-6">
-                <SelectBox
-                  id="status"
-                  label="Status"
-                  isRequired={false}
-                  options={trainingStatuses}
-                  control={control} // Validation rule
-                  error={errors.status}
+                <InputField
+                  label="Duration"
+                  id="duration"
+                  placeholder="e.g., 5 days, 2 weeks"
+                  register={register("duration")}
+                  error={errors.duration}
+                />
+              </div>
+
+              {/* Cost */}
+              <div className="col-span-12 md:col-span-6">
+                <InputField
+                  label="Cost"
+                  id="cost"
+                  type="number"
+                  placeholder="Enter cost"
+                  register={register("cost")}
+                  error={errors.cost}
+                />
+              </div>
+
+              {/* Location */}
+              <div className="col-span-12">
+                <InputField
+                  label="Location"
+                  id="location"
+                  placeholder="Enter location"
+                  register={register("location")}
+                  error={errors.location}
                 />
               </div>
 
@@ -197,8 +234,12 @@ const EditTraingModal = ({
 
             {/* Submit Button */}
             <div className="submit__btn text-center mt-6">
-              <button className="btn btn-primary" type="submit">
-                Submit
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={submitting}
+              >
+                {submitting ? "Updating..." : "Update Training"}
               </button>
             </div>
           </form>
