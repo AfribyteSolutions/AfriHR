@@ -142,7 +142,7 @@ const AdminLeaveTable: React.FC<AdminLeaveTableProps> = ({ leaveData, onRefresh,
                                 <span className="table-avatar flex justify-start items-center">
                                   <Link
                                     className="avatar-img me-[10px]"
-                                    href={`/hrm/employee-profile/${row?.employeeId || index + 1}`}
+                                    href={row?.employeeId ? `/hrm/employee-profile?uid=${row.employeeId}` : "#"}
                                   >
                                     <Image
                                       className="img-48 border-circle"
@@ -153,7 +153,7 @@ const AdminLeaveTable: React.FC<AdminLeaveTableProps> = ({ leaveData, onRefresh,
                                     />
                                   </Link>
                                   <Link
-                                    href={`/hrm/employee-profile/${row?.employeeId || index + 1}`}
+                                    href={row?.employeeId ? `/hrm/employee-profile?uid=${row.employeeId}` : "#"}
                                   >
                                     {row?.employeeName || "Unknown Employee"}
                                   </Link>

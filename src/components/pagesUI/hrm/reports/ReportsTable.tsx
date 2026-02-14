@@ -167,9 +167,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
                                 <span className="table-avatar flex justify-start items-center">
                                   <Link
                                     className="avatar-img me-[10px]"
-                                    href={`/hrm/employee-profile/${
-                                      row?.employeeId || "#"
-                                    }`}
+                                    href={row?.employeeId ? `/hrm/employee-profile?uid=${row.employeeId}` : "#"}
                                   >
                                     <Image
                                       className="img-48 border-circle"
@@ -180,9 +178,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
                                     />
                                   </Link>
                                   <Link
-                                    href={`/hrm/employee-profile/${
-                                      row?.employeeId || "#"
-                                    }`}
+                                    href={row?.employeeId ? `/hrm/employee-profile?uid=${row.employeeId}` : "#"}
                                   >
                                     {row?.employeeName || "Unknown"}
                                   </Link>

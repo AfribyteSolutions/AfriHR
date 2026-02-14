@@ -179,7 +179,7 @@ const TrainingTable: React.FC<TrainingTableProps> = ({
                                 <span className="table-avatar flex justify-start items-center">
                                   <Link
                                     className="avatar-img-small me-[10px]"
-                                    href={`/hrm/employee-profile/${row?.trainerId || "#"}`}
+                                    href={row?.trainerId ? `/hrm/employee-profile?uid=${row.trainerId}` : "#"}
                                   >
                                     <Image
                                       className="img-36 border-circle"
@@ -190,7 +190,7 @@ const TrainingTable: React.FC<TrainingTableProps> = ({
                                     />
                                   </Link>
                                   <Link
-                                    href={`/hrm/employee-profile/${row?.trainerId || "#"}`}
+                                    href={row?.trainerId ? `/hrm/employee-profile?uid=${row.trainerId}` : "#"}
                                   >
                                     {row?.trainerName || "N/A"}
                                   </Link>

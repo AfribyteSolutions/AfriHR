@@ -109,7 +109,7 @@ const TerminationTable: React.FC<TerminationTableProps> = ({ terminationData, on
                             <span className="table-avatar flex justify-start items-center">
                               <Link
                                 className="avatar-img-small me-[10px]"
-                                href={`/hrm/employee-profile/${index + 1}`}
+                                href={row?.employeeId ? `/hrm/employee-profile?uid=${row.employeeId}` : "#"}
                               >
                                 <Image
                                   className="img-36 border-circle"
@@ -117,7 +117,7 @@ const TerminationTable: React.FC<TerminationTableProps> = ({ terminationData, on
                                   alt="User Image"
                                 />
                               </Link>
-                              <Link href={`/hrm/employee-profile/${index + 1}`}>
+                              <Link href={row?.employeeId ? `/hrm/employee-profile?uid=${row.employeeId}` : "#"}>
                                 {row?.employee}
                               </Link>
                             </span>
