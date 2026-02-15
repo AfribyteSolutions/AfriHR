@@ -13,6 +13,7 @@ import useGlobalContext from "@/hooks/use-context";
 import DashBoardSidebar from "./sidebar/DashBoardSidebar";
 import HRMSidebar from "./sidebar/HRMSidebar";
 import EmployeeSidebar from "./sidebar/EmployeeSidebar";
+import ManagerSidebar from "./sidebar/ManagerSidebar";
 import SuperAdminSidebar from "./sidebar/SuperAdminSidebar";
 
 import { useUserRole } from "@/hooks/useUserRole";
@@ -53,7 +54,7 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
     switch (userRole) {
       case "super-admin": return <SuperAdminSidebar />;
       case "admin": return <HRMSidebar />;
-      case "manager":
+      case "manager": return <ManagerSidebar />;
       case "employee": return <EmployeeSidebar />;
       default: return <DashBoardSidebar />;
     }

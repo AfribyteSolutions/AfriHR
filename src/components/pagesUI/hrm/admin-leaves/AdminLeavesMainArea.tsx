@@ -17,6 +17,36 @@ const AdminLeavesMainArea = () => {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
 
+  const enrichLeavesWithEmployeeData = async (leaves: any[]) => {
+    try {
+      const employeesRes = await fetch(`/api/company-employees?companyId=${authUser?.companyId}`);
+      const employeesData = await employeesRes.json();
+
+      if (employeesData.success && Array.isArray(employeesData.employees)) {
+        // Create a map of employee data for quick lookup
+        const employeeMap = new Map();
+        employeesData.employees.forEach((emp: any) => {
+          employeeMap.set(emp.uid || emp.id, emp);
+        });
+
+        // Merge employee data with leave data
+        return leaves.map((leave: any) => {
+          const employee = employeeMap.get(leave.employeeId);
+          return {
+            ...leave,
+            fullName: employee?.fullName || leave.employeeName,
+            email: employee?.email,
+            profilePictureUrl: employee?.profilePictureUrl,
+          };
+        });
+      }
+      return leaves;
+    } catch (err) {
+      console.error("Error enriching leave data:", err);
+      return leaves;
+    }
+  };
+
   useEffect(() => {
     const fetchLeaves = async () => {
       if (loadingAuthUser) return;
@@ -31,7 +61,8 @@ const AdminLeavesMainArea = () => {
         const data = await res.json();
 
         if (data.success && Array.isArray(data.leaves)) {
-          setLeaveData(data.leaves);
+          const enrichedLeaves = await enrichLeavesWithEmployeeData(data.leaves);
+          setLeaveData(enrichedLeaves);
         }
       } catch (err) {
         console.error("Error fetching leaves:", err);
@@ -51,7 +82,8 @@ const AdminLeavesMainArea = () => {
       const data = await res.json();
 
       if (data.success && Array.isArray(data.leaves)) {
-        setLeaveData(data.leaves);
+        const enrichedLeaves = await enrichLeavesWithEmployeeData(data.leaves);
+        setLeaveData(enrichedLeaves);
       }
     } catch (err) {
       console.error("Error refreshing leaves:", err);
