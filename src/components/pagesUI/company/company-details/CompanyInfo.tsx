@@ -6,24 +6,52 @@ import logoImage from "../../../../../public/assets/images/user/1.png";
 import Image from "next/image";
 
 interface statePropsType {
+  company: any;
   handleToggle: () => void;
   handleSendEmailToggle: () => void;
 }
 
 const CompanyInfo = ({
+  company,
   handleToggle,
   handleSendEmailToggle,
 }: statePropsType) => {
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
   return (
     <>
       <div className="card__wrapper">
         <div className="company__wrapper">
           <div className="company__info">
             <div className="company__logo">
-              <Image src={logoImage} priority alt="img" />
+              {company?.branding?.logoUrl ? (
+                <Image
+                  src={company.branding.logoUrl}
+                  priority
+                  alt={company.name || "Company logo"}
+                  width={100}
+                  height={100}
+                  className="rounded-lg"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-lg bg-gray-300 flex items-center justify-center">
+                  <span className="text-gray-600 font-bold text-3xl">
+                    {company?.name?.charAt(0) || "?"}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="company__name mb-5">
-              <h3 className="company__title">Gaza Solutions</h3>
+              <h3 className="company__title">{company?.name || "Company Name"}</h3>
             </div>
             <div className="company__btn mb-[30px]">
               <div className="flex flex-wrap items-center justify-between gap-[10px]">
@@ -45,77 +73,73 @@ const CompanyInfo = ({
             </div>
             <div className="company__info-list">
               <ul>
-                <li>
-                  <span>
-                    <i className="fa-sharp fa-regular fa-location-dot"></i>
-                  </span>
-                  Gaza Strip, Gaza, Palestine
-                </li>
-                <li>
-                  <span>
-                    <i className="fa-sharp fa-light fa-phone"></i>
-                  </span>
-                  <Link href="tel:+1555123-4567">+1 (555) 123-4567</Link>
-                </li>
-                <li>
-                  <span>
-                    <i className="fa-sharp fa-light fa-envelope"></i>
-                  </span>
-                  <Link href="mailto:info@gaza.com">info@gaza.com</Link>
-                </li>
-                <li>
-                  <span>
-                    <i className="fa-light fa-calendar-clock"></i>
-                  </span>{" "}
-                  Created on 09:55am, 05 May 2024
-                </li>
-                <li>
-                  <span>
-                    <i className="fa-sharp fa-solid fa-star"></i>
-                  </span>{" "}
-                  5.0
-                </li>
-                <li>
-                  <span>
-                    <i className="fa-thin fa-globe-pointer"></i>
-                  </span>{" "}
-                  <Link href="#">www.manez.info</Link>
-                </li>
+                {(company?.country || company?.address) && (
+                  <li>
+                    <span>
+                      <i className="fa-sharp fa-regular fa-location-dot"></i>
+                    </span>
+                    {company?.address || company?.country}
+                  </li>
+                )}
+                {company?.phone && (
+                  <li>
+                    <span>
+                      <i className="fa-sharp fa-light fa-phone"></i>
+                    </span>
+                    <Link href={`tel:${company.phone}`}>{company.phone}</Link>
+                  </li>
+                )}
+                {company?.email && (
+                  <li>
+                    <span>
+                      <i className="fa-sharp fa-light fa-envelope"></i>
+                    </span>
+                    <Link href={`mailto:${company.email}`}>{company.email}</Link>
+                  </li>
+                )}
+                {company?.createdAt && (
+                  <li>
+                    <span>
+                      <i className="fa-light fa-calendar-clock"></i>
+                    </span>{" "}
+                    Created on {formatDate(company.createdAt)}
+                  </li>
+                )}
+                {company?.subdomain && (
+                  <li>
+                    <span>
+                      <i className="fa-thin fa-globe-pointer"></i>
+                    </span>{" "}
+                    <Link href={`https://${company.subdomain}.afrihrm.com`} target="_blank">
+                      {company.subdomain}.afrihrm.com
+                    </Link>
+                  </li>
+                )}
               </ul>
             </div>
             <div className="company__info-list style-two">
-              <h5 className="company__info-list-title">Other Information</h5>
+              <h5 className="company__info-list-title">Company Information</h5>
               <ul>
-                <li>
-                  <span>Language:</span> English
-                </li>
-                <li>
-                  <span>Currency:</span> America Dollar
-                </li>
-                <li>
-                  <span>Source:</span> Linkedin
-                </li>
-                <li>
-                  <span>Last Modified:</span> 03:39am, 07 May 2024
-                </li>
-              </ul>
-            </div>
-            <div className="company__info-list style-three">
-              <h5 className="company__info-list-title">Owner Information</h5>
-              <ul>
-                <li>
-                  <span>Name:</span> Michael Johnson
-                </li>
-                <li>
-                  <span>Number:</span>{" "}
-                  <Link href="tel:+1555123456">+1 (555) 123456</Link>
-                </li>
-                <li>
-                  <span>Email:</span>{" "}
-                  <Link href="mailto:michaeljohnson@example.com">
-                    michaeljohnson@example.com
-                  </Link>
-                </li>
+                {company?.industry && (
+                  <li>
+                    <span>Industry:</span> {company.industry}
+                  </li>
+                )}
+                {company?.companySize !== undefined && (
+                  <li>
+                    <span>Company Size:</span> {company.companySize} employees
+                  </li>
+                )}
+                {company?.country && (
+                  <li>
+                    <span>Country:</span> {company.country}
+                  </li>
+                )}
+                {company?.updatedAt && (
+                  <li>
+                    <span>Last Modified:</span> {formatDate(company.updatedAt)}
+                  </li>
+                )}
               </ul>
             </div>
             <SocialProfile />

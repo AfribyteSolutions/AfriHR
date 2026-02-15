@@ -19,21 +19,27 @@ import { useTableStatusHook } from "@/hooks/use-condition-class";
 import Link from "next/link";
 import Image from "next/image";
 import { Checkbox } from "@mui/material";
-import { companyData } from "@/data/company/company-data";
 import { useRouter } from "next/navigation";
 import AddCompanyModal from "./AddCompanyModal";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
+import { toast } from "sonner";
 
-const CompanyListTable = () => {
+interface CompanyListTableProps {
+  companies: any[];
+  onRefresh: () => void;
+}
+
+const CompanyListTable: React.FC<CompanyListTableProps> = ({ companies, onRefresh }) => {
   const routes = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editData, setEditData] = useState<ILead | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null); // ✅ Changed to string | null
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
-  const handleCompanyDetails = (id: number) => {
+  const handleCompanyDetails = (id: string) => {
     routes.push(`/company/company-details/${id}`);
   };
 
@@ -46,21 +52,37 @@ const CompanyListTable = () => {
     searchQuery,
     paginatedRows,
     filteredRows,
-    handleDelete,
     handleRequestSort,
     handleSelectAllClick,
     handleClick,
     handleChangePage,
     handleChangeRowsPerPage,
     handleSearchChange,
-  } = useMaterialTableHook<ICompany | any>(companyData, 10);
+  } = useMaterialTableHook<any>(companies, 10);
 
-  // ✅ Updated handleDelete function to work with string IDs
-  const handleDeleteCompany = (id: string) => {
-    // Convert string back to number for the original handleDelete function
-    const numericId = parseInt(id, 10);
-    if (!isNaN(numericId)) {
-      handleDelete(numericId);
+  const handleDeleteCompany = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this company?")) {
+      return;
+    }
+
+    try {
+      setDeleting(id);
+      const res = await fetch(`/api/companies?id=${id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to delete company");
+      }
+
+      toast.success("Company deleted successfully");
+      onRefresh();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to delete company");
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -136,67 +158,80 @@ const CompanyListTable = () => {
                     </TableHead>
 
                     <TableBody className="table__body">
-                      {paginatedRows.map((row, index) => {
-                        const stausClass = useTableStatusHook(row?.status);
-                        return (
-                          <TableRow
-                            key={index}
-                            selected={selected.includes(index)}
-                            onClick={() => handleClick(index)}
-                          >
-                            <TableCell padding="checkbox">
-                              <Checkbox
-                                className="custom-checkbox checkbox-small"
-                                checked={selected.includes(index)}
-                                size="small"
-                                onChange={() => handleClick(index)}
-                              />
-                            </TableCell>
-                            <TableCell className="sorting_1">
-                              <span className="table-avatar flex justify-start items-center">
-                                <Link
-                                  className="avatar-img-small me-[10px]"
-                                  href={`/company/company-details/${index + 1}`}
-                                >
-                                  <Image
-                                    src={row?.companyImg}
-                                    className="img-36"
-                                    alt="User Image"
-                                  />
-                                </Link>
-                                <Link
-                                  href={`/company/company-details/${index + 1}`}
-                                >
-                                  {row?.name}
-                                </Link>
-                              </span>
-                            </TableCell>
+                      {paginatedRows.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-8">
+                            <p className="text-gray-500">No companies found</p>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedRows.map((row, index) => {
+                          return (
+                            <TableRow
+                              key={row.id}
+                              selected={selected.includes(index)}
+                              onClick={() => handleClick(index)}
+                            >
+                              <TableCell padding="checkbox">
+                                <Checkbox
+                                  className="custom-checkbox checkbox-small"
+                                  checked={selected.includes(index)}
+                                  size="small"
+                                  onChange={() => handleClick(index)}
+                                />
+                              </TableCell>
+                              <TableCell className="sorting_1">
+                                <span className="table-avatar flex justify-start items-center">
+                                  <Link
+                                    className="avatar-img-small me-[10px]"
+                                    href={`/company/company-details/${row.id}`}
+                                  >
+                                    {row?.branding?.logoUrl ? (
+                                      <Image
+                                        src={row.branding.logoUrl}
+                                        className="img-36"
+                                        alt={row.name}
+                                        width={36}
+                                        height={36}
+                                      />
+                                    ) : (
+                                      <div className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center">
+                                        <span className="text-gray-600 font-medium text-sm">
+                                          {row.name?.charAt(0) || "?"}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </Link>
+                                  <Link
+                                    href={`/company/company-details/${row.id}`}
+                                  >
+                                    {row?.name}
+                                  </Link>
+                                </span>
+                              </TableCell>
 
-                            <TableCell className="table__loan-amount">
-                              {row?.location}
-                            </TableCell>
+                              <TableCell className="table__loan-amount">
+                                {row?.country || row?.address || "-"}
+                              </TableCell>
 
-                            <TableCell className="table__loan-created">
-                              {row?.phone}
-                            </TableCell>
-                            <TableCell className="table__loan-created">
-                              {row?.email}
-                            </TableCell>
-                            <TableCell className="table__loan-created">
-                              {row?.owner}
-                            </TableCell>
-                            <TableCell>
-                              {row?.rating}
-                              <span className="company__rating ms-[2px]">
-                                <i className="fa-sharp fa-solid fa-star"></i>
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <span className="tag-badge"> {row?.tag}</span>
-                            </TableCell>
-                            <TableCell className="table__loan-created">
-                              <div className="company__contact">
-                                <Link href="#">
+                              <TableCell className="table__loan-created">
+                                {row?.subdomain}
+                              </TableCell>
+                              <TableCell className="table__loan-created">
+                                -
+                              </TableCell>
+                              <TableCell className="table__loan-created">
+                                -
+                              </TableCell>
+                              <TableCell>
+                                {row?.industry || "-"}
+                              </TableCell>
+                              <TableCell>
+                                <span className="tag-badge">{row?.companySize || 0} employees</span>
+                              </TableCell>
+                              <TableCell className="table__loan-created">
+                                <div className="company__contact">
+                                  <Link href="#">
                                   <i className="fa-light fa-phone"></i>
                                 </Link>
                                 <Link href="#">
@@ -214,11 +249,6 @@ const CompanyListTable = () => {
                               </div>
                             </TableCell>
 
-                            <TableCell className="table__delivery">
-                              <span className={`bd-badge ${stausClass}`}>
-                                {row?.status}
-                              </span>
-                            </TableCell>
                             <TableCell className="table__icon-box">
                               <div className="flex items-center justify-start gap-[10px]">
                                 <button
@@ -257,7 +287,8 @@ const CompanyListTable = () => {
                             </TableCell>
                           </TableRow>
                         );
-                      })}
+                      })
+                      )}
                     </TableBody>
                   </Table>
                 </TableContainer>

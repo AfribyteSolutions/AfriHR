@@ -1,11 +1,68 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import CompaniesSummary from "./CompaniesSummary";
 import CompanyListTable from "./CompanyListTable";
 import AddCompanyModal from "./AddCompanyModal";
+import { useAuthUserContext } from "@/context/UserAuthContext";
+
 const CompaniesMainArea = () => {
+  const { user: authUser, loading: loadingAuthUser } = useAuthUserContext();
   const [modalOpen, setModalOpen] = useState(false);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      if (loadingAuthUser) return;
+      if (!authUser?.uid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/companies?superAdminId=${authUser.uid}`);
+        const data = await res.json();
+
+        if (data.success && Array.isArray(data.companies)) {
+          setCompanies(data.companies);
+        }
+      } catch (err) {
+        console.error("Error fetching companies:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCompanies();
+  }, [authUser, loadingAuthUser]);
+
+  const refreshCompanies = async () => {
+    if (!authUser?.uid) return;
+
+    try {
+      const res = await fetch(`/api/companies?superAdminId=${authUser.uid}`);
+      const data = await res.json();
+
+      if (data.success && Array.isArray(data.companies)) {
+        setCompanies(data.companies);
+      }
+    } catch (err) {
+      console.error("Error refreshing companies:", err);
+    }
+  };
+
+  if (loadingAuthUser || loading) {
+    return (
+      <div className="app__slide-wrapper">
+        <div className="p-6 text-center">
+          <p>Loading companies...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="app__slide-wrapper">
@@ -33,12 +90,18 @@ const CompaniesMainArea = () => {
           </div>
         </div>
         <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0">
-          <CompaniesSummary />
-          <CompanyListTable />
+          <CompaniesSummary companies={companies} />
+          <CompanyListTable companies={companies} onRefresh={refreshCompanies} />
         </div>
       </div>
 
-      {modalOpen && <AddCompanyModal open={modalOpen} setOpen={setModalOpen} />}
+      {modalOpen && (
+        <AddCompanyModal
+          open={modalOpen}
+          setOpen={setModalOpen}
+          onRefresh={refreshCompanies}
+        />
+      )}
     </>
   );
 };

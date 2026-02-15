@@ -1,38 +1,44 @@
 import React from "react";
-import SummarySingleCard from "@/components/common/SummarySingleCard"; // Adjust the import path if necessary
-// Adjust the import path if necessary
+import SummarySingleCard from "@/components/common/SummarySingleCard";
 
-const CompaniesSummary: React.FC = () => {
+interface CompaniesSummaryProps {
+  companies: any[];
+}
+
+const CompaniesSummary: React.FC<CompaniesSummaryProps> = ({ companies }) => {
+  const totalCompanies = companies.length;
+  const totalEmployees = companies.reduce((sum, company) => sum + (company.companySize || 0), 0);
+
   const companyData = [
     {
-      iconClass: "fa-light fa-ban",
-      title: "Total Company",
-      value: "1500",
-      description: "",
+      iconClass: "fa-light fa-building",
+      title: "Total Companies",
+      value: totalCompanies,
+      description: "Businesses Registered",
       percentageChange: "",
       isIncrease: true,
     },
     {
-      iconClass: "fa-light fa-badge-check",
-      title: "Total Active",
-      value: "950",
-      description: "",
+      iconClass: "fa-light fa-users",
+      title: "Total Employees",
+      value: totalEmployees,
+      description: "Across All Companies",
       percentageChange: "",
       isIncrease: true,
     },
     {
-      iconClass: "fa-sharp fa-regular fa-user",
-      title: "Total Complete",
-      value: "3130",
-      description: "",
+      iconClass: "fa-sharp fa-regular fa-industry",
+      title: "Industries",
+      value: new Set(companies.map(c => c.industry).filter(Boolean)).size,
+      description: "Different Sectors",
       percentageChange: "",
       isIncrease: false,
     },
     {
-      iconClass: "fa-sharp fa-regular fa-house-person-leave",
-      title: "Pending",
-      value: "251",
-      description: "",
+      iconClass: "fa-sharp fa-regular fa-globe",
+      title: "Countries",
+      value: new Set(companies.map(c => c.country).filter(Boolean)).size,
+      description: "Locations",
       percentageChange: "",
       isIncrease: false,
     },

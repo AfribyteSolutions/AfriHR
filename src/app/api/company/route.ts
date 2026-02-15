@@ -29,29 +29,41 @@ function serializeFirestore(doc: FirebaseFirestore.DocumentSnapshot) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const subdomain = searchParams.get("subdomain");
+  const id = searchParams.get("id");
 
-  if (!subdomain) {
-    return NextResponse.json({ error: "Subdomain is required" }, { status: 400 });
+  if (!subdomain && !id) {
+    return NextResponse.json({ error: "Subdomain or ID is required" }, { status: 400 });
   }
 
   try {
-    console.log(`🔍 Searching for company with subdomain: ${subdomain}`);
+    let doc: FirebaseFirestore.DocumentSnapshot;
 
-    const snapshot = await db
-      .collection("companies")
-      .where("subdomain", "==", subdomain)
-      .limit(1)
-      .get();
+    if (id) {
+      console.log(`🔍 Fetching company by ID: ${id}`);
+      doc = await db.collection("companies").doc(id).get();
 
-    if (snapshot.empty) {
-      console.log(`❌ No company found with subdomain: ${subdomain}`);
-      return NextResponse.json({ error: "Company not found" }, { status: 404 });
+      if (!doc.exists) {
+        console.log(`❌ No company found with ID: ${id}`);
+        return NextResponse.json({ error: "Company not found" }, { status: 404 });
+      }
+    } else {
+      console.log(`🔍 Searching for company with subdomain: ${subdomain}`);
+      const snapshot = await db
+        .collection("companies")
+        .where("subdomain", "==", subdomain)
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        console.log(`❌ No company found with subdomain: ${subdomain}`);
+        return NextResponse.json({ error: "Company not found" }, { status: 404 });
+      }
+
+      doc = snapshot.docs[0];
     }
 
-    const doc = snapshot.docs[0];
     const company = serializeFirestore(doc);
 
-    
     return NextResponse.json(company);
   } catch (error: any) {
     console.error("❌ Failed to fetch company:", error);

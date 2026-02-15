@@ -954,12 +954,6 @@ export const companyListHeadCells: IHeadCell[] = [
     disablePadding: false,
     label: "Contact",
   },
-  {
-    id: "status",
-    numeric: false,
-    disablePadding: false,
-    label: "Status",
-  },
 ];
 export const withoutCheckListHeadCells: IHeadCell[] = [
   {
