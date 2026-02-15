@@ -117,7 +117,7 @@ const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
 
       const attendanceData = {
         companyId: authUser.companyId,
-        employeeId: selectedEmployee.id,
+        employeeId: selectedEmployee.uid,
         employeeName: selectedEmployee.fullName,
         date: selectedDate,
         checkIn: checkInDateTime.toISOString(),
@@ -125,7 +125,7 @@ const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
         status: data.status,
         workHours: workHours,
         notes: data.notes || "",
-        markedBy: authUser.id,
+        markedBy: authUser.uid,
       };
 
       const res = await fetch("/api/attendance", {

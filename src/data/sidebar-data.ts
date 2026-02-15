@@ -121,7 +121,7 @@ const sidebarData: SidebarCategory[] = [
         link: "/feedback",
       },
       {
-        id: 13,
+        id: 14,
         label: "Promotion",
         icon: "icon-promotion",
         link: "/promotion",
@@ -201,7 +201,7 @@ const sidebarData: SidebarCategory[] = [
     category: "Pages",
     items: [
       {
-        id: 23,
+        id: 33,
         link: "#",
         label: "Authentication",
         icon: "fa-sharp fa-light fa-key",
@@ -244,7 +244,7 @@ const sidebarData: SidebarCategory[] = [
         ],
       },
       {
-        id: 24,
+        id: 34,
         label: "Error",
         icon: "fa-sharp fa-light fa-triangle-exclamation",
         subItems: [
@@ -254,7 +254,7 @@ const sidebarData: SidebarCategory[] = [
         ],
       },
       {
-        id: 25,
+        id: 35,
         label: "Pages",
         icon: "fa-light fa-clone",
         subItems: [
