@@ -4,11 +4,11 @@ import React, { useState, useEffect } from "react";
 import AttendanceSummary from "./AttendanceSummary";
 import AdminAttendanceTable from "./AdminAttendanceTable";
 import MarkAttendanceModal from "./MarkAttendanceModal";
-import { useAuth } from "@/context/UserAuthContext";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import { toast } from "sonner";
 
 const AttendanceMainArea = () => {
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useAuthUserContext();
   const [modalOpen, setModalOpen] = useState(false);
   const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(true);

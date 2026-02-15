@@ -4,14 +4,14 @@ import Link from "next/link";
 import AddNewTrainee from "./AddNewTrainee";
 import TrainingSummary from "./TrainingSummary";
 import TrainingTable from "./TrainingTable";
-import { useAuth } from "@/context/UserAuthContext";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import { toast } from "sonner";
 
 const TrainingMainArea = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [trainingData, setTrainingData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useAuthUserContext();
 
   const fetchTrainings = async () => {
     if (!authUser?.companyId) return;

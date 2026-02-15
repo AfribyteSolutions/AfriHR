@@ -9,7 +9,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import useAuth from "@/hooks/useAuth";
 
 const AddNewSalaryModal = ({ open, setOpen, onSuccess }: any) => {
-  const { user } = useAuth();
+  const { user } = useAuthUserContext();
   const [employeeOptions, setEmployeeOptions] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
 

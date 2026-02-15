@@ -6,7 +6,7 @@ import InputField from "@/components/elements/SharedInputs/InputField";
 import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import { toast } from "sonner";
-import { useAuth } from "@/context/UserAuthContext";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import { statePropsType } from "@/interface/common.interface";
 import { IEmployee } from "@/interface";
 
@@ -38,7 +38,7 @@ const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
   selectedDate,
   onRefresh,
 }) => {
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useAuthUserContext();
   const [employees, setEmployees] = useState<IEmployee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<IEmployee | null>(null);
   const [submitting, setSubmitting] = useState(false);

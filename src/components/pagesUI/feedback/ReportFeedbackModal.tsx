@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import { toast } from "sonner";
-import { useAuth } from "@/context/UserAuthContext";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import { statePropsType } from "@/interface/common.interface";
 
 interface ReportFeedbackModalProps extends statePropsType {
@@ -30,7 +30,7 @@ const ReportFeedbackModal: React.FC<ReportFeedbackModalProps> = ({
   feedbackId,
   onRefresh,
 }) => {
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useAuthUserContext();
   const [submitting, setSubmitting] = useState(false);
 
   const {

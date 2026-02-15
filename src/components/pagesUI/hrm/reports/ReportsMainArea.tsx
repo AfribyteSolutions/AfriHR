@@ -4,14 +4,14 @@ import Link from "next/link";
 import ReportsTable from "./ReportsTable";
 import ReportsSummary from "./ReportsSummary";
 import AddReportModal from "./AddReportModal";
-import { useAuth } from "@/context/UserAuthContext";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import { toast } from "sonner";
 
 const ReportsMainArea = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [reportsData, setReportsData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useAuthUserContext();
 
   const fetchReports = async () => {
     if (!authUser?.companyId) return;

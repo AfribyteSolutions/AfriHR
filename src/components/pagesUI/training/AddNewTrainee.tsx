@@ -11,14 +11,14 @@ import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage"
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
 import { statePropsType } from "@/interface/common.interface";
-import { useAuth } from "@/context/UserAuthContext";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
 interface AddNewTraineeProps extends statePropsType {
   onRefresh?: () => void;
 }
 
 const AddNewTrainee = ({ open, setOpen, onRefresh }: AddNewTraineeProps) => {
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useAuthUserContext();
   const [employees, setEmployees] = useState<IEmployee[]>([]);
   const [selectedTrainer, setSelectedTrainer] = useState<IEmployee | null>(null);
   const [selectedEmployees, setSelectedEmployees] = useState<IEmployee[]>([]);

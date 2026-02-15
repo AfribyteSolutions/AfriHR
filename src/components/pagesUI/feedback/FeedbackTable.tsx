@@ -98,10 +98,26 @@ const FeedbackTable: React.FC<IFeedbackTableProps> = ({ feedbackData, onRefresh 
     if (!timestamp) return "N/A";
 
     try {
+      // Handle Firestore Timestamp objects
       if (timestamp.seconds) {
-        return new Date(timestamp.seconds * 1000).toLocaleDateString();
+        return new Date(timestamp.seconds * 1000).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
       }
-      return new Date(timestamp).toLocaleDateString();
+
+      // Handle ISO strings or Date objects
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return "N/A";
+      }
+
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
     } catch {
       return "N/A";
     }

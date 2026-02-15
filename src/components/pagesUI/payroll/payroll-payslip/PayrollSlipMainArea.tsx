@@ -13,7 +13,7 @@ import { IPaylist } from "@/interface/table.interface";
 
 const PayrollSlipMainArea = () => {
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user } = useAuthUserContext();
   const [allPayslips, setAllPayslips] = useState<IPaylist[]>([]);
   const [selectedPayroll, setSelectedPayroll] = useState<IPaylist | null>(null);
   const [companyData, setCompanyData] = useState<any>(null);

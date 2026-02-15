@@ -7,7 +7,7 @@ import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage"
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
-import { useAuth } from "@/context/UserAuthContext";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import { statePropsType } from "@/interface/common.interface";
 import { IEmployee } from "@/interface";
 
@@ -42,7 +42,7 @@ const AddReportModal: React.FC<AddReportModalProps> = ({
   setOpen,
   onRefresh,
 }) => {
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useAuthUserContext();
   const [employees, setEmployees] = useState<IEmployee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<IEmployee | null>(null);
   const [selectDate, setSelectDate] = useState<Date | null>(new Date());

@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { admin, db } from "@/lib/firebase-admin";
 
+// Helper to safely serialize Firestore data
+function serializeFirestore(doc: FirebaseFirestore.DocumentSnapshot) {
+  const data = doc.data() || {};
+
+  const safeData: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value instanceof admin.firestore.Timestamp) {
+      safeData[key] = value.toDate().toISOString();
+    } else if (value instanceof admin.firestore.GeoPoint) {
+      safeData[key] = { lat: value.latitude, lng: value.longitude };
+    } else if (value instanceof admin.firestore.DocumentReference) {
+      safeData[key] = { id: value.id, path: value.path };
+    } else {
+      safeData[key] = value;
+    }
+  }
+
+  return {
+    id: doc.id,
+    ...safeData,
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -27,7 +50,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const feedback = { id: feedbackDoc.id, ...feedbackDoc.data() };
+      const feedback = serializeFirestore(feedbackDoc);
       return NextResponse.json({ success: true, feedback });
     }
 
@@ -46,10 +69,7 @@ export async function GET(request: NextRequest) {
 
     const feedbackSnapshot = await query.orderBy("createdAt", "desc").get();
 
-    const feedbackList = feedbackSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const feedbackList = feedbackSnapshot.docs.map((doc) => serializeFirestore(doc));
 
     return NextResponse.json({
       success: true,
