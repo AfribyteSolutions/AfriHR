@@ -5,11 +5,11 @@ import CompanySideContentSection from "./CompanySideContentSection";
 import CompanyInfo from "./CompanyInfo";
 import CompanyAddDealsModal from "./CompanyAddDealsModal";
 import CompanySendMailModal from "./CompanySendMailModal";
-import { idType } from "@/interface/common.interface";
 import { useAuthUserContext } from "@/context/UserAuthContext";
+import { getSubdomain } from "@/lib/getSubdomain";
 
-const CompanyDetailsMainArea = ({ id }: idType) => {
-  const { user: authUser } = useAuthUserContext();
+const CompanyDetailsMainArea = () => {
+  const { user: authUser, loading: authLoading } = useAuthUserContext();
   const [openModal, setOpenModal] = useState(false);
   const [openSendEMailModal, setSendEMailModal] = useState(false);
   const [company, setCompany] = useState<any>(null);
@@ -20,28 +20,50 @@ const CompanyDetailsMainArea = ({ id }: idType) => {
 
   useEffect(() => {
     const fetchCompany = async () => {
-      if (!id) {
-        setLoading(false);
+      // Wait for auth to load
+      if (authLoading) {
         return;
       }
 
       try {
         setLoading(true);
-        const res = await fetch(`/api/company?id=${id}`);
+
+        // Get subdomain from current URL
+        const subdomain = getSubdomain(window.location.hostname);
+
+        let url = '/api/company?';
+
+        // Prioritize subdomain, fallback to user's companyId
+        if (subdomain) {
+          url += `subdomain=${subdomain}`;
+          console.log("🔍 Fetching company by subdomain:", subdomain);
+        } else if (authUser?.companyId) {
+          url += `id=${authUser.companyId}`;
+          console.log("🔍 Fetching company by companyId:", authUser.companyId);
+        } else {
+          console.error("❌ No subdomain or companyId available");
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch(url);
         const data = await res.json();
 
-        if (data) {
+        if (res.ok && data) {
+          console.log("✅ Company data loaded:", data);
           setCompany(data);
+        } else {
+          console.error("❌ Failed to fetch company:", data);
         }
       } catch (err) {
-        console.error("Error fetching company:", err);
+        console.error("❌ Error fetching company:", err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchCompany();
-  }, [id]);
+  }, [authUser, authLoading]);
 
   if (loading) {
     return (

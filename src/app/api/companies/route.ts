@@ -4,26 +4,53 @@ import { db } from "@/lib/firebase-admin";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const superAdminId = searchParams.get("superAdminId");
+    const userId = searchParams.get("superAdminId") || searchParams.get("userId");
+    const companyId = searchParams.get("companyId");
 
-    if (!superAdminId) {
+    if (!userId) {
       return NextResponse.json(
-        { success: false, error: "Super Admin ID is required" },
+        { success: false, error: "User ID is required" },
         { status: 400 }
       );
     }
 
-    // Fetch all companies created by this super admin
-    const companiesSnapshot = await db
+    const companiesMap = new Map();
+
+    // Fetch companies created by this user (for super-admins)
+    const createdCompaniesSnapshot = await db
       .collection("companies")
-      .where("createdBy", "==", superAdminId)
+      .where("createdBy", "==", userId)
       .orderBy("createdAt", "desc")
       .get();
 
-    const companies = companiesSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    createdCompaniesSnapshot.docs.forEach((doc) => {
+      companiesMap.set(doc.id, {
+        id: doc.id,
+        ...doc.data(),
+      });
+    });
+
+    // If user has a companyId, fetch that company too (for managers/employees)
+    if (companyId) {
+      try {
+        const companyDoc = await db.collection("companies").doc(companyId).get();
+        if (companyDoc.exists) {
+          companiesMap.set(companyDoc.id, {
+            id: companyDoc.id,
+            ...companyDoc.data(),
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching user's company:", err);
+      }
+    }
+
+    // Convert map to array and sort by createdAt
+    const companies = Array.from(companiesMap.values()).sort((a: any, b: any) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
 
     return NextResponse.json({
       success: true,

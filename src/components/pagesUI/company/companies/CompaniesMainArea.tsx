@@ -22,7 +22,16 @@ const CompaniesMainArea = () => {
 
       try {
         setLoading(true);
-        const res = await fetch(`/api/companies?superAdminId=${authUser.uid}`);
+        // Build query params - include companyId if user has one
+        const params = new URLSearchParams({
+          superAdminId: authUser.uid,
+        });
+
+        if (authUser.companyId) {
+          params.append("companyId", authUser.companyId);
+        }
+
+        const res = await fetch(`/api/companies?${params.toString()}`);
         const data = await res.json();
 
         if (data.success && Array.isArray(data.companies)) {
@@ -42,7 +51,16 @@ const CompaniesMainArea = () => {
     if (!authUser?.uid) return;
 
     try {
-      const res = await fetch(`/api/companies?superAdminId=${authUser.uid}`);
+      // Build query params - include companyId if user has one
+      const params = new URLSearchParams({
+        superAdminId: authUser.uid,
+      });
+
+      if (authUser.companyId) {
+        params.append("companyId", authUser.companyId);
+      }
+
+      const res = await fetch(`/api/companies?${params.toString()}`);
       const data = await res.json();
 
       if (data.success && Array.isArray(data.companies)) {

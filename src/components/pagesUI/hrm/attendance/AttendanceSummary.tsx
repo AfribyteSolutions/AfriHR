@@ -9,11 +9,13 @@ interface AttendanceRecord {
 interface AttendanceSummaryProps {
   attendanceData: AttendanceRecord[];
   selectedDate: string;
+  isManagerOrAdmin: boolean;
 }
 
 const AttendanceSummary: React.FC<AttendanceSummaryProps> = ({
   attendanceData,
   selectedDate,
+  isManagerOrAdmin,
 }) => {
   const totalRecords = attendanceData.length;
   const presentCount = attendanceData.filter((a) => a.status === "present").length;
@@ -27,7 +29,7 @@ const AttendanceSummary: React.FC<AttendanceSummaryProps> = ({
       <div className="col-span-12 sm:col-span-6 xxl:col-span-3">
         <SummarySingleCard
           iconClass="fa-sharp fa-regular fa-users"
-          title="Total Records"
+          title={isManagerOrAdmin ? "Total Records" : "My Records"}
           value={totalRecords}
           description={new Date(selectedDate).toLocaleDateString("en-US", {
             month: "short",
@@ -63,7 +65,7 @@ const AttendanceSummary: React.FC<AttendanceSummaryProps> = ({
           iconClass="fa-sharp fa-regular fa-house-person-leave"
           title="On Leave"
           value={onLeaveCount}
-          description="Employees"
+          description={isManagerOrAdmin ? "Employees" : "Days"}
           percentageChange=""
           isIncrease={true}
         />

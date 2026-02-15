@@ -36,6 +36,7 @@ interface AdminAttendanceTableProps {
   selectedDate: string;
   onRefresh: () => void;
   loading: boolean;
+  isManagerOrAdmin: boolean;
 }
 
 const headCells = [
@@ -53,6 +54,7 @@ const AdminAttendanceTable: React.FC<AdminAttendanceTableProps> = ({
   selectedDate,
   onRefresh,
   loading,
+  isManagerOrAdmin,
 }) => {
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -168,6 +170,7 @@ const AdminAttendanceTable: React.FC<AdminAttendanceTableProps> = ({
                             sortDirection={
                               orderBy === headCell.id ? order : false
                             }
+                            sx={headCell.id === "notes" ? { minWidth: 120, maxWidth: 200 } : {}}
                           >
                             <TableSortLabel
                               active={orderBy === headCell.id}
@@ -194,7 +197,9 @@ const AdminAttendanceTable: React.FC<AdminAttendanceTableProps> = ({
                         <TableRow>
                           <TableCell colSpan={7} className="text-center py-8">
                             <p className="text-gray-500">
-                              No attendance records found for {new Date(selectedDate).toLocaleDateString()}
+                              {isManagerOrAdmin
+                                ? `No attendance records found for ${new Date(selectedDate).toLocaleDateString()}`
+                                : `You have no attendance record for ${new Date(selectedDate).toLocaleDateString()}`}
                             </p>
                           </TableCell>
                         </TableRow>
@@ -241,22 +246,26 @@ const AdminAttendanceTable: React.FC<AdminAttendanceTableProps> = ({
                               {row.workHours ? `${row.workHours.toFixed(1)}h` : "-"}
                             </TableCell>
                             <TableCell>{getStatusBadge(row.status)}</TableCell>
-                            <TableCell>
-                              <span className="text-sm text-gray-600">
+                            <TableCell sx={{ minWidth: 120, maxWidth: 200 }}>
+                              <span className="text-sm text-gray-600" style={{ writingMode: 'horizontal-tb', whiteSpace: 'normal', wordBreak: 'break-word' }}>
                                 {row.notes || "-"}
                               </span>
                             </TableCell>
                             <TableCell>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDelete(row.id);
-                                }}
-                                disabled={deleting === row.id}
-                                className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                              >
-                                <i className="fa-regular fa-trash"></i>
-                              </button>
+                              {isManagerOrAdmin ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(row.id);
+                                  }}
+                                  disabled={deleting === row.id}
+                                  className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                                >
+                                  <i className="fa-regular fa-trash"></i>
+                                </button>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))
