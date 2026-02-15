@@ -92,6 +92,7 @@ export interface IEmployee {
   status?: "active" | "inactive";
   managerId?: string | null; // UID of their manager
   photoURL?: string | null; // URL of their profile picture
+  profilePictureUrl?: string; // Alternative profile picture URL
   designation?: string;
   image?: StaticImageData | string; // Allow both types
 

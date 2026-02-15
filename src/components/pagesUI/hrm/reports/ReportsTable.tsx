@@ -12,13 +12,29 @@ import TableSortLabel from "@mui/material/TableSortLabel";
 import Paper from "@mui/material/Paper";
 import { visuallyHidden } from "@mui/utils";
 import useMaterialTableHook from "@/hooks/useMaterialTableHook";
-import { useTableStatusHook } from "@/hooks/use-condition-class";
 import Link from "next/link";
 import Image from "next/image";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
 import EditReportModal from "./EditReportModal";
 import { toast } from "sonner";
+
+// Helper function to get status badge class
+const getStatusClass = (status: string): string => {
+  switch (status) {
+    case "Pending":
+      return "bg-warning";
+    case "Reject":
+    case "Rejected":
+      return "bg-danger";
+    case "Contacted":
+      return "bg-info";
+    case "Approved":
+      return "bg-success";
+    default:
+      return "bg-primary";
+  }
+};
 
 interface ReportsTableProps {
   reportsData: any[];
@@ -155,7 +171,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
                         </TableRow>
                       ) : (
                         paginatedRows.map((row, index) => {
-                          const statusClass = useTableStatusHook(row?.status);
+                          const statusClass = getStatusClass(row?.status);
 
                           return (
                             <TableRow

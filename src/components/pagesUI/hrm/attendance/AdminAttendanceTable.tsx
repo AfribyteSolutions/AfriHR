@@ -28,6 +28,7 @@ interface AttendanceRecord {
   workHours: number;
   notes?: string;
   profilePictureUrl?: string;
+  [key: string]: any; // Index signature for RowObject compatibility
 }
 
 interface AdminAttendanceTableProps {

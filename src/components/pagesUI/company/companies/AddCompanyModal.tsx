@@ -10,9 +10,10 @@ import { useForm } from "react-hook-form";
 interface statePropsType {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onRefresh?: () => void | Promise<void>;
 }
 
-const AddCompanyModal = ({ open, setOpen }: statePropsType) => {
+const AddCompanyModal = ({ open, setOpen, onRefresh }: statePropsType) => {
   const {
     register,
     handleSubmit,

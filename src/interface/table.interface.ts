@@ -49,16 +49,21 @@ export interface IOfficeLoan {
 export interface ITraining {
   id: number;
   trainingTitle: string;
+  title?: string; // Alternative title field
   trainer: string;
   employees: string;
   startDate?: string;
   endDate?: string;
   description?: string;
   trainingDuration: string;
+  duration?: string; // Alternative duration field
   time: string;
   cost: number;
   status: "Upcoming" | "Open" | "Complete" | "Cancel";
   trainerImg?: StaticImageData;
+  category?: string; // Training category
+  location?: string; // Training location
+  maxParticipants?: number; // Maximum number of participants
 }
 
 export interface IPersonalLoan {
@@ -275,16 +280,21 @@ export interface IBiomattricsAttendance {
 export interface ITraining {
   id: number;
   trainingTitle: string;
+  title?: string; // Alternative title field
   trainer: string;
   employees: string;
   startDate?: string;
   endDate?: string;
   description?: string;
   trainingDuration: string;
+  duration?: string; // Alternative duration field
   time: string;
   cost: number;
   status: "Upcoming" | "Open" | "Complete" | "Cancel";
   trainerImg?: StaticImageData;
+  category?: string; // Training category
+  location?: string; // Training location
+  maxParticipants?: number; // Maximum number of participants
 }
 // Define an interface for the personal loan
 export interface IPersonalLoan {

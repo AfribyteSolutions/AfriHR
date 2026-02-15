@@ -6,7 +6,7 @@ import { IPayrollLineItem } from "@/interface/table.interface";
 import { toast } from "sonner";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import useAuth from "@/hooks/useAuth";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
 const AddNewSalaryModal = ({ open, setOpen, onSuccess }: any) => {
   const { user } = useAuthUserContext();

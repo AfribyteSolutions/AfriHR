@@ -11,6 +11,7 @@ interface SelectBoxProps {
   error?: FieldError; // Validation error feedback
   className?: string;
   defaultValue?: string | number; // Default selected value
+  rules?: any; // Validation rules for react-hook-form
 }
 
 const SelectBox: React.FC<SelectBoxProps> = ({
@@ -22,6 +23,7 @@ const SelectBox: React.FC<SelectBoxProps> = ({
   error,
   className = "form-select",
   defaultValue = "", // Default to an empty string
+  rules,
 }) => {
   return (
     <div className="from__input-box select-wrapper">
@@ -37,6 +39,7 @@ const SelectBox: React.FC<SelectBoxProps> = ({
             name={id}
             control={control}
             defaultValue={defaultValue}
+            rules={rules}
             render={({ field }) => (
               <Select
                 {...field}
