@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { useAuth } from "@/context/UserAuthContext";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 
@@ -32,7 +32,7 @@ const industryOptions = [
 
 const CreateBusinessArea = () => {
   const router = useRouter();
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useAuthUserContext();
   const [submitting, setSubmitting] = useState(false);
 
   const {
