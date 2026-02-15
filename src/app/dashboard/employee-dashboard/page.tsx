@@ -28,7 +28,7 @@ const EmployeeDashboardMain = async () => {
     <>
       <MetaData pageTitle={`Employee Dashboard - ${company?.name ?? "Unknown Company"}`}>
         <Wrapper>
-          <EmplyeeDashboardMainArea company={company} />
+        <EmplyeeDashboardMainArea company={JSON.parse(JSON.stringify(company))} />
         </Wrapper>
       </MetaData>
     </>
