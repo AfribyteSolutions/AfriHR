@@ -2,6 +2,7 @@
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import useGlobalContext from "@/hooks/use-context";
 import { Company } from "@/types/company";
 import Cookies from "js-cookie";
@@ -23,6 +24,7 @@ const HRMSidebar = () => {
   const [linkIdTwo, setlinkIdTwo] = useState<number | null>(null);
   const [linkIdThree, setlinkIdThree] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const pathName = usePathname();
 
   // Track mobile viewport - only consider screens below 1200px as mobile
   useEffect(() => {
@@ -96,7 +98,7 @@ const HRMSidebar = () => {
           if (includeItems.includes(item.label)) {
             // Change HRM label to Employee Management
             const itemLabel = item.label === "HRM" ? "Employee Management" : item.label;
-            
+
             hrmItems.push({
               id: item.id,
               label: itemLabel,
@@ -122,6 +124,46 @@ const HRMSidebar = () => {
 
     setHrmMenuItems(getHrmMenuItems());
   }, []);
+
+  // Auto-expand and highlight active menu items based on current pathname
+  useEffect(() => {
+    if (hrmMenuItems.length === 0) return;
+
+    let foundFirstLayerId: number | null = null;
+    let foundSecondLayerId: number | null = null;
+    let foundThirdLayerId: number | null = null;
+
+    hrmMenuItems.forEach((item) => {
+      // Check first level
+      if (item.link === pathName) {
+        foundFirstLayerId = item.id;
+        foundSecondLayerId = null;
+        foundThirdLayerId = null;
+      } else if (item.subItems) {
+        // Check second level
+        item.subItems.forEach((subItem, subIndex) => {
+          if (subItem.link === pathName) {
+            foundFirstLayerId = item.id;
+            foundSecondLayerId = subIndex;
+            foundThirdLayerId = null;
+          } else if (subItem.subItems) {
+            // Check third level
+            subItem.subItems.forEach((subSubItem, subSubIndex) => {
+              if (subSubItem.link === pathName) {
+                foundFirstLayerId = item.id;
+                foundSecondLayerId = subIndex;
+                foundThirdLayerId = subSubIndex;
+              }
+            });
+          }
+        });
+      }
+    });
+
+    setlinkId(foundFirstLayerId);
+    setlinkIdTwo(foundSecondLayerId);
+    setlinkIdThree(foundThirdLayerId);
+  }, [pathName, hrmMenuItems]);
 
   // Close sidebar ONLY on mobile when navigating
   const closeSidebarOnMobile = () => {

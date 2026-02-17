@@ -3,13 +3,14 @@ import CompanyDetailsMainArea from "@/components/pagesUI/company/company-details
 import MetaData from "@/hooks/useMetaData";
 import React from "react";
 
-const CompanyDetailsMain = ({ params }: { params: { id: number } }) => {
-  const id = params.id;
+const CompanyDetailsMain = ({ params }: { params: { id: string } }) => {
+  // CompanyDetailsMainArea fetches company based on subdomain or user's companyId
+  // The id param is kept for route compatibility but not used
   return (
     <>
-      <MetaData pageTitle="Company Details Dynamic">
+      <MetaData pageTitle="Company Details">
         <Wrapper>
-          <CompanyDetailsMainArea id={id}/>
+          <CompanyDetailsMainArea />
         </Wrapper>
       </MetaData>
     </>

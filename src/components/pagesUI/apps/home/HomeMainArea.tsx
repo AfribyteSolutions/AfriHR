@@ -24,7 +24,7 @@ interface IEmployee {
 }
 
 interface Props {
-  company: Company;
+  company?: Company;
 }
 
 const HRMDashboardMainArea: React.FC<Props> = ({ company }) => {
@@ -42,7 +42,10 @@ const HRMDashboardMainArea: React.FC<Props> = ({ company }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
-    if (!company?.id) return;
+    if (!company?.id) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
 
@@ -74,6 +77,19 @@ const HRMDashboardMainArea: React.FC<Props> = ({ company }) => {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  // Redirect to appropriate dashboard if authenticated but no company prop
+  useEffect(() => {
+    if (!loading && !company && userData) {
+      // Redirect based on user role
+      const role = (userData as any)?.role || 'employee';
+      if (role === 'manager' || role === 'admin') {
+        router.push('/dashboard/hrm-dashboard');
+      } else {
+        router.push('/dashboard/employee-dashboard');
+      }
+    }
+  }, [loading, company, userData, router]);
 
   const managerName = 
     manager?.fullName || 
