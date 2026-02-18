@@ -1,6 +1,7 @@
 // interface/IEmployee
 export interface IEmployee {
     id: string; // or number, depending on your DB
+    authUid?: string; // Firebase Auth UID (may differ from Firestore doc.id)
     name: string;
     position: string;
     image: string; // <-- for employee image URL

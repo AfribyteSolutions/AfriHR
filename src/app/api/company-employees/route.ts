@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
     let allEmployees: any[] = [];
 
-    // 2. Process documents and fix missing photo URLs
+    // 2. Process documents and fix missing photo URLs + resolve Firebase Auth UIDs
     const employeePromises = snapshot.docs.map(async (doc) => {
       const data = doc.data();
       const fullName = data.fullName || "N/A";
@@ -33,12 +33,38 @@ export async function GET(req: Request) {
       if (nameSearch && !fullName.toLowerCase().includes(nameSearch)) return null;
 
       let photoURL = data.photoURL || null;
+      let authUid = doc.id; // Default: assume doc.id = Firebase Auth UID
 
-      // FIX: If photoURL is missing in 'employees', check 'users' collection
-      if (!photoURL) {
-        const userDoc = await db.collection("users").doc(doc.id).get();
-        if (userDoc.exists) {
-          photoURL = userDoc.data()?.photoURL || null;
+      // Strategy 1: check if doc.id is itself a Firebase Auth UID (exists in users collection)
+      const userDoc = await db.collection("users").doc(doc.id).get();
+      if (userDoc.exists) {
+        if (!photoURL) photoURL = userDoc.data()?.photoURL || null;
+      } else {
+        let resolved = false;
+
+        // Strategy 2: use userId field if it exists (may already store the Auth UID)
+        if (data.userId && typeof data.userId === 'string') {
+          const userByIdDoc = await db.collection("users").doc(data.userId).get();
+          if (userByIdDoc.exists) {
+            authUid = data.userId;
+            if (!photoURL) photoURL = userByIdDoc.data()?.photoURL || null;
+            resolved = true;
+          }
+        }
+
+        // Strategy 3: look up Firebase Auth by email
+        if (!resolved && data.email && data.email !== "N/A") {
+          try {
+            const authUser = await admin.auth().getUserByEmail(data.email);
+            authUid = authUser.uid;
+            if (!photoURL) {
+              const resolvedUserDoc = await db.collection("users").doc(authUid).get();
+              if (resolvedUserDoc.exists) photoURL = resolvedUserDoc.data()?.photoURL || null;
+            }
+          } catch {
+            // getUserByEmail failed - email doesn't match any Auth account
+            console.warn(`[company-employees] Could not resolve authUid for employee ${doc.id} (${fullName}), email: ${data.email}`);
+          }
         }
       }
 
@@ -50,13 +76,15 @@ export async function GET(req: Request) {
 
       return {
         // Use doc.id as the primary UID to ensure URL parameters match Firestore Lookups
-        uid: doc.id, 
+        uid: doc.id,
+        // Firebase Auth UID for features that need it (e.g., chat)
+        authUid,
         userId: data.userId || null,
         fullName,
         email: data.email || "N/A",
         position: data.position || "N/A",
         department: data.department || "N/A",
-        photoURL, 
+        photoURL,
         managerId: data.managerId || null,
         createdAt: createdAtDate,
       };
