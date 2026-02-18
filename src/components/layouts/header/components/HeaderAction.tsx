@@ -78,7 +78,7 @@ const HeaderAction = () => {
         <>
             <div className="app__header-action">
                 <ul>
-                    <li>
+                    {/* <li>
                         <div className="nav-item relative">
                             <button id="langdropdown" className="langdropdown" onClick={handleShowLanguage}>
                                 <span>
@@ -113,7 +113,7 @@ const HeaderAction = () => {
                             </div>
                             )}
                         </div>
-                    </li>
+                    </li> */}
                     <li>
                         <button onClick={handleToggleFullScreen} className='flex'>
                             <div className="nav-item">

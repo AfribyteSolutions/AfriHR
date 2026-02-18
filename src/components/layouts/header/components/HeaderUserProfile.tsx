@@ -1,73 +1,116 @@
 "use client";
 import Image from 'next/image';
 import Link from 'next/link';
-import React, { useState } from 'react'; // Removed useEffect as context handles initial fetch
-import { useAuthUserContext } from '@/context/UserAuthContext'; // Import your context hook
+import React from 'react'; 
+import { useAuthUserContext } from '@/context/UserAuthContext'; 
 import avatarImg from "../../../../../public/assets/images/avatar/avatar.png";
 import UserIcon from '@/svg/header-svg/Profile/UserIcon';
 import ChatIcon from '@/svg/header-svg/Profile/ChatIcon';
-import EmailIcon from '@/svg/header-svg/Profile/EmailIcon';
 import LogOut from '@/svg/header-svg/Profile/LogOut';
-import { auth } from '@/lib/firebase'; // Ensure Firebase auth is imported for signOut
+import { auth } from '@/lib/firebase'; 
+import { IEmployee } from '@/interface/IEmployee';
 
-//types
+// types
 type TUserProps = {
     handleShowUserDrowdown: () => void;
     isOpenUserDropdown: boolean;
 };
 
-const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUserProps) => {
-    // Get user data and loading state directly from the AuthUserContext
-    const { user: authUser, loading: loadingAuthUser } = useAuthUserContext(); 
+/**
+ * We define a type that combines your IEmployee interface with 
+ * potential Firebase Auth properties, explicitly allowing nulls.
+ */
+type ExtendedUser = Partial<IEmployee> & {
+    displayName?: string | null;
+    fullName?: string | null;
+    photoURL?: string | null;
+    email?: string | null;
+    uid?: string | null;
+};
 
-    // This function will be called on log out
+const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUserProps) => {
+    // Get user data and loading state. 
+    // We cast to 'any' first then to 'ExtendedUser' to bypass strict inheritance conflicts.
+    const { user, loading: loadingAuthUser } = useAuthUserContext(); 
+    const authUser = user as ExtendedUser;
+
     const handleLogout = async () => {
         try {
             await auth.signOut();
-            window.location.href = '/auth/signin-basic'; // Redirect to sign-in page
+            window.location.href = '/auth/signin-basic'; 
         } catch (error) {
             console.error('Error signing out:', error);
         }
     };
 
+    // Logic for Name: Firestore fullName > Firestore name > Firebase displayName
+    const displayName = 
+        authUser?.fullName || 
+        authUser?.name || 
+        authUser?.displayName || 
+        "User";
+    
+    // Logic for Role: Use position from onboarding or fallback
+    const displayRole = authUser?.position || "online";
+
+    // Logic for Avatar: Profile pic from Firestore > Photo from Auth > Default
+    const profileImage = 
+        authUser?.profilePictureUrl || 
+        authUser?.image || 
+        authUser?.photoURL;
+
     return (
         <>
             <div className="nav-item relative">
-                {/* Clickable profile icon */}
-                <Link id="userportfolio" href="#" onClick={handleShowUserDrowdown}>
+                <Link id="userportfolio" href="#" onClick={(e) => { e.preventDefault(); handleShowUserDrowdown(); }}>
                     <div className="user__portfolio">
                         <div className="user__portfolio-thumb">
-                            {/* Display a loading placeholder, user photo, or default avatar */}
                             {loadingAuthUser ? (
-                                <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse"></div> // Simple loading animation
-                            ) : authUser?.photoURL ? (
-                                <Image src={authUser.photoURL} alt="User Photo" width={40} height={40} className="rounded-full object-cover" />
+                                <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse border border-slate-200"></div> 
+                            ) : profileImage ? (
+                                <Image 
+                                    src={profileImage} 
+                                    alt="User Photo" 
+                                    width={40} 
+                                    height={40} 
+                                    className="rounded-full object-cover border border-slate-200" 
+                                />
                             ) : (
-                                <Image src={avatarImg} alt="Default Avatar" width={40} height={40} className="rounded-full object-cover" />
+                                <Image 
+                                    src={avatarImg} 
+                                    alt="Default Avatar" 
+                                    width={40} 
+                                    height={40} 
+                                    className="rounded-full object-cover border border-slate-200" 
+                                />
                             )}
                         </div>
                         <div className="user__content">
-                            {/* Display user's name from context, with loading state and fallback */}
-                            <h5>{loadingAuthUser ? "Loading..." : authUser?.fullName || "Jhon Smith"}</h5>
-                            <span>online</span>
+                            <h5 className="font-bold text-slate-900 dark:text-white">
+                                {loadingAuthUser ? "Loading..." : displayName}
+                            </h5>
+                            <span className="text-xs text-slate-500 capitalize">{displayRole}</span>
                         </div>
                     </div>
                 </Link>
-                {/* Conditional rendering of the dropdown */}
+
                 {isOpenUserDropdown && (
-                    <div className={`user__dropdown ${isOpenUserDropdown ? "user-enable" : " "}`}>
+                    <div className={`user__dropdown ${isOpenUserDropdown ? "user-enable" : ""}`}>
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 md:hidden">
+                            <p className="text-sm font-bold truncate">{displayName}</p>
+                            <p className="text-xs text-slate-500 truncate">{authUser?.email}</p>
+                        </div>
                         <ul>
                             <li>
-                                {/* Link to My Profile using UID from context */}
                                 {authUser?.uid ? (
                                     <Link href={`/hrm/employee-profile?uid=${authUser.uid}`}>
                                         <UserIcon />
                                         My Profile
                                     </Link>
                                 ) : (
-                                    <Link href="#"> {/* Placeholder if user not loaded/logged in */}
+                                    <Link href="#">
                                         <UserIcon />
-                                        Profile (Login Required)
+                                        Profile
                                     </Link>
                                 )}
                             </li>
@@ -78,15 +121,12 @@ const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUser
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/apps/email-inbox">
-                                    <EmailIcon />
-                                    Inbox
-                                </Link>
-                            </li>
-                            <li>
-                                <button onClick={handleLogout} className="flex items-center w-full px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                <button 
+                                    onClick={handleLogout} 
+                                    className="flex items-center w-full px-4 py-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                                >
                                     <LogOut />
-                                    <span className="ml-2">Log Out</span>
+                                    <span className="ml-2 font-medium">Log Out</span>
                                 </button>
                             </li>
                         </ul>

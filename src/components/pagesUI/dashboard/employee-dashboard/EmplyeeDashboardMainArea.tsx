@@ -46,10 +46,15 @@ const EmployeeDashboardMainArea: React.FC<Props> = ({ company }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
-    if (!userData?.uid || !company?.id) return;
+    // ✅ FIX: Wait for BOTH company and userData to be ready
+    if (!userData?.uid || !company?.id) {
+      return;
+    }
+
     try {
       setLoading(true);
 
+      // Fetch employee profile, stats, and activities in parallel
       const [employeeRes, statsRes, activityRes] = await Promise.all([
         fetch(`/api/user-data?uid=${userData.uid}`).then(res => res.json()),
         fetch(`/api/dashboard-stats?uid=${userData.uid}&companyId=${company.id}&role=employee`).then(res => res.json()),
@@ -61,7 +66,7 @@ const EmployeeDashboardMainArea: React.FC<Props> = ({ company }) => {
       if (activityRes.success) setActivities(activityRes.data || []);
       
     } catch (err) {
-      console.error("Dashboard Error:", err);
+      console.error("Employee Dashboard Fetch Error:", err);
     } finally {
       setLoading(false);
     }
@@ -71,6 +76,7 @@ const EmployeeDashboardMainArea: React.FC<Props> = ({ company }) => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // Derived UI state
   const warningCount = stats.activeWarnings ?? 0;
 
   const statCards: StatCardType[] = [
@@ -119,12 +125,13 @@ const EmployeeDashboardMainArea: React.FC<Props> = ({ company }) => {
     { id: "view-documents", label: "My Documents", icon: "fa-solid fa-folder-open", color: "#f59e0b", onClick: () => router.push("/document") }
   ];
 
-  if (loading) {
+  // While data is loading OR while we wait for userData context to resolve
+  if (loading || !userData) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4" />
-          <p className="text-slate-600 dark:text-slate-400">Loading dashboard...</p>
+          <p className="text-slate-600 dark:text-slate-400 font-medium">Synchronizing your workspace...</p>
         </div>
       </div>
     );
@@ -139,7 +146,7 @@ const EmployeeDashboardMainArea: React.FC<Props> = ({ company }) => {
           </div>
 
           {stats.latestPayslip && (
-            <div className="card__wrapper p-6 h-auto min-h-0 bg-white dark:bg-slate-800">
+            <div className="card__wrapper p-6 h-auto min-h-0 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Latest Payslip</h3>
@@ -155,20 +162,20 @@ const EmployeeDashboardMainArea: React.FC<Props> = ({ company }) => {
             </div>
           )}
 
-          <div className="card__wrapper p-6 h-auto min-h-0 bg-white dark:bg-slate-800">
+          <div className="card__wrapper p-6 h-auto min-h-0 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Leave Summary</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg cursor-pointer" onClick={() => router.push("/hrm/leaves-employee")}>
+              <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg cursor-pointer transition-colors hover:bg-green-100 dark:hover:bg-green-900/40" onClick={() => router.push("/hrm/leaves-employee")}>
                 <p className="text-3xl font-bold text-green-600 dark:text-green-400">{stats.leaves ?? 0}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Approved</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 font-medium">Approved</p>
               </div>
-              <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg cursor-pointer" onClick={() => router.push("/hrm/leaves-employee")}>
+              <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg cursor-pointer transition-colors hover:bg-yellow-100 dark:hover:bg-yellow-900/40" onClick={() => router.push("/hrm/leaves-employee")}>
                 <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pendingLeaves ?? 0}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Pending</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 font-medium">Pending</p>
               </div>
-              <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg cursor-pointer" onClick={() => router.push("/hrm/leaves-employee")}>
+              <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg cursor-pointer transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/40" onClick={() => router.push("/hrm/leaves-employee")}>
                 <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.totalLeaveDays ?? 0}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Total Days Taken</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 font-medium">Total Days Taken</p>
               </div>
             </div>
           </div>
@@ -181,7 +188,7 @@ const EmployeeDashboardMainArea: React.FC<Props> = ({ company }) => {
         <div className="col-span-12 xl:col-span-3 space-y-6">
           <QuickActions actions={quickActions} title="Quick Actions" />
 
-          <div className="card__wrapper h-auto min-h-0 bg-white dark:bg-slate-800">
+          <div className="card__wrapper h-auto min-h-0 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl shadow-sm">
             <div className="p-6 border-b border-slate-100 dark:border-slate-700">
               <h5 className="text-lg font-bold text-slate-900 dark:text-white">Overview</h5>
             </div>
@@ -200,7 +207,7 @@ const EmployeeDashboardMainArea: React.FC<Props> = ({ company }) => {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-600 dark:text-slate-400">Unpaid Payrolls</span>
-                <span className="text-lg font-bold text-slate-900 dark:text-white">{stats.unpaidPayrolls ?? 0}</span>
+                <span className="text-lg font-bold text-slate-900 dark:text-white font-mono">{stats.unpaidPayrolls ?? 0}</span>
               </div>
             </div>
           </div>

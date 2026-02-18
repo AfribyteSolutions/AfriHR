@@ -1,4 +1,3 @@
-// components/pagesUI/dashboard/hrm-dashboard/HRMDashboardMainArea.tsx
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -42,34 +41,37 @@ const HRMDashboardMainArea: React.FC<Props> = ({ company }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
-    if (!company?.id) {
-      setLoading(false);
-      return;
+    // Check if we have the necessary IDs to make API calls
+    if (!company?.id || !userData?.uid) {
+      // If data is missing after 3 seconds, stop loading to prevent infinite spinner
+      const timer = setTimeout(() => {
+        if (loading) setLoading(false);
+      }, 3000);
+      return () => clearTimeout(timer);
     }
+
     try {
       setLoading(true);
 
-      // Fetch manager profile if uid is available
-      if (userData?.uid) {
-        const managerRes = await fetch(`/api/user-data?uid=${userData.uid}`);
-        const managerResult = await managerRes.json();
-        if (managerResult.success) {
-          setManager(managerResult.user);
-        }
-      }
+      // Fetch manager profile, stats, and activity in parallel
+      const [managerRes, statsRes, activityRes] = await Promise.all([
+        fetch(`/api/user-data?uid=${userData.uid}`),
+        fetch(`/api/dashboard-stats?companyId=${company.id}&role=manager&uid=${userData.uid}`),
+        fetch(`/api/dashboard-activity?companyId=${company.id}&role=manager&limit=8`)
+      ]);
 
-      // Fetch stats
-      const statsRes = await fetch(`/api/dashboard-stats?companyId=${company.id}&role=manager&uid=${userData?.uid || 'admin'}`);
+      const managerResult = await managerRes.json();
       const statsResult = await statsRes.json();
-      if (statsResult.success) setStats(statsResult.data);
-
-      // Fetch activities
-      const activityRes = await fetch(`/api/dashboard-activity?companyId=${company.id}&role=manager&limit=8`);
       const activityResult = await activityRes.json();
+
+      if (managerResult.success) setManager(managerResult.user);
+      if (statsResult.success) setStats(statsResult.data);
       if (activityResult.success) setActivities(activityResult.data || []);
+
     } catch (err) {
-      console.error("Manager Dashboard Error:", err);
+      console.error("Manager Dashboard Fetch Error:", err);
     } finally {
+      // Ensure loading is set to false even if one of the fetches fails
       setLoading(false);
     }
   }, [company?.id, userData?.uid]);
@@ -78,32 +80,21 @@ const HRMDashboardMainArea: React.FC<Props> = ({ company }) => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // Redirect to appropriate dashboard if authenticated but no company prop
+  // Handle Redirection if not authorized
   useEffect(() => {
     if (!loading && !company && userData) {
-      // Redirect based on user role
       const role = (userData as any)?.role || 'employee';
-      if (role === 'manager' || role === 'admin') {
-        router.push('/dashboard/hrm-dashboard');
-      } else {
+      if (role !== 'manager' && role !== 'admin') {
         router.push('/dashboard/employee-dashboard');
       }
     }
   }, [loading, company, userData, router]);
 
-  const managerName = 
-    manager?.fullName || 
-    manager?.name || 
-    manager?.displayName || 
-    (userData as any)?.displayName || 
-    "Manager";
-  
-  const managerImage = 
-    manager?.photoURL || 
-    manager?.profilePictureUrl || 
-    manager?.image || 
-    (userData as any)?.photoURL;
+  // UI Helpers
+  const managerName = manager?.fullName || manager?.name || (userData as any)?.displayName || "Manager";
+  const managerImage = manager?.photoURL || manager?.profilePictureUrl || (userData as any)?.photoURL;
 
+  // Stat Card Groupings
   const employeeCards: StatCardType[] = [
     { id: "total-employees", label: "Total Employees", value: stats.totalEmployees ?? 0, icon: "fa-solid fa-users", color: "#3b82f6", bgColor: "bg-blue-50", link: "/hrm/employee" },
     { id: "present-today", label: "Present Today", value: stats.presentToday ?? 0, icon: "fa-solid fa-user-check", color: "#10b981", bgColor: "bg-green-50", link: "/hrm/attendance" },
@@ -134,12 +125,13 @@ const HRMDashboardMainArea: React.FC<Props> = ({ company }) => {
     { id: "manage-training", label: "Training", icon: "fa-solid fa-chalkboard-user", color: "#ec4899", onClick: () => router.push("/training") }
   ];
 
+  // Logic to handle the "Synchronizing" state
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4" />
-          <p className="text-gray-600">Loading dashboard...</p>
+          <p className="text-gray-500 font-medium">Synchronizing dashboard data...</p>
         </div>
       </div>
     );
@@ -147,30 +139,13 @@ const HRMDashboardMainArea: React.FC<Props> = ({ company }) => {
 
   return (
     <div className="app__slide-wrapper h-auto">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
-          {managerImage && (
-            <img 
-              src={managerImage} 
-              alt={managerName}
-              className="w-16 h-16 rounded-full object-cover border-4 border-indigo-100"
-            />
-          )}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Welcome back, {managerName}! 👋</h1>
-            <p className="text-gray-600 mt-1">
-              {manager?.position || manager?.role || "Manager"} · {company?.name || "your organization"}
-            </p>
-          </div>
-        </div>
-      </div>
+      
 
       <div className="grid grid-cols-12 gap-6 items-start">
         <div className="col-span-12 xl:col-span-9">
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <i className="fa-solid fa-users text-indigo-600" />
-              Employee Management
+              <i className="fa-solid fa-users text-indigo-600" /> Employee Management
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {employeeCards.map((card) => <StatCard key={card.id} card={card} />)}
@@ -179,8 +154,7 @@ const HRMDashboardMainArea: React.FC<Props> = ({ company }) => {
 
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <i className="fa-solid fa-diagram-project text-indigo-600" />
-              Project Management
+              <i className="fa-solid fa-diagram-project text-indigo-600" /> Project Management
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {projectCards.map((card) => <StatCard key={card.id} card={card} />)}
@@ -189,48 +163,34 @@ const HRMDashboardMainArea: React.FC<Props> = ({ company }) => {
 
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <i className="fa-solid fa-briefcase text-indigo-600" />
-              HR Operations
+              <i className="fa-solid fa-briefcase text-indigo-600" /> HR Operations
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {hrCards.map((card) => <StatCard key={card.id} card={card} />)}
             </div>
           </div>
 
-          <div className="h-auto overflow-visible">
-            <RecentActivity activities={activities} title="Recent System Activity" />
-          </div>
+          <RecentActivity activities={activities} title="Recent System Activity" />
         </div>
 
         <div className="col-span-12 xl:col-span-3 space-y-6">
           <QuickActions actions={quickActions} title="Quick Actions" />
-
-          <div className="card__wrapper h-auto">
-            <div className="p-6 border-b border-gray-100">
-              <h5 className="text-lg font-bold text-gray-900">Company Info</h5>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Total Promotions</span>
-                <span className="text-lg font-bold text-gray-900">{stats.totalPromotions ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Recent Promotions</span>
-                <span className="text-lg font-bold text-gray-900">{stats.recentPromotions ?? 0}</span>
-              </div>
-              <div className="pt-4 border-t border-gray-100">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Total Expenses</span>
-                    <span className="font-semibold text-gray-900">${((stats.totalExpense ?? 0).toLocaleString())}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Unpaid Expenses</span>
-                    <span className="font-semibold text-red-600">${((stats.unpaidExpense ?? 0).toLocaleString())}</span>
-                  </div>
+          <div className="card__wrapper bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+             <h5 className="text-lg font-bold text-gray-900 mb-4">Company Overview</h5>
+             <div className="space-y-4">
+                <div className="flex justify-between text-sm">
+                   <span className="text-gray-600">Total Promotions</span>
+                   <span className="font-bold text-gray-900">{stats.totalPromotions ?? 0}</span>
                 </div>
-              </div>
-            </div>
+                <div className="flex justify-between text-sm">
+                   <span className="text-gray-600">Total Expenses</span>
+                   <span className="font-bold text-indigo-600">${(stats.totalExpense ?? 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                   <span className="text-gray-600">Unpaid Expenses</span>
+                   <span className="font-bold text-red-600">${(stats.unpaidExpense ?? 0).toLocaleString()}</span>
+                </div>
+             </div>
           </div>
         </div>
       </div>

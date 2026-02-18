@@ -26,13 +26,6 @@ const SignUpBasicMain = () => {
   return (
     <>
       <div 
-        className="container-xxl min-h-screen"
-        style={{
-          backgroundImage: 'url("/assets/images/bg/auth-background2.png")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }}
       >
         {/* -- Sign Up area start-- */}
         <div className="authentication-wrapper basic-authentication">
