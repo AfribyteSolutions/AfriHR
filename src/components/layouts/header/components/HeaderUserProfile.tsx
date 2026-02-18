@@ -114,12 +114,7 @@ const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUser
                                     </Link>
                                 )}
                             </li>
-                            <li>
-                                <Link href="/apps/app-chat">
-                                    <ChatIcon />
-                                    Chat
-                                </Link>
-                            </li>
+                            
                             <li>
                                 <button 
                                     onClick={handleLogout} 
