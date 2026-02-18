@@ -79,7 +79,6 @@ export interface IEmployee {
   id?: number; // 👈 Add this line
   employeeId?: string;
   uid: string; // <--- ADDED THIS LINE to the interface
-  authUid?: string; // Firebase Auth UID (may differ from Firestore doc.id for some employees)
   fullName: string;
   name: string;
   email: string;
