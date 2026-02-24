@@ -28,22 +28,21 @@ const publicRoutes = [
 
 export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
-  const hostname = req.headers.get('host') || '';
-
-  // 1. FORCED WWW REDIRECT: 
-  // This strips 'www.' from the start of the hostname if it exists.
-  // Example: www.afrihrm.com -> afrihrm.com
-  if (hostname.startsWith('www.')) {
-    const newHostname = hostname.replace(/^www\./, '');
-    return NextResponse.redirect(new URL(pathname, `https://${newHostname}`), 301);
-  }
 
   // Skip middleware for API routes, Next.js internals, and static files
   if (pathname.startsWith('/api') || pathname.startsWith('/_next/') || pathname.includes('.')) {
     return NextResponse.next();
   }
 
-  const subdomain = getSubdomain(hostname);
+  const hostname = req.headers.get('host') || '';
+  
+  // 🔹 MODIFICATION: If the hostname is EXACTLY www.afrihrm.com, 
+  // we treat it as no subdomain to prevent the redirect loop.
+  let subdomain = getSubdomain(hostname);
+  if (hostname === 'www.afrihrm.com') {
+    subdomain = null; 
+  }
+
   const isLocalhost = hostname.includes('localhost') || hostname.includes('127.0.0.1');
 
   const res = NextResponse.next();
@@ -54,7 +53,8 @@ export function middleware(req: NextRequest) {
   // Set subdomain cookie
   const existingSubdomain = req.cookies.get('subdomain')?.value;
   if (existingSubdomain !== subdomain) {
-    res.cookies.set("subdomain", subdomain || "the-media-consult", {
+    // Note: If no subdomain, we leave it empty or use your default
+    res.cookies.set("subdomain", subdomain || "", {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
