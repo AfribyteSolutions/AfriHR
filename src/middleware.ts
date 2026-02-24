@@ -30,9 +30,12 @@ export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const hostname = req.headers.get('host') || '';
 
-  // 1. FORCED WWW REDIRECT: Ensure users are not on the www subdomain to avoid SSL/routing issues
-  if (hostname === 'www.afrihrm.com') {
-    return NextResponse.redirect(new URL(pathname, `https://afrihrm.com`), 301);
+  // 1. FORCED WWW REDIRECT: 
+  // This strips 'www.' from the start of the hostname if it exists.
+  // Example: www.afrihrm.com -> afrihrm.com
+  if (hostname.startsWith('www.')) {
+    const newHostname = hostname.replace(/^www\./, '');
+    return NextResponse.redirect(new URL(pathname, `https://${newHostname}`), 301);
   }
 
   // Skip middleware for API routes, Next.js internals, and static files

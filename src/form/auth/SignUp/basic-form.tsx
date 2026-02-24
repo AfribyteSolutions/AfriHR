@@ -74,8 +74,11 @@ const SignUpBasicForm = () => {
 
       toast.success("Deployment Successful!", { id: toastId });
       
-      // FIX: Strip 'www.' from the host to prevent invalid double subdomains like test.www.afrihrm.com
+      // FIX: Strip 'www.' from the current host to ensure the redirect 
+      // is tenant.afrihrm.com instead of tenant.www.afrihrm.com
       const cleanHost = window.location.host.replace(/^www\./, '');
+      
+      // Redirect to the new clean subdomain URL
       window.location.href = `${window.location.protocol}//${result.subdomain}.${cleanHost}/auth/signin-basic?welcome=true`;
 
     } catch (error: any) {
