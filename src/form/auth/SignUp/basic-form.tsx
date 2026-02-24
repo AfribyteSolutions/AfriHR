@@ -73,7 +73,10 @@ const SignUpBasicForm = () => {
       if (!result.success) throw new Error(result.message);
 
       toast.success("Deployment Successful!", { id: toastId });
-      window.location.href = `${window.location.protocol}//${result.subdomain}.${window.location.host}/auth/signin-basic?welcome=true`;
+      
+      // FIX: Strip 'www.' from the host to prevent invalid double subdomains like test.www.afrihrm.com
+      const cleanHost = window.location.host.replace(/^www\./, '');
+      window.location.href = `${window.location.protocol}//${result.subdomain}.${cleanHost}/auth/signin-basic?welcome=true`;
 
     } catch (error: any) {
       toast.error(error.message || "Connection error", { id: toastId });

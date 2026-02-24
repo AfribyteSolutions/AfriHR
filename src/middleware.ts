@@ -28,13 +28,18 @@ const publicRoutes = [
 
 export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+  const hostname = req.headers.get('host') || '';
+
+  // 1. FORCED WWW REDIRECT: Ensure users are not on the www subdomain to avoid SSL/routing issues
+  if (hostname === 'www.afrihrm.com') {
+    return NextResponse.redirect(new URL(pathname, `https://afrihrm.com`), 301);
+  }
 
   // Skip middleware for API routes, Next.js internals, and static files
   if (pathname.startsWith('/api') || pathname.startsWith('/_next/') || pathname.includes('.')) {
     return NextResponse.next();
   }
 
-  const hostname = req.headers.get('host') || '';
   const subdomain = getSubdomain(hostname);
   const isLocalhost = hostname.includes('localhost') || hostname.includes('127.0.0.1');
 
