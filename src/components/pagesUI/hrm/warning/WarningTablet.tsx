@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
-import { collection, query, where, onSnapshot, orderBy, deleteDoc, doc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuthUserContext } from "@/context/UserAuthContext";
 import { IWarningData } from "@/interface/table.interface";
@@ -25,16 +25,26 @@ const WarningTablet = ({ userRole }: WarningTabletProps) => {
   const isManager = userRole === "manager" || userRole === "admin" || userRole === "super-admin";
 
   useEffect(() => {
-    if (!user?.uid) return;
+    // We need both the user ID and the Company ID to filter correctly
+    if (!user?.uid || !user?.companyId) return;
 
     const warningsRef = collection(db, "warnings");
     let q;
 
     if (isManager) {
-      q = query(warningsRef, orderBy("createdAt", "desc"));
+      // FIX: Restricted to current company even for managers
+      q = query(
+        warningsRef, 
+        where("companyId", "==", user.companyId), 
+        orderBy("createdAt", "desc")
+      );
     } else {
-      // Query by employeeId to ensure the logged-in employee sees their own data
-      q = query(warningsRef, where("employeeId", "==", user.uid));
+      // Query by both companyId and employeeId for double-layered security
+      q = query(
+        warningsRef, 
+        where("companyId", "==", user.companyId),
+        where("employeeId", "==", user.uid)
+      );
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -43,17 +53,22 @@ const WarningTablet = ({ userRole }: WarningTabletProps) => {
         ...doc.data()
       })) as IWarningData[];
 
-      // Client-side sort if index isn't ready
+      // Client-side sort fallback for employee view if index is still propagating
       if (!isManager) {
         data.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       }
 
       setWarnings(data);
       setLoading(false);
+    }, (error) => {
+      console.error("Firestore Error:", error);
+      // NOTE: If you see an "Index Required" error in the console, 
+      // click the link provided in that error to create the composite index.
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user?.uid, isManager]);
+  }, [user?.uid, user?.companyId, isManager]);
 
   const formatTableDate = (dateField: any): string => {
     if (!dateField) return "N/A";
@@ -73,6 +88,10 @@ const WarningTablet = ({ userRole }: WarningTabletProps) => {
       return matchesName && formatTableDate(w.warningDate) === format(filterDate, "dd/MM/yyyy");
     });
   }, [warnings, searchTerm, filterDate]);
+
+  if (loading) {
+    return <div className="p-10 text-center">Loading warnings...</div>;
+  }
 
   return (
     <div className="card__wrapper bg-white rounded shadow-sm">
@@ -110,7 +129,11 @@ const WarningTablet = ({ userRole }: WarningTabletProps) => {
           </thead>
           <tbody>
             {filteredWarnings.length === 0 ? (
-              <tr><td colSpan={6} className="p-10 text-center text-gray-400">No records found.</td></tr>
+              <tr>
+                <td colSpan={6} className="p-10 text-center text-gray-400">
+                  No records found for your company.
+                </td>
+              </tr>
             ) : (
               filteredWarnings.map((row) => (
                 <tr key={row.id} className="border-b hover:bg-gray-50">
@@ -127,7 +150,10 @@ const WarningTablet = ({ userRole }: WarningTabletProps) => {
                   </td>
                   {isManager && (
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => { setSelectedWarning(row); setEditModalOpen(true); }} className="text-blue-600 mr-3">
+                      <button 
+                        onClick={() => { setSelectedWarning(row); setEditModalOpen(true); }} 
+                        className="text-blue-600 hover:text-blue-800 transition-colors mr-3"
+                      >
                         <i className="fa-regular fa-pen-to-square"></i>
                       </button>
                     </td>
@@ -139,7 +165,11 @@ const WarningTablet = ({ userRole }: WarningTabletProps) => {
         </table>
       </div>
 
-      <WarningEditModal open={editModalOpen} setOpen={setEditModalOpen} editData={selectedWarning} />
+      <WarningEditModal 
+        open={editModalOpen} 
+        setOpen={setEditModalOpen} 
+        editData={selectedWarning} 
+      />
     </div>
   );
 };
