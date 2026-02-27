@@ -1,3 +1,4 @@
+import Wrapper from "@/components/layouts/DefaultWrapper";
 import ReportsMainArea from "@/components/pagesUI/hrm/reports/ReportsMainArea";
 import React from "react";
 
@@ -9,7 +10,9 @@ export const metadata = {
 const ReportsPage = () => {
   return (
     <>
-      <ReportsMainArea />
+      <Wrapper>
+        <ReportsMainArea />
+      </Wrapper>
     </>
   );
 };
