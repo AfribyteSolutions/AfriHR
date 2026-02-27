@@ -1,4 +1,6 @@
 "use client";
+import { auth } from "@/lib/firebase"; // Adjust this path to where your firebase client config lives
+import { onAuthStateChanged } from "firebase/auth";
 import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
 import Breadcrumb from "@/common/Breadcrumb/breadcrumb";
@@ -19,20 +21,31 @@ const EmployeeProfileContent = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const uid = searchParams.get('uid');
-      
-      // If no UID is found, stop loading immediately and show error
+      let uid = searchParams.get('uid');
+  
+      // 1. If no UID in URL, get it from the logged-in user
       if (!uid) {
-        setError("No Employee ID found in the URL.");
-        setLoading(false);
-        return;
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+          if (user) {
+            executeFetch(user.uid);
+          } else {
+            setError("Please log in to view your profile.");
+            setLoading(false);
+          }
+        });
+        return () => unsubscribe();
+      } else {
+        executeFetch(uid);
       }
-
+    };
+  
+    const executeFetch = async (targetUid: string) => {
       try {
-        const res = await fetch(`/api/user-data?uid=${uid}`);
+        const res = await fetch(`/api/user-data?uid=${targetUid}`);
         const data = await res.json();
         
         if (data.success) {
+          // We set the data, but we must ensure the UI uses 'fullName'
           setEmployeeData(data.user);
         } else {
           setError(data.message || "User not found.");
@@ -43,7 +56,7 @@ const EmployeeProfileContent = () => {
         setLoading(false);
       }
     };
-
+  
     fetchProfile();
   }, [searchParams]);
 

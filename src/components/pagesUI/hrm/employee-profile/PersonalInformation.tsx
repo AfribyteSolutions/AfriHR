@@ -67,9 +67,9 @@ const PersonalInformation = ({ data }: PropsType) => {
                 </div>
 
                 <div className="profile-info">
-                  <h3 className="user-name mb-[10px]">
-                    {data.fullName || "N/A"}
-                  </h3>
+                <h3 className="user-name mb-[10px]">
+  {data.fullName || data.name || "N/A"} 
+</h3>
 
                   <h6 className="text-muted mb-[4px]">
                     {data.position || "No Position"}

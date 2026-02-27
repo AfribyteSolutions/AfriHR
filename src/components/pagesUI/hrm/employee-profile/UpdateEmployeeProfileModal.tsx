@@ -12,6 +12,42 @@ import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 import { toast } from "sonner";
 import { employeestatePropsType } from "@/interface/common.interface";
 
+/**
+ * Helper to compress Base64 images to prevent "413 Payload Too Large" errors.
+ * Resizes the image to a max width/height and reduces quality to 70%.
+ */
+const compressImage = (base64Str: string, maxWidth = 800, maxHeight = 800): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+      }
+      // Convert to JPEG with 0.7 (70%) quality to significantly reduce file size
+      resolve(canvas.toDataURL("image/jpeg", 0.7));
+    };
+  });
+};
+
 const UpdateEmployeeProfileModal = ({
   open,
   setOpen,
@@ -73,9 +109,19 @@ const UpdateEmployeeProfileModal = ({
     }
   }, [data, setValue]);
 
+  // --- IMPROVED IMAGE UPLOAD WITH SIZE CHECK ---
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
+      
+      // Limit to 2MB to prevent browser/server crashes
+      const maxSize = 2 * 1024 * 1024; 
+      if (file.size > maxSize) {
+        toast.error("Image too large! Please choose a file under 2MB.");
+        event.target.value = ""; // Clear the input
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = () => {
         if (reader.readyState === 2) {
@@ -92,6 +138,13 @@ const UpdateEmployeeProfileModal = ({
         toast.error("User ID missing.");
         return;
       }
+
+      // --- COMPRESSION BEFORE SUBMISSION ---
+      let finalPhotoURL = uploadedImage;
+      if (uploadedImage && uploadedImage.startsWith("data:image")) {
+        toast.info("Processing and compressing image...");
+        finalPhotoURL = await compressImage(uploadedImage);
+      }
   
       const updatedData = {
         uid: data.uid,
@@ -106,8 +159,7 @@ const UpdateEmployeeProfileModal = ({
         birthday: selectDateOfBirth ? selectDateOfBirth.toISOString() : null,
         dateOfJoining: selectStartDate ? selectStartDate.toISOString() : null,
         address: formData.address,
-        // Crucial: send the base64 image or keep the existing photoURL
-        photoURL: uploadedImage || data.photoURL || null,
+        photoURL: finalPhotoURL || data.photoURL || null,
         companyId: data.companyId,
       };
   
@@ -117,14 +169,15 @@ const UpdateEmployeeProfileModal = ({
         body: JSON.stringify(updatedData)
       });
   
-      const result = await response.json();
+      // If the response is not JSON (like the 413 error page), this catches it
+      const result = await response.json().catch(() => ({ success: false, message: "Server limit exceeded. Please use a smaller image." }));
   
       if (result.success) {
-        toast.success("Profile updated and synced! 🎉");
+        toast.success("Profile updated successfully! 🎉");
         setOpen(false);
         window.location.reload(); 
       } else {
-        toast.error(result.message || "Failed to update");
+        toast.error(result.message || "Failed to update profile");
       }
     } catch (error: any) {
       console.error(error);
@@ -132,10 +185,9 @@ const UpdateEmployeeProfileModal = ({
     }
   };
 
-  // Helper to find hidden validation errors
   const onInvalid = (errors: any) => {
     console.error("Form Validation Errors:", errors);
-    toast.error("Please check the form for missing required fields.");
+    toast.error("Please fill in all required fields.");
   };
 
   return (
@@ -149,16 +201,15 @@ const UpdateEmployeeProfileModal = ({
         </div>
       </DialogTitle>
       <DialogContent className="common-scrollbar max-h-screen overflow-y-auto">
-        {/* Added onInvalid to catch silent errors */}
         <form onSubmit={handleSubmit(onSubmit, onInvalid)}>
           <div className="card__wrapper">
             <div className="col-span-12 mb-6">
-              <div className="employee__profile-chnage">
+              <div className="employee__profile-chnage text-center">
                 <div className="employee__profile-edit">
                   <input type="file" id="imageUpload" accept=".png, .jpg, .jpeg" onChange={handleImageUpload} />
                   <label htmlFor="imageUpload"></label>
                 </div>
-                <div className="employee__profile-preview">
+                <div className="employee__profile-preview mx-auto">
                   <div 
                     className="employee__profile-preview-box" 
                     style={{ 
@@ -168,6 +219,7 @@ const UpdateEmployeeProfileModal = ({
                     }}
                   ></div>
                 </div>
+                <p className="text-xs text-slate-500 mt-2">Max size: 2MB (JPG, PNG)</p>
               </div>
             </div>
 
