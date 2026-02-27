@@ -108,7 +108,7 @@ const SignUpBasicForm = () => {
             <input type="radio" {...register("role")} value="manager" className="hidden" />
             <div className="flex flex-col items-center text-center gap-4">
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl ${selectedRole === 'manager' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                <i className="fa-solid fa-crown"></i>
+                <i className="fa-solid fa-user-tie"></i>
               </div>
               <div>
                 <h3 className="text-xl font-bold dark:text-white">Workspace Manager</h3>
@@ -121,11 +121,11 @@ const SignUpBasicForm = () => {
             <input type="radio" {...register("role")} value="employee" className="hidden" />
             <div className="flex flex-col items-center text-center gap-4">
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl ${selectedRole === 'employee' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                <i className="fa-solid fa-user-tie"></i>
+              <i className="fa-solid fa-crown"></i>
               </div>
               <div>
-                <h3 className="text-xl font-bold dark:text-white">Team Member</h3>
-                <p className="text-sm text-slate-500 mt-2">I am joining an existing company workspace.</p>
+                <h3 className="text-xl font-bold dark:text-white">Company Details</h3>
+                <p className="text-sm text-slate-500 mt-2">Kindly Fill All the sections in the form, You can change them later aswell</p>
               </div>
             </div>
           </label>
