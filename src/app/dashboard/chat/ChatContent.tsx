@@ -9,6 +9,7 @@ import {
   Message,
   subscribeToMessages,
   subscribeToUnreadCounts,
+  fetchLastMessageTimes,
   createMessage,
   markMessagesAsRead,
 } from "@/lib/firebase/messages";
@@ -19,6 +20,7 @@ export default function ChatContent() {
   const [selectedEmployee, setSelectedEmployee] = useState<IEmployee | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [lastMessageTimes, setLastMessageTimes] = useState<Record<string, number>>({});
   const [loadingEmployees, setLoadingEmployees] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,10 +63,26 @@ export default function ChatContent() {
     const unsubscribe = subscribeToUnreadCounts(
       user.uid,
       user.companyId,
-      (counts) => setUnreadCounts(counts)
+      (counts) => {
+        setUnreadCounts(counts);
+        // Mark senders with unread messages as having recent activity
+        setLastMessageTimes((prev) => {
+          const updated = { ...prev };
+          Object.keys(counts).forEach((senderId) => {
+            if (!updated[senderId]) updated[senderId] = Date.now();
+          });
+          return updated;
+        });
+      }
     );
 
     return () => unsubscribe();
+  }, [user?.uid, user?.companyId]);
+
+  // Fetch last message times on mount to sort the employee list
+  useEffect(() => {
+    if (!user?.uid || !user?.companyId) return;
+    fetchLastMessageTimes(user.uid, user.companyId).then(setLastMessageTimes);
   }, [user?.uid, user?.companyId]);
 
   // Subscribe to messages when an employee is selected
@@ -83,6 +101,15 @@ export default function ChatContent() {
       (newMessages) => {
         setMessages(newMessages);
         setLoadingMessages(false);
+        // Update last message time from the most recent message in this conversation
+        if (newMessages.length > 0) {
+          const lastMsg = newMessages[newMessages.length - 1];
+          const ts = lastMsg.timestamp instanceof Date ? lastMsg.timestamp.getTime() : Date.now();
+          setLastMessageTimes((prev) => ({
+            ...prev,
+            [selectedEmployee.uid]: Math.max(prev[selectedEmployee.uid] || 0, ts),
+          }));
+        }
         // Mark incoming messages as read if this conversation is still open
         if (selectedEmployeeRef.current?.uid === selectedEmployee.uid) {
           markMessagesAsRead(user.uid, selectedEmployee.uid, user.companyId);
@@ -175,6 +202,7 @@ export default function ChatContent() {
           currentUserId={user.uid}
           loading={loadingEmployees}
           unreadCounts={unreadCounts}
+          lastMessageTimes={lastMessageTimes}
         />
 
         {/* Chat window */}
@@ -217,6 +245,7 @@ export default function ChatContent() {
 
               {/* Input */}
               <MessageInput
+                key={selectedEmployee.uid}
                 onSendMessage={handleSendMessage}
                 disabled={!selectedEmployee}
               />

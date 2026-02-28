@@ -104,8 +104,8 @@ export default function MessageList({
     >
       {messages.map((message) => {
         const isSentByMe = message.senderId === currentUserId;
-        const avatar = isSentByMe ? message.senderPhoto : message.senderPhoto;
-        const name = isSentByMe ? message.senderName : message.senderName;
+        const avatar = isSentByMe ? message.senderPhoto : message.receiverPhoto;
+        const name = isSentByMe ? message.senderName : message.receiverName;
 
         return (
           <div
@@ -137,7 +137,7 @@ export default function MessageList({
                 <div
                   className={`px-4 py-2 rounded-lg ${
                     isSentByMe
-                      ? "bg-primary text-white rounded-tr-none"
+                      ? "bg-[#4f46e5] text-white rounded-tr-none"
                       : "bg-card dark:bg-card-dark text-dark dark:text-dark-dark rounded-tl-none border border-borderLight dark:border-borderLight-dark"
                   }`}
                 >
@@ -146,7 +146,7 @@ export default function MessageList({
                       {name}
                     </p>
                   )}
-                  <p className="text-sm whitespace-pre-wrap break-words">
+                  <p className={`text-sm whitespace-pre-wrap break-words ${isSentByMe ? "text-white" : ""}`}>
                     {message.message}
                   </p>
                 </div>

@@ -207,6 +207,46 @@ export async function markMessagesAsRead(
 }
 
 /**
+ * Fetch the most recent message timestamp per conversation partner.
+ * Uses two equality-only queries (no orderBy) so no composite index is needed.
+ */
+export async function fetchLastMessageTimes(
+  userId: string,
+  companyId: string
+): Promise<Record<string, number>> {
+  const [sentSnap, receivedSnap] = await Promise.all([
+    getDocs(query(
+      collection(db, MESSAGES_COLLECTION),
+      where('companyId', '==', companyId),
+      where('senderId', '==', userId)
+    )),
+    getDocs(query(
+      collection(db, MESSAGES_COLLECTION),
+      where('companyId', '==', companyId),
+      where('receiverId', '==', userId)
+    )),
+  ]);
+
+  const times: Record<string, number> = {};
+
+  sentSnap.docs.forEach((docSnap) => {
+    const data = docSnap.data({ serverTimestamps: 'estimate' });
+    const otherId = data.receiverId as string;
+    const ts = data.timestamp instanceof Timestamp ? data.timestamp.toDate().getTime() : Date.now();
+    if (!times[otherId] || ts > times[otherId]) times[otherId] = ts;
+  });
+
+  receivedSnap.docs.forEach((docSnap) => {
+    const data = docSnap.data({ serverTimestamps: 'estimate' });
+    const otherId = data.senderId as string;
+    const ts = data.timestamp instanceof Timestamp ? data.timestamp.toDate().getTime() : Date.now();
+    if (!times[otherId] || ts > times[otherId]) times[otherId] = ts;
+  });
+
+  return times;
+}
+
+/**
  * Get conversations for a user (list of people they've chatted with)
  */
 export async function getConversations(

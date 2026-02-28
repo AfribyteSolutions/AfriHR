@@ -9,6 +9,7 @@ interface ChatSidebarProps {
   currentUserId: string;
   loading?: boolean;
   unreadCounts?: Record<string, number>;
+  lastMessageTimes?: Record<string, number>;
 }
 
 export default function ChatSidebar({
@@ -18,20 +19,28 @@ export default function ChatSidebar({
   currentUserId,
   loading = false,
   unreadCounts = {},
+  lastMessageTimes = {},
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredEmployees, setFilteredEmployees] = useState<IEmployee[]>([]);
 
   useEffect(() => {
-    const filtered = employees.filter((emp) => {
-      const matchesSearch = emp.fullName
-        ?.toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      const isNotCurrentUser = emp.uid !== currentUserId;
-      return matchesSearch && isNotCurrentUser;
-    });
+    const filtered = employees
+      .filter((emp) => {
+        const matchesSearch = emp.fullName
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase());
+        const isNotCurrentUser = emp.uid !== currentUserId;
+        return matchesSearch && isNotCurrentUser;
+      })
+      .sort((a, b) => {
+        const timeA = lastMessageTimes[a.uid] || 0;
+        const timeB = lastMessageTimes[b.uid] || 0;
+        if (timeB !== timeA) return timeB - timeA; // most recent first
+        return (a.fullName || "").localeCompare(b.fullName || ""); // alphabetical fallback
+      });
     setFilteredEmployees(filtered);
-  }, [employees, searchQuery, currentUserId]);
+  }, [employees, searchQuery, currentUserId, lastMessageTimes]);
 
   const getInitials = (name: string) => {
     if (!name) return "??";
