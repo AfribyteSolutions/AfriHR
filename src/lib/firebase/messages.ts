@@ -8,6 +8,8 @@ import {
   serverTimestamp,
   Timestamp,
   getDocs,
+  writeBatch,
+  doc,
   or,
   and,
   limit as firestoreLimit
@@ -137,6 +139,71 @@ export function subscribeToMessages(
   );
 
   return unsubscribe;
+}
+
+/**
+ * Subscribe to unread message counts grouped by sender (no orderBy = no composite index needed)
+ */
+export function subscribeToUnreadCounts(
+  userId: string,
+  companyId: string,
+  callback: (unreadCounts: Record<string, number>) => void
+): () => void {
+  const q = query(
+    collection(db, MESSAGES_COLLECTION),
+    where('companyId', '==', companyId),
+    where('receiverId', '==', userId),
+    where('isRead', '==', false)
+  );
+
+  const unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      const counts: Record<string, number> = {};
+      snapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        const senderId = data.senderId as string;
+        counts[senderId] = (counts[senderId] || 0) + 1;
+      });
+      callback(counts);
+    },
+    (error) => {
+      console.error('Error subscribing to unread counts:', error);
+      callback({});
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Mark all unread messages from a specific sender as read
+ */
+export async function markMessagesAsRead(
+  currentUserId: string,
+  otherUserId: string,
+  companyId: string
+): Promise<void> {
+  try {
+    const q = query(
+      collection(db, MESSAGES_COLLECTION),
+      where('companyId', '==', companyId),
+      where('receiverId', '==', currentUserId),
+      where('senderId', '==', otherUserId),
+      where('isRead', '==', false)
+    );
+
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return;
+
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((docSnap) => {
+      batch.update(doc(db, MESSAGES_COLLECTION, docSnap.id), { isRead: true });
+    });
+    await batch.commit();
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+  }
 }
 
 /**

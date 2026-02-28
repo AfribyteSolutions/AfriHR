@@ -5,7 +5,7 @@ import ChatContent from "./ChatContent";
 export default function ChatPage() {
   return (
     <MetaData pageTitle="Chat - AfriHR">
-      <Wrapper>
+      <Wrapper fullHeight>
         <ChatContent />
       </Wrapper>
     </MetaData>

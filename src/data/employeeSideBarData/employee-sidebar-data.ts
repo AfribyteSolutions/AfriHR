@@ -57,6 +57,12 @@ export interface EmployeeSidebarItem {
       link: "/document",
     },
     {
+      id: 9,
+      label: "Chat",
+      link: "/dashboard/chat",
+      icon: "fa-sharp fa-light fa-messages",
+    },
+    {
       id: 22,
       label: "Company Organogram",
       icon: "fa-light fa-sitemap", // Best choice for a company tree

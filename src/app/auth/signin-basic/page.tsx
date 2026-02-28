@@ -13,8 +13,14 @@ import SocialLinks from '@/components/SocialLinks/SocialLinks';
 const SignInBasicMain = () => {
     const router = useRouter();
 
-    // Redirect to dashboard if already logged in
+    // Redirect to dashboard if already logged in (skip if there's an auth error in the URL)
     useEffect(() => {
+        const errorParam = new URLSearchParams(window.location.search).get('error');
+        if (errorParam) {
+            // Sign out stale Firebase session so the form is usable
+            auth.signOut();
+            return;
+        }
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
                 console.log('User already logged in, redirecting to dashboard');

@@ -7,7 +7,17 @@
       "Bash(find:*)",
       "Bash(npx tsc:*)",
       "Bash(npx next lint)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(ls c:/xampp/htdocs/xgospel/wp-content/plugins/AfriHR/.env*)",
+      "Bash(node --version)",
+      "Bash(node --env-file=.env scripts/check-firestore.js)",
+      "Bash(node --env-file=.env -e \":*)",
+      "mcp__puppeteer__puppeteer_navigate",
+      "mcp__puppeteer__puppeteer_screenshot",
+      "Bash(node --env-file=.env scripts/test-chat.js)",
+      "mcp__puppeteer__puppeteer_fill",
+      "mcp__puppeteer__puppeteer_click",
+      "mcp__puppeteer__puppeteer_evaluate"
     ]
   }
 }

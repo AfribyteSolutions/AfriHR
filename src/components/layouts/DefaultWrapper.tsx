@@ -20,9 +20,10 @@ import { useUserRole } from "@/hooks/useUserRole";
 
 interface WrapperProps {
   children: React.ReactNode;
+  fullHeight?: boolean;
 }
 
-const Wrapper: React.FC<WrapperProps> = ({ children }) => {
+const Wrapper: React.FC<WrapperProps> = ({ children, fullHeight = false }) => {
   const { theme, isCollapse } = useGlobalContext();
   const [uiReady, setUiReady] = useState(false);
   const [user, authLoading] = useAuthState(auth);
@@ -73,13 +74,13 @@ const Wrapper: React.FC<WrapperProps> = ({ children }) => {
           */}
           <div className={`page__body-wrapper transition-all duration-300 ${
             isCollapse ? "xl:pl-[80px]" : "xl:pl-[280px]"
-          } pl-0`}>
+          } pl-0${fullHeight ? " flex flex-col h-screen overflow-hidden" : ""}`}>
             <BackToTop />
             <DashboardHeader />
-            <div className="min-h-screen">
+            <div className={fullHeight ? "flex-1 overflow-hidden" : "min-h-screen"}>
                 {children}
             </div>
-            <DashboardFooter />
+            {!fullHeight && <DashboardFooter />}
           </div>
         </>
       )}
