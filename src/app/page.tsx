@@ -101,6 +101,29 @@ export default function LandingPage() {
 
           </div>
         </div>
+        {/* Video Demo Section */}
+<div className="mt-20 text-center">
+  <h2 className="text-3xl md:text-4xl font-bold mb-4">
+    See AfriHRM in Action
+  </h2>
+
+  <p className="text-gray-600 max-w-2xl mx-auto mb-8">
+    Watch a quick walkthrough on how managers and CEOs can use the
+    dashboard to manage employees, payroll, projects, and more.
+  </p>
+
+  <div className="flex justify-center">
+    <a
+      href="https://drive.google.com/file/d/1O2g-WegSKRz7Yq-9rhWRHoovYqlQzGck/view?usp=drive_link"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-3 bg-indigo-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-indigo-700 shadow-lg transition"
+    >
+      <span>Watch Dashboard Tutorial</span>
+      <i className="fa-solid fa-play"></i>
+    </a>
+  </div>
+</div>
       </main>
 
       {/* Features Section */}
