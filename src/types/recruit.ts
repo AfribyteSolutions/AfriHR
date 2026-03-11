@@ -1,4 +1,4 @@
-// components/recruitment/types.ts (Updated)
+// components/recruitment/types.ts
 
 export type Stage =
   | "application"
@@ -19,7 +19,18 @@ export interface Comment {
 export interface Applicant {
   id: string;
   firstName: string;
+  photoURL: string;
+  notes: string;
   lastName: string;
+  companyName: string;
+  department: string;
+  // 🔹 Changed this to an object structure
+  bankAccount: {
+    bankName: string;
+    accountNumber: string;
+    accountHolderName?: string;
+    branchName?: string;
+  };
   email: string;
   phone: string;
   position: string;

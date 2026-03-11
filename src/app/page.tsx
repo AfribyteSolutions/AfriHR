@@ -110,11 +110,12 @@ export default function LandingPage() {
   <p className="text-gray-600 max-w-2xl mx-auto mb-8">
     Watch a quick walkthrough on how managers and CEOs can use the
     dashboard to manage employees, payroll, projects, and more.
+    After signing up, youll get a link to all tutorial videos for the dashboard menus
   </p>
 
   <div className="flex justify-center">
     <a
-      href="https://drive.google.com/file/d/1O2g-WegSKRz7Yq-9rhWRHoovYqlQzGck/view?usp=drive_link"
+      href="https://drive.google.com/file/d/1O2g-WegSKRz7Yq-9rhWRHoovYqlQzGck/view?usp=sharing"
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex items-center gap-3 bg-indigo-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-indigo-700 shadow-lg transition"

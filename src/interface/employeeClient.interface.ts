@@ -179,9 +179,10 @@ export interface IEmployee {
   department?: string;
   role: "employee" | "manager" | "admin" | "custom";
   companyId: string;
+  companyName?: string; // 🔹 ADD THIS LINE TO FIX THE ERROR
   createdBy: string;
   createdAt: any; // Firebase Timestamp
-  status?: "active" | "inactive";
+  status?: 'active' | 'inactive' | 'onboarding';
   managerId?: string | null;
   photoURL?: string | null;
   designation?: string;

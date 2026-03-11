@@ -400,6 +400,54 @@ const HRMSidebar = () => {
               ))}
             </ul>
           </nav>
+          {/* Tutorial Center - Sticks to the very bottom */}
+        <div className={`mt-auto p-4 border-t border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/20 transition-all duration-300 ${isCollapse ? "flex justify-center" : ""}`}>
+          <div className={`flex flex-col gap-2 ${isCollapse ? "items-center" : ""}`}>
+            {!isCollapse && (
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight uppercase tracking-widest font-bold ml-1">
+                Resources
+              </p>
+            )}
+            
+            <a
+              href="https://drive.google.com/drive/folders/1kCpOEApxylYB4892Pn1GP7lS4C8bpAHp?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`group flex items-center gap-3 p-2.5 rounded-xl border transition-all duration-200 
+                ${isCollapse 
+                  ? "w-11 h-11 justify-center bg-blue-600 border-blue-600 shadow-lg shadow-blue-500/30" 
+                  : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:border-blue-500 shadow-sm hover:shadow-md"
+                }`}
+              title="Watch Tutorial Videos"
+            >
+              <div className={`flex-shrink-0 transition-transform group-hover:scale-110 
+                ${isCollapse ? "text-white" : "text-blue-600 dark:text-blue-400"}`}>
+                <i className="fa-light fa-video text-lg"></i>
+              </div>
+              
+              {!isCollapse && (
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[13px] font-bold text-slate-800 dark:text-white whitespace-nowrap">
+                    Tutorial Center
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-blue-300/70 truncate">
+                    Watch Video Guides
+                  </span>
+                </div>
+              )}
+            </a>
+            
+            {!isCollapse && (
+              <div className="mt-1 px-1 flex items-center justify-between">
+                <span className="text-[9px] text-gray-400 font-medium">System v2.4.0</span>
+                <div className="flex gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                  <span className="text-[9px] text-gray-400 font-medium">Live</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
         </div>
       </div>
 
