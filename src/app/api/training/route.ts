@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       companyId,
       title,
       description,
+      trainers = [],
       trainerId,
       trainerName,
       trainerEmail,
@@ -65,7 +66,9 @@ export async function POST(request: NextRequest) {
       createdBy,
     } = body;
 
-    if (!companyId || !title || !trainerId || !startDate) {
+    const hasTrainer = (trainers && trainers.length > 0) || trainerId;
+
+    if (!companyId || !title || !hasTrainer || !startDate) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
@@ -76,9 +79,10 @@ export async function POST(request: NextRequest) {
       companyId,
       title,
       description: description || '',
-      trainerId,
-      trainerName: trainerName || '',
-      trainerEmail: trainerEmail || '',
+      trainers: trainers || [],
+      trainerId: trainerId || (trainers[0]?.id || ''),
+      trainerName: trainerName || (trainers[0]?.fullName || ''),
+      trainerEmail: trainerEmail || (trainers[0]?.email || ''),
       category: category || 'General',
       startDate: admin.firestore.Timestamp.fromDate(new Date(startDate)),
       endDate: endDate ? admin.firestore.Timestamp.fromDate(new Date(endDate)) : null,
