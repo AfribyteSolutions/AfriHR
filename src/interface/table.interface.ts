@@ -47,23 +47,27 @@ export interface IOfficeLoan {
 }
 
 export interface ITraining {
-  id: number;
+  id: number | string;
   trainingTitle: string;
-  title?: string; // Alternative title field
+  title?: string;
   trainer: string;
+  trainers?: { id: string; fullName: string; email: string }[];
+  trainerId?: string;
   employees: string;
+  enrolledEmployees?: string[];
   startDate?: string;
   endDate?: string;
   description?: string;
   trainingDuration: string;
-  duration?: string; // Alternative duration field
+  duration?: string;
   time: string;
   cost: number;
   status: "Upcoming" | "Open" | "Complete" | "Cancel";
   trainerImg?: StaticImageData;
-  category?: string; // Training category
-  location?: string; // Training location
-  maxParticipants?: number; // Maximum number of participants
+  category?: string;
+  location?: string;
+  maxParticipants?: number;
+  [key: string]: any;
 }
 
 export interface IPersonalLoan {
@@ -276,26 +280,6 @@ export interface IBiomattricsAttendance {
   employeeImg?: StaticImageData;
 }
 
-// Define an interface for the Training
-export interface ITraining {
-  id: number;
-  trainingTitle: string;
-  title?: string; // Alternative title field
-  trainer: string;
-  employees: string;
-  startDate?: string;
-  endDate?: string;
-  description?: string;
-  trainingDuration: string;
-  duration?: string; // Alternative duration field
-  time: string;
-  cost: number;
-  status: "Upcoming" | "Open" | "Complete" | "Cancel";
-  trainerImg?: StaticImageData;
-  category?: string; // Training category
-  location?: string; // Training location
-  maxParticipants?: number; // Maximum number of participants
-}
 // Define an interface for the personal loan
 export interface IPersonalLoan {
   employeeName: string;

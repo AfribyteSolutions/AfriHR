@@ -53,20 +53,23 @@ const EditTraingModal = ({
           // Once employees are loaded, initialize trainers & enrolled from editData
           if (editData) {
             // Restore trainers
-            if (editData.trainers && Array.isArray(editData.trainers)) {
+            const trainers = editData.trainers;
+            if (trainers && Array.isArray(trainers) && trainers.length > 0) {
               const trainerMatches = empList.filter((emp) =>
-                editData.trainers.some((t: any) => t.id === emp.id)
+                trainers.some((t: any) => String(t.id) === String(emp.id))
               );
               setSelectedTrainers(trainerMatches);
             } else if (editData.trainerId) {
-              const match = empList.find((emp) => emp.id === editData.trainerId);
+              const tid = String(editData.trainerId);
+              const match = empList.find((emp) => String(emp.id) === tid);
               if (match) setSelectedTrainers([match]);
             }
 
             // Restore enrolled employees
-            if (editData.enrolledEmployees && Array.isArray(editData.enrolledEmployees)) {
+            const enrolled = editData.enrolledEmployees;
+            if (enrolled && Array.isArray(enrolled) && enrolled.length > 0) {
               const enrolledMatches = empList.filter((emp) =>
-                editData.enrolledEmployees.includes(emp.id)
+                enrolled.includes(String(emp.id))
               );
               setSelectedEmployees(enrolledMatches);
             }
