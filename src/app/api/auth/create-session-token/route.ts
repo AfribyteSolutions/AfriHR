@@ -1,26 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-
-// In-memory store for one-time session tokens
-const sessionTokens = new Map<string, {
-  token: string;
-  role: string;
-  userId: string;
-  email: string;
-  subdomain: string;
-  rememberMe: boolean;
-  expiresAt: number;
-}>();
-
-// FIX: Using .forEach instead of for...of to fix the TypeScript 'IterableIterator' error (ts2802)
-setInterval(() => {
-  const now = Date.now();
-  sessionTokens.forEach((value, key) => {
-    if (value.expiresAt < now) {
-      sessionTokens.delete(key);
-    }
-  });
-}, 60000);
+import { db } from '@/lib/firebase-admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,9 +15,10 @@ export async function POST(request: NextRequest) {
 
     // Generate a one-time session token
     const sessionToken = randomBytes(32).toString('hex');
-    const expiresAt = Date.now() + (2 * 60 * 1000); // 2 minutes expiration to exchange this token
+    const expiresAt = Date.now() + (2 * 60 * 1000); // 2 minutes
 
-    sessionTokens.set(sessionToken, {
+    // Store in Firestore instead of in-memory (survives HMR and module reloads)
+    await db.collection('sessionTokens').doc(sessionToken).set({
       token,
       role,
       userId,
@@ -45,9 +26,10 @@ export async function POST(request: NextRequest) {
       subdomain,
       rememberMe: rememberMe || false,
       expiresAt,
+      createdAt: Date.now(),
     });
 
-    console.log('✅ Session token stored in memory. Total:', sessionTokens.size);
+    console.log('✅ Session token stored in Firestore for user:', userId);
 
     return NextResponse.json({
       success: true,
@@ -69,29 +51,36 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing session token' }, { status: 400 });
     }
 
-    const sessionData = sessionTokens.get(sessionToken);
+    // Retrieve from Firestore
+    const docRef = db.collection('sessionTokens').doc(sessionToken);
+    const docSnap = await docRef.get();
 
-    if (!sessionData || sessionData.expiresAt < Date.now()) {
-      if (sessionData) sessionTokens.delete(sessionToken);
+    if (!docSnap.exists) {
+      return NextResponse.json({ error: 'Invalid or expired session token' }, { status: 401 });
+    }
+
+    const sessionData = docSnap.data()!;
+
+    // Check expiration
+    if (sessionData.expiresAt < Date.now()) {
+      await docRef.delete();
       return NextResponse.json({ error: 'Invalid or expired session token' }, { status: 401 });
     }
 
     // Delete the one-time token after use (security best practice)
-    sessionTokens.delete(sessionToken);
+    await docRef.delete();
 
-    // --- FIX: SETTING COOKIES FOR MIDDLEWARE ---
-    // We create the response and then attach the cookies that 'middleware.ts' expects.
+    // Create the response with cookies
     const response = NextResponse.json({
       success: true,
       data: sessionData,
     });
 
     const cookieOptions = {
-      httpOnly: false, // Set to false so client-side scripts can also access if needed
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       path: '/',
-      // If rememberMe is true, keep cookies for 30 days, otherwise 24 hours
       maxAge: sessionData.rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24,
     };
 
