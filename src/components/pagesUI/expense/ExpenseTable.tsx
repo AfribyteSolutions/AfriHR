@@ -59,6 +59,29 @@ const ExpenseTable = () => {
     handleSearchChange,
   } = useMaterialTableHook<IExpese>(expenses, 10);
 
+  const handleMarkAsPaid = async (expense: IExpese) => {
+    try {
+      const response = await fetch("/api/expense", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: expense.id, status: "Paid" }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Expense marked as paid");
+        setExpenses((prev) =>
+          prev.map((item) =>
+            item.id === expense.id ? { ...item, status: "Paid" } : item
+          )
+        );
+      } else {
+        toast.error(result.error || "Failed to update expense");
+      }
+    } catch {
+      toast.error("Error updating expense");
+    }
+  };
+
   const handleDeleteExpense = async (id: string) => {
     try {
       const response = await fetch(`/api/expense?id=${id}`, { method: "DELETE" });
@@ -156,6 +179,17 @@ const ExpenseTable = () => {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
+                                {row.status !== "Paid" && (
+                                  <button
+                                    type="button"
+                                    className="table__icon"
+                                    title="Mark as Paid"
+                                    onClick={() => handleMarkAsPaid(row)}
+                                    style={{ color: "#22c55e" }}
+                                  >
+                                    <i className="fa-sharp fa-light fa-circle-check"></i>
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   className="table__icon edit"

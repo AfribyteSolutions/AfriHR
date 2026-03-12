@@ -7,7 +7,7 @@ interface CompaniesSummaryProps {
 
 const CompaniesSummary: React.FC<CompaniesSummaryProps> = ({ companies }) => {
   const totalCompanies = companies.length;
-  const totalEmployees = companies.reduce((sum, company) => sum + (company.companySize || 0), 0);
+  const totalEmployees = companies.reduce((sum, company) => sum + (company.employeeCount || 0), 0);
 
   const companyData = [
     {

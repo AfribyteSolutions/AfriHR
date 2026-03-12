@@ -171,16 +171,16 @@ export const employeeDropdownData: ISelectorOption[] = [
 ];
 
 export const purchaseStatusOptions: ISelectorOption[] = [
-  { label: "1", value: "Paid" },
-  { label: "2", value: "Unpaid" },
-  { label: "3", value: "Returned" },
+  { label: "Paid", value: "Paid" },
+  { label: "Unpaid", value: "Unpaid" },
+  { label: "Returned", value: "Returned" },
 ];
 
 export const trainingStatuses: ISelectorOption[] = [
-  { value: "Open", label: "1" },
-  { value: "Upcoming", label: "2" },
-  { value: "Complete", label: "3" },
-  { value: "Cancel", label: "4" },
+  { value: "Open", label: "Open" },
+  { value: "Upcoming", label: "Upcoming" },
+  { value: "Complete", label: "Complete" },
+  { value: "Cancel", label: "Cancel" },
 ];
 
 export const priorityData: ISelectorOption[] = [

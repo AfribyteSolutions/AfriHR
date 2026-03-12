@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
-import { trainingStatuses, trainingTitles } from "@/data/dropdown-data";
+import { trainingStatuses } from "@/data/dropdown-data";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import { ITraining } from "@/interface/table.interface";
 import { IEmployee } from "@/interface";
 import { useForm } from "react-hook-form";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 import InputField from "@/components/elements/SharedInputs/InputField";
-import SelectWithImage from "@/components/elements/SharedInputs/SelectWithImage";
+import MultiSelectWithImage from "@/components/elements/SharedInputs/MultiSelectWithImage";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
 import { statePropsType } from "@/interface/common.interface";
@@ -20,7 +20,7 @@ interface AddNewTraineeProps extends statePropsType {
 const AddNewTrainee = ({ open, setOpen, onRefresh }: AddNewTraineeProps) => {
   const { user: authUser } = useAuthUserContext();
   const [employees, setEmployees] = useState<IEmployee[]>([]);
-  const [selectedTrainer, setSelectedTrainer] = useState<IEmployee | null>(null);
+  const [selectedTrainers, setSelectedTrainers] = useState<IEmployee[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<IEmployee[]>([]);
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(new Date());
   const [selectEndDate, setSelectEndDate] = useState<Date | null>(new Date());
@@ -56,8 +56,13 @@ const AddNewTrainee = ({ open, setOpen, onRefresh }: AddNewTraineeProps) => {
   const handleToggle = () => setOpen(!open);
 
   const onSubmit = async (data: ITraining) => {
-    if (!authUser?.companyId || !selectedTrainer) {
-      toast.error("Please select a trainer");
+    if (!authUser?.companyId || selectedTrainers.length === 0) {
+      toast.error("Please select at least one trainer");
+      return;
+    }
+
+    if (selectedEmployees.length === 0) {
+      toast.error("Please select at least one employee");
       return;
     }
 
@@ -73,9 +78,15 @@ const AddNewTrainee = ({ open, setOpen, onRefresh }: AddNewTraineeProps) => {
         companyId: authUser.companyId,
         title: data.trainingTitle,
         description: data.description || "",
-        trainerId: selectedTrainer.id,
-        trainerName: selectedTrainer.fullName,
-        trainerEmail: selectedTrainer.email,
+        trainers: selectedTrainers.map((t) => ({
+          id: t.id,
+          fullName: t.fullName,
+          email: t.email,
+        })),
+        // Keep legacy single trainer fields for backwards compat
+        trainerId: selectedTrainers[0]?.id || "",
+        trainerName: selectedTrainers[0]?.fullName || "",
+        trainerEmail: selectedTrainers[0]?.email || "",
         category: data.category || "General",
         startDate: selectStartDate.toISOString(),
         endDate: selectEndDate.toISOString(),
@@ -83,7 +94,7 @@ const AddNewTrainee = ({ open, setOpen, onRefresh }: AddNewTraineeProps) => {
         cost: data.cost || 0,
         location: data.location || "",
         maxParticipants: data.maxParticipants || 0,
-        enrolledEmployees: selectedEmployees.map((emp) => emp.id) || [],
+        enrolledEmployees: selectedEmployees.map((emp) => emp.id),
         status: data.status || "upcoming",
         materials: [],
         createdBy: authUser.id,
@@ -136,33 +147,60 @@ const AddNewTrainee = ({ open, setOpen, onRefresh }: AddNewTraineeProps) => {
             <div className="grid grid-cols-12 gap-x-6 maxXs:gap-x-0 gap-y-6 mt-10">
               {/* Training Title */}
               <div className="col-span-12 md:col-span-6">
-                <SelectBox
-                  id="trainingTitle"
+                <InputField
                   label="Training Title"
-                  options={trainingTitles}
-                  control={control} // Validation rule
+                  id="trainingTitle"
+                  placeholder="Enter training title"
+                  required={true}
+                  register={register("trainingTitle", {
+                    required: "Training title is required",
+                  })}
                   error={errors.trainingTitle}
                 />
               </div>
 
-              {/* Trainer Name */}
+              {/* Trainer(s) */}
               <div className="col-span-12 md:col-span-6">
                 <div className="from__input-box select-wrapper">
                   <div className="form__input-title">
-                    <label htmlFor="trainer">
-                      Trainer <span>*</span>
+                    <label htmlFor="trainers">
+                      Trainer(s) <span>*</span>
                     </label>
                   </div>
                   <div className="relative">
                     <div className="mz-default-select">
-                      <SelectWithImage
+                      <MultiSelectWithImage
                         data={employees}
-                        selectedValue={selectedTrainer}
+                        selectedValues={selectedTrainers}
                         valueKey="fullName"
                         displayKey="fullName"
                         imageKey="profilePictureUrl"
-                        placeholder="Select Trainer"
-                        onChange={setSelectedTrainer}
+                        placeholder="Select Trainer(s)"
+                        onChange={setSelectedTrainers}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Employees to Enroll */}
+              <div className="col-span-12">
+                <div className="from__input-box select-wrapper">
+                  <div className="form__input-title">
+                    <label htmlFor="employees">
+                      Employees to Enroll <span>*</span>
+                    </label>
+                  </div>
+                  <div className="relative">
+                    <div className="mz-default-select">
+                      <MultiSelectWithImage
+                        data={employees}
+                        selectedValues={selectedEmployees}
+                        valueKey="fullName"
+                        displayKey="fullName"
+                        imageKey="profilePictureUrl"
+                        placeholder="Select Employee(s)"
+                        onChange={setSelectedEmployees}
                       />
                     </div>
                   </div>

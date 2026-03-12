@@ -52,10 +52,29 @@ export async function GET(request: NextRequest) {
       return dateB - dateA;
     });
 
+    // Fetch actual employee counts per company from the employees collection
+    const companiesWithCounts = await Promise.all(
+      companies.map(async (company: any) => {
+        try {
+          const employeesSnapshot = await db
+            .collection("employees")
+            .where("companyId", "==", company.id)
+            .count()
+            .get();
+          return {
+            ...company,
+            employeeCount: employeesSnapshot.data().count,
+          };
+        } catch {
+          return { ...company, employeeCount: 0 };
+        }
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      companies,
-      total: companies.length,
+      companies: companiesWithCounts,
+      total: companiesWithCounts.length,
     });
   } catch (error: any) {
     console.error("Error fetching companies:", error);
