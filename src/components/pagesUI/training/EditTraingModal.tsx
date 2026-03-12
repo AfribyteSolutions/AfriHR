@@ -2,13 +2,16 @@ import React, { useState, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { trainingStatuses } from "@/data/dropdown-data";
 import { ITraining } from "@/interface/table.interface";
+import { IEmployee } from "@/interface";
 import { useForm } from "react-hook-form";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 import InputField from "@/components/elements/SharedInputs/InputField";
+import MultiSelectWithImage from "@/components/elements/SharedInputs/MultiSelectWithImage";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
 import { traineeStatePropsType } from "@/interface/common.interface";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
 interface EditTrainingModalProps extends traineeStatePropsType {
   onRefresh?: () => void;
@@ -20,6 +23,10 @@ const EditTraingModal = ({
   editData,
   onRefresh,
 }: EditTrainingModalProps) => {
+  const { user: authUser } = useAuthUserContext();
+  const [employees, setEmployees] = useState<IEmployee[]>([]);
+  const [selectedTrainers, setSelectedTrainers] = useState<IEmployee[]>([]);
+  const [selectedEmployees, setSelectedEmployees] = useState<IEmployee[]>([]);
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(null);
   const [selectEndDate, setSelectEndDate] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -31,6 +38,47 @@ const EditTraingModal = ({
     setValue,
     formState: { errors },
   } = useForm<ITraining>();
+
+  // Fetch employees
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      if (!authUser?.companyId) return;
+      try {
+        const res = await fetch(`/api/company-employees?companyId=${authUser.companyId}`);
+        const data = await res.json();
+        if (data.success) {
+          const empList: IEmployee[] = data.employees || [];
+          setEmployees(empList);
+
+          // Once employees are loaded, initialize trainers & enrolled from editData
+          if (editData) {
+            // Restore trainers
+            if (editData.trainers && Array.isArray(editData.trainers)) {
+              const trainerMatches = empList.filter((emp) =>
+                editData.trainers.some((t: any) => t.id === emp.id)
+              );
+              setSelectedTrainers(trainerMatches);
+            } else if (editData.trainerId) {
+              const match = empList.find((emp) => emp.id === editData.trainerId);
+              if (match) setSelectedTrainers([match]);
+            }
+
+            // Restore enrolled employees
+            if (editData.enrolledEmployees && Array.isArray(editData.enrolledEmployees)) {
+              const enrolledMatches = empList.filter((emp) =>
+                editData.enrolledEmployees.includes(emp.id)
+              );
+              setSelectedEmployees(enrolledMatches);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+      }
+    };
+
+    fetchEmployees();
+  }, [authUser?.companyId, editData]);
 
   // Initialize form with editData
   useEffect(() => {
@@ -73,6 +121,21 @@ const EditTraingModal = ({
       if (data.location) updateData.location = data.location;
       if (selectStartDate) updateData.startDate = selectStartDate.toISOString();
       if (selectEndDate) updateData.endDate = selectEndDate.toISOString();
+
+      // Trainers
+      if (selectedTrainers.length > 0) {
+        updateData.trainers = selectedTrainers.map((t) => ({
+          id: t.id,
+          fullName: t.fullName,
+          email: t.email,
+        }));
+        updateData.trainerId = selectedTrainers[0]?.id || "";
+        updateData.trainerName = selectedTrainers[0]?.fullName || "";
+        updateData.trainerEmail = selectedTrainers[0]?.email || "";
+      }
+
+      // Enrolled employees
+      updateData.enrolledEmployees = selectedEmployees.map((emp) => emp.id);
 
       const res = await fetch(`/api/training?id=${editData.id}`, {
         method: "PUT",
@@ -127,6 +190,42 @@ const EditTraingModal = ({
                   register={register("title")}
                   error={errors.title}
                 />
+              </div>
+
+              {/* Trainer(s) */}
+              <div className="col-span-12 md:col-span-6">
+                <div className="from__input-box select-wrapper">
+                  <div className="form__input-title">
+                    <label htmlFor="trainers">Trainer(s)</label>
+                  </div>
+                  <MultiSelectWithImage
+                    data={employees}
+                    selectedValues={selectedTrainers}
+                    valueKey="fullName"
+                    displayKey="fullName"
+                    imageKey="profilePictureUrl"
+                    placeholder="Select Trainer(s)"
+                    onChange={setSelectedTrainers}
+                  />
+                </div>
+              </div>
+
+              {/* Employees to Enroll */}
+              <div className="col-span-12 md:col-span-6">
+                <div className="from__input-box select-wrapper">
+                  <div className="form__input-title">
+                    <label htmlFor="employees">Employees to Enroll</label>
+                  </div>
+                  <MultiSelectWithImage
+                    data={employees}
+                    selectedValues={selectedEmployees}
+                    valueKey="fullName"
+                    displayKey="fullName"
+                    imageKey="profilePictureUrl"
+                    placeholder="Select Employee(s)"
+                    onChange={setSelectedEmployees}
+                  />
+                </div>
               </div>
 
               {/* Status */}

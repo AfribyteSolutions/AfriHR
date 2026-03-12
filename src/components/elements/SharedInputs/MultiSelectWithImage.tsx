@@ -21,6 +21,8 @@ interface IMultiSelectWithImageProps<T> {
   onChange: (selected: T[]) => void;
 }
 
+const MAX_VISIBLE_CHIPS = 2;
+
 function MultiSelectWithImage<T extends Record<string, any>>({
   data,
   selectedValues,
@@ -47,39 +49,50 @@ function MultiSelectWithImage<T extends Record<string, any>>({
     onChange(updated);
   };
 
+  const visibleItems = selectedValues.slice(0, MAX_VISIBLE_CHIPS);
+  const hiddenCount = selectedValues.length - MAX_VISIBLE_CHIPS;
+
   return (
-    <FormControl sx={{ m: 1, width: "100%" }}>
+    <FormControl sx={{ m: 0, width: "100%" }} size="small">
       <Select
         multiple
         displayEmpty
         value={selectedIds}
         onChange={handleChange}
+        sx={{
+          height: 44,
+          "& .MuiSelect-select": {
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            padding: "6px 32px 6px 12px !important",
+            overflow: "hidden",
+          },
+        }}
         renderValue={(selected) => {
           if (selected.length === 0) {
             return <span className="text-gray-400">{placeholder}</span>;
           }
           return (
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-              {selectedValues.map((item) => (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, overflow: "hidden" }}>
+              {visibleItems.map((item) => (
                 <Chip
                   key={String(item[valueKey])}
                   label={String(item[displayKey])}
                   size="small"
                   onDelete={() => handleDelete(String(item[valueKey]))}
                   onMouseDown={(e) => e.stopPropagation()}
-                  avatar={
-                    item[imageKey] ? (
-                      <Image
-                        src={String(item[imageKey])}
-                        alt={String(item[displayKey])}
-                        width={24}
-                        height={24}
-                        className="rounded-full"
-                      />
-                    ) : undefined
-                  }
+                  sx={{ height: 24, fontSize: "0.75rem", maxWidth: 130 }}
                 />
               ))}
+              {hiddenCount > 0 && (
+                <Chip
+                  label={`+${hiddenCount} more`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ height: 24, fontSize: "0.75rem" }}
+                />
+              )}
             </Box>
           );
         }}

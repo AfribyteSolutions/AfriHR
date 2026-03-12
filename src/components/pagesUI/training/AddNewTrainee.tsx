@@ -167,43 +167,35 @@ const AddNewTrainee = ({ open, setOpen, onRefresh }: AddNewTraineeProps) => {
                       Trainer(s) <span>*</span>
                     </label>
                   </div>
-                  <div className="relative">
-                    <div className="mz-default-select">
-                      <MultiSelectWithImage
-                        data={employees}
-                        selectedValues={selectedTrainers}
-                        valueKey="fullName"
-                        displayKey="fullName"
-                        imageKey="profilePictureUrl"
-                        placeholder="Select Trainer(s)"
-                        onChange={setSelectedTrainers}
-                      />
-                    </div>
-                  </div>
+                  <MultiSelectWithImage
+                    data={employees}
+                    selectedValues={selectedTrainers}
+                    valueKey="fullName"
+                    displayKey="fullName"
+                    imageKey="profilePictureUrl"
+                    placeholder="Select Trainer(s)"
+                    onChange={setSelectedTrainers}
+                  />
                 </div>
               </div>
 
               {/* Employees to Enroll */}
-              <div className="col-span-12">
+              <div className="col-span-12 md:col-span-6">
                 <div className="from__input-box select-wrapper">
                   <div className="form__input-title">
                     <label htmlFor="employees">
                       Employees to Enroll <span>*</span>
                     </label>
                   </div>
-                  <div className="relative">
-                    <div className="mz-default-select">
-                      <MultiSelectWithImage
-                        data={employees}
-                        selectedValues={selectedEmployees}
-                        valueKey="fullName"
-                        displayKey="fullName"
-                        imageKey="profilePictureUrl"
-                        placeholder="Select Employee(s)"
-                        onChange={setSelectedEmployees}
-                      />
-                    </div>
-                  </div>
+                  <MultiSelectWithImage
+                    data={employees}
+                    selectedValues={selectedEmployees}
+                    valueKey="fullName"
+                    displayKey="fullName"
+                    imageKey="profilePictureUrl"
+                    placeholder="Select Employee(s)"
+                    onChange={setSelectedEmployees}
+                  />
                 </div>
               </div>
 
