@@ -10,14 +10,13 @@ import Pagination from "@mui/material/Pagination";
 import TableRow from "@mui/material/TableRow";
 import TableSortLabel from "@mui/material/TableSortLabel";
 import Paper from "@mui/material/Paper";
-import { visuallyHidden } from "@mui/utils";
 import { announcementHeadCells } from "@/data/table-head-cell/table-head";
 import AddNewAnnouncementModal from "./AddNewAnnouncementModal";
 import TableControls from "@/components/elements/SharedInputs/TableControls";
 import DeleteModal from "@/components/common/DeleteModal";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { deleteAnnouncement } from "@/lib/firebase/announcements";
-import { useUserRole } from "@/hooks/useUserRole"; // Added role hook
+import { useAuthUserContext } from "@/context/UserAuthContext"; // Use this instead of useUserRole
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Announcement } from "@/types/announcement";
@@ -25,8 +24,10 @@ import { Announcement } from "@/types/announcement";
 type Order = 'asc' | 'desc';
 
 const AnnouncementTable = () => {
-  const { announcements, loading, error } = useAnnouncements();
-  const { userRole, isLoading: roleLoading } = useUserRole(); // Initialize roles
+  // Use your central context for both user data and loading state
+  const { user, loading: authLoading } = useAuthUserContext();
+  const { announcements, loading: announcementsLoading, error } = useAnnouncements();
+  
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editData, setEditData] = useState<Announcement | null>(null);
   const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
@@ -39,8 +40,8 @@ const AnnouncementTable = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Permissions logic
-  const isAuthorized = userRole === "manager" || userRole === "admin" || userRole === "super-admin";
+  // Permissions logic - using 'user.role' from your main context
+  const isAuthorized = user?.role === "manager" || user?.role === "admin";
 
   // Sorting
   const handleRequestSort = (property: keyof Announcement) => {
@@ -118,41 +119,50 @@ const AnnouncementTable = () => {
 
   if (error) {
     return (
-      <div className="col-span-12">
-        <div className="card__wrapper">
-          <div className="p-8 text-center text-red-500">Error loading announcements</div>
-        </div>
+      <div className="col-span-12 p-8 text-center text-red-500 bg-white rounded-xl">
+        Error loading announcements: {error}
       </div>
     );
   }
 
+  // Check BOTH loading states
+  const isLoading = authLoading || announcementsLoading;
+
   return (
     <>
       <div className="col-span-12">
-        <div className="card__wrapper">
+        <div className="card__wrapper p-0 overflow-hidden">
           <div className="manaz-common-mat-list w-full table__wrapper table-responsive mat-list-without-checkbox">
-            <TableControls
-              rowsPerPage={rowsPerPage}
-              searchQuery={searchQuery}
-              handleChangeRowsPerPage={handleChangeRowsPerPage}
-              handleSearchChange={handleSearchChange}
-            />
+            <div className="p-4 border-b border-slate-100">
+                <TableControls
+                rowsPerPage={rowsPerPage}
+                searchQuery={searchQuery}
+                handleChangeRowsPerPage={handleChangeRowsPerPage}
+                handleSearchChange={handleSearchChange}
+                />
+            </div>
 
-            {(loading || roleLoading) ? (
-              <div className="p-8 text-center text-gray-500">Loading...</div>
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center p-20 text-gray-400">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+                <p className="text-sm font-medium">Fetching announcements...</p>
+              </div>
             ) : announcements.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">No announcements found.</div>
+              <div className="p-20 text-center text-gray-400">
+                <i className="fa-light fa-bullhorn text-4xl mb-3 block"></i>
+                <p>No announcements found for your company.</p>
+              </div>
             ) : (
               <>
                 <Box sx={{ width: "100%" }} className="table-responsive">
-                  <Paper sx={{ width: "100%", mb: 2 }}>
-                    <TableContainer className="table mb-[20px] hover multiple_tables w-full">
+                  <Paper sx={{ width: "100%", mb: 2, boxShadow: 'none' }}>
+                    <TableContainer className="table hover multiple_tables w-full">
                       <Table aria-labelledby="tableTitle" className="whitespace-nowrap">
                         <TableHead>
-                          <TableRow className="table__title">
+                          <TableRow className="table__title bg-slate-50">
                             {announcementHeadCells.map((headCell) => (
                               <TableCell
-                                className="table__title"
+                                className="table__title font-bold text-slate-700"
                                 key={headCell.id}
                                 sortDirection={orderBy === headCell.id ? order : false}
                               >
@@ -165,34 +175,32 @@ const AnnouncementTable = () => {
                                 </TableSortLabel>
                               </TableCell>
                             ))}
-                            <TableCell>Target</TableCell>
-                            {/* NEW: Hide Action header if employee */}
-                            {isAuthorized && <TableCell>Action</TableCell>}
+                            <TableCell className="font-bold text-slate-700">Target</TableCell>
+                            {isAuthorized && <TableCell className="font-bold text-slate-700">Action</TableCell>}
                           </TableRow>
                         </TableHead>
                         <TableBody className="table__body">
                           {paginatedRows.map((row) => (
-                            <TableRow key={row.id}>
-                              <TableCell>{row.title}</TableCell>
-                              <TableCell>{format(row.startDate, 'MMM dd, yyyy')}</TableCell>
-                              <TableCell>{format(row.endDate, 'MMM dd, yyyy')}</TableCell>
+                            <TableRow key={row.id} className="hover:bg-slate-50/50 transition-colors">
+                              <TableCell className="font-medium text-slate-900">{row.title}</TableCell>
+                              <TableCell className="text-slate-600">{format(row.startDate, 'MMM dd, yyyy')}</TableCell>
+                              <TableCell className="text-slate-600">{format(row.endDate, 'MMM dd, yyyy')}</TableCell>
                               <TableCell>
-                                <div className="max-w-md truncate">{row.description}</div>
+                                <div className="max-w-xs truncate text-slate-500">{row.description}</div>
                               </TableCell>
                               <TableCell>
-                                <span className={`text-xs px-2 py-1 rounded-full ${getTargetBadge(row.target)}`}>
+                                <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md ${getTargetBadge(row.target)}`}>
                                   {row.target === 'specific' 
                                     ? `${row.targetUserIds?.length || 0} user(s)` 
                                     : row.target}
                                 </span>
                               </TableCell>
-                              {/* NEW: Hide Action buttons if employee */}
                               {isAuthorized && (
                                 <TableCell className="table__icon-box">
                                   <div className="flex items-center justify-start gap-[10px]">
                                     <button
                                       type="button"
-                                      className="table__icon edit"
+                                      className="table__icon edit hover:bg-blue-100 hover:text-blue-700"
                                       onClick={() => {
                                         setEditData(row);
                                         setModalOpen(true);
@@ -201,7 +209,7 @@ const AnnouncementTable = () => {
                                       <i className="fa-sharp fa-light fa-pen"></i>
                                     </button>
                                     <button
-                                      className="removeBtn table__icon delete"
+                                      className="removeBtn table__icon delete hover:bg-red-100 hover:text-red-700"
                                       onClick={() => {
                                         setDeleteId(row.id);
                                         setModalDeleteOpen(true);
@@ -219,9 +227,9 @@ const AnnouncementTable = () => {
                     </TableContainer>
                   </Paper>
                 </Box>
-                {/* Pagination (Same as before) */}
-                <Box className="table-search-box mt-[30px]" sx={{ p: 2 }}>
-                  <Box>
+                
+                <Box className="table-search-box mt-[30px] p-4 flex justify-between items-center border-t border-slate-100" sx={{ p: 2 }}>
+                  <Box className="text-sm text-slate-500">
                     {`Showing ${(page - 1) * rowsPerPage + 1} to ${Math.min(
                       page * rowsPerPage,
                       filteredRows.length
@@ -233,7 +241,7 @@ const AnnouncementTable = () => {
                     onChange={(e, value) => handleChangePage(value)}
                     variant="outlined"
                     shape="rounded"
-                    className="manaz-pagination-button"
+                    color="primary"
                   />
                 </Box>
               </>
@@ -242,8 +250,7 @@ const AnnouncementTable = () => {
         </div>
       </div>
 
-      {/* NEW: Added check to ensure editData isn't null before rendering modal */}
-      {modalOpen && editData && (
+      {modalOpen && (
         <AddNewAnnouncementModal
           open={modalOpen}
           setOpen={setModalOpen}

@@ -1,14 +1,20 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Link from "next/link";
 import PayrollTable from "./PayrollTable";
 import AddNewSalaryModal from "./AddNewSalaryModal";
 
 const PayrollMainArea = () => {
   const [modalOpen, setModalOpen] = useState(false);
-  
+  const refreshRef = useRef<(() => void) | null>(null);
+
+  const handleSuccess = () => {
+    setModalOpen(false);
+    if (refreshRef.current) refreshRef.current();
+  };
+
   return (
-    <div >
+    <div>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <nav className="flex mb-2" aria-label="Breadcrumb">
@@ -18,13 +24,12 @@ const PayrollMainArea = () => {
               </li>
               <li className="flex items-center space-x-2">
                 <i className="fa-solid fa-chevron-right text-[10px]"></i>
-                <span className="text-slate-900">Payroll</span>
+                <span className="text-slate-900 dark:text-white">Payroll</span>
               </li>
             </ol>
           </nav>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Company Payroll</h1>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Company Payroll</h1>
         </div>
-        
         <button
           type="button"
           onClick={() => setModalOpen(true)}
@@ -36,12 +41,15 @@ const PayrollMainArea = () => {
       </div>
 
       <div className="w-full">
-        {/* Ensure this component is NOT inside another restricted grid if it's meant to be full width */}
-        <PayrollTable />
+        <PayrollTable onRegisterRefresh={(fn) => { refreshRef.current = fn; }} />
       </div>
 
       {modalOpen && (
-        <AddNewSalaryModal open={modalOpen} setOpen={setModalOpen} />
+        <AddNewSalaryModal
+          open={modalOpen}
+          setOpen={setModalOpen}
+          onSuccess={handleSuccess}
+        />
       )}
     </div>
   );
