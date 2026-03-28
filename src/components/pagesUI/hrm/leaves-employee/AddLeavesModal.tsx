@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogTitle, DialogContent } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, CircularProgress } from "@mui/material";
 import { IEmployeeLeave } from "@/interface/table.interface";
 import { useForm } from "react-hook-form";
 import InputField from "@/components/elements/SharedInputs/InputField";
@@ -41,13 +41,21 @@ const leaveDurations = [
 const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
   const { user: authUser } = useAuthUserContext();
   const [managerInfo, setManagerInfo] = useState<any>(null);
-  const [selectStartDate, setSelectStartDate] = useState<Date | null>(
-    new Date()
-  );
+  const [loadingData, setLoadingData] = useState<boolean>(false);
+  const [selectStartDate, setSelectStartDate] = useState<Date | null>(new Date());
   const [selectEndDate, setSelectEndDate] = useState<Date | null>(new Date());
   const [selectedLeaveType, setSelectedLeaveType] = useState<string>("");
   const [customLeaveType, setCustomLeaveType] = useState<string>("");
   const [selectedDuration, setSelectedDuration] = useState<string>("");
+  
+  // Track current employee leave metrics
+  const [leaveBalance, setLeaveBalance] = useState<{
+    total: number;
+    remaining: number;
+    taken: number;
+    percentage: number;
+  } | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -55,29 +63,49 @@ const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
     setValue,
   } = useForm<IEmployeeLeave>();
 
-  // Fetch manager info for the employee
+  // Fetch manager info and leave balance for the employee
   useEffect(() => {
-    const fetchManagerInfo = async () => {
+    const fetchEmployeeData = async () => {
       if (!authUser?.uid) return;
 
       try {
-        // Get employee's manager from their profile
+        setLoadingData(true);
         const res = await fetch(`/api/user-data?uid=${authUser.uid}`);
         const data = await res.json();
 
-        if (data.success && data.user?.managerId) {
-          setManagerInfo({
-            id: data.user.managerId,
-            name: data.user.managerName,
+        if (data.success && data.user) {
+          // Set Manager Info
+          if (data.user.managerId) {
+            setManagerInfo({
+              id: data.user.managerId,
+              name: data.user.managerName,
+            });
+          }
+
+          // Set Leave Balance Info
+          const total = Number(data.user.totalLeaveDays) || 0;
+          const remaining = Number(data.user.remainingLeaveDays) || 0;
+          const taken = Math.max(0, total - remaining);
+          const percentage = total > 0 ? (taken / total) * 100 : 0;
+
+          setLeaveBalance({
+            total,
+            remaining,
+            taken,
+            percentage,
           });
         }
       } catch (error) {
-        console.error("Error fetching manager info:", error);
+        console.error("Error fetching employee data:", error);
+      } finally {
+        setLoadingData(false);
       }
     };
 
-    fetchManagerInfo();
-  }, [authUser]);
+    if (open) {
+      fetchEmployeeData();
+    }
+  }, [authUser, open]);
 
   // Auto-calculate end date when duration is selected
   useEffect(() => {
@@ -86,14 +114,11 @@ const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
       const endDate = new Date(selectStartDate);
 
       if (days < 1) {
-        // For half day, end date is same as start date
         setSelectEndDate(endDate);
       } else {
-        // Add days (excluding weekends for business days)
         let addedDays = 0;
         while (addedDays < days - 1) {
           endDate.setDate(endDate.getDate() + 1);
-          // Skip weekends (optional - remove this if you want to include weekends)
           if (endDate.getDay() !== 0 && endDate.getDay() !== 6) {
             addedDays++;
           }
@@ -112,14 +137,20 @@ const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
       return;
     }
 
-    try {
-      // Calculate days between dates
-      const start = selectStartDate;
-      const end = selectEndDate;
-      const days = start && end
-        ? Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-        : 1;
+    // Calculate requested days
+    const start = selectStartDate;
+    const end = selectEndDate;
+    const requestedDays = start && end
+      ? Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      : 1;
 
+    // Validation: Check if requested days exceed remaining balance
+    if (leaveBalance && requestedDays > leaveBalance.remaining) {
+      toast.error(`Insufficient leave balance. You only have ${leaveBalance.remaining} days remaining.`);
+      return;
+    }
+
+    try {
       const leaveData = {
         employeeId: authUser.uid,
         employeeName: (authUser as any).displayName || authUser.email,
@@ -127,7 +158,7 @@ const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
         leaveDuration: data.leaveDuration,
         startDate: selectStartDate?.toISOString(),
         endDate: selectEndDate?.toISOString(),
-        days: days,
+        days: requestedDays,
         reason: data.reason,
         companyId: authUser.companyId,
         managerId: managerInfo?.id,
@@ -154,8 +185,7 @@ const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
       setTimeout(() => setOpen(false), 800);
     } catch (error: any) {
       toast.error(
-        error?.message ||
-          "An error occurred while submitting the leave request. Please try again!"
+        error?.message || "An error occurred while submitting the leave request. Please try again!"
       );
     }
   };
@@ -166,11 +196,7 @@ const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
         <DialogTitle>
           <div className="flex justify-between">
             <h5 className="modal-title">Add Employee Leave</h5>
-            <button
-              onClick={handleToggle}
-              type="button"
-              className="bd-btn-close"
-            >
+            <button onClick={handleToggle} type="button" className="bd-btn-close">
               <i className="fa-solid fa-xmark-large"></i>
             </button>
           </div>
@@ -181,6 +207,38 @@ const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
               <div className="col-span-12">
                 <div className="card__wrapper mb-20">
                   <div className="grid grid-cols-12 gap-x-5 gap-y-5 maxXs:gap-x-0">
+                    
+                    {/* 📊 Leave Balance Progress Tracker */}
+                    <div className="col-span-12">
+                      {loadingData ? (
+                        <div className="flex items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                          <CircularProgress size={20} />
+                          <span className="text-sm">Updating your leave balance...</span>
+                        </div>
+                      ) : leaveBalance && (
+                        <div className="bg-slate-50 dark:bg-[#1a222c] p-4 rounded-xl border border-slate-200 dark:border-slate-700 mb-2">
+                          <div className="flex justify-between items-center mb-2">
+                            <h6 className="text-sm font-semibold text-slate-700 dark:text-white">Your Leave Balance</h6>
+                            <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                              {leaveBalance.remaining} Days Remaining
+                            </span>
+                          </div>
+                          
+                          <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                            <div 
+                              className="bg-blue-600 h-full transition-all duration-300"
+                              style={{ width: `${leaveBalance.percentage}%` }}
+                            />
+                          </div>
+
+                          <div className="flex justify-between items-center mt-3 text-xs text-slate-500 dark:text-slate-400">
+                            <span>Total Entitlement: <strong>{leaveBalance.total}</strong></span>
+                            <span>Used: <strong>{leaveBalance.taken}</strong></span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="col-span-12 md:col-span-6">
                       <FormLabel label="Leave Type" id="leaveTypeSelect" />
                       <select
@@ -233,10 +291,13 @@ const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
                         className="form-control"
                         value={selectedDuration}
                         onChange={(e) => {
-                          setSelectedDuration(e.target.value);
-                          if (e.target.value !== "Custom") {
-                            const days = parseFloat(e.target.value);
+                          const val = e.target.value;
+                          setSelectedDuration(val);
+                          if (val !== "Custom" && val !== "") {
+                            const days = parseFloat(val);
                             setValue("leaveDuration", `${days} ${days === 0.5 ? "Half Day" : days === 1 ? "Day" : "Days"}`);
+                          } else {
+                            setValue("leaveDuration", "");
                           }
                         }}
                       >
@@ -258,7 +319,7 @@ const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
                           label="Custom Duration"
                           id="customDuration"
                           type="text"
-                          placeholder="e.g., 3 Days, 1 Month"
+                          placeholder="e.g., 3 Days, 70 Days"
                           required={true}
                           register={register("leaveDuration", {
                             required: "Custom duration is required",
@@ -326,8 +387,8 @@ const AddLeavesModal = ({ open, setOpen, onRefresh }: AddLeavesModalProps) => {
               </div>
             </div>
             <div className="submit__btn text-center">
-              <button type="submit" className="btn btn-primary">
-                Submit
+              <button type="submit" className="btn btn-primary" disabled={loadingData}>
+                {loadingData ? "Updating Balance..." : "Submit Request"}
               </button>
             </div>
           </form>

@@ -18,6 +18,11 @@ export async function POST(req: Request) {
     const companyId = formData.get("companyId") as string;
     const createdBy = formData.get("createdBy") as string;
     
+    // Extract Leave Data
+    const totalLeaveDays = formData.get("totalLeaveDays") 
+      ? Number(formData.get("totalLeaveDays")) 
+      : 0;
+    
     // Extract file
     const file = formData.get("file") as File | null;
 
@@ -42,7 +47,6 @@ export async function POST(req: Request) {
     // 2. Upload file to Storage if provided
     if (file) {
       const bucket = admin.storage().bucket("afrihr2025.firebasestorage.app");
-      // Multi-tenant path: files / {companyId} / {userId} / {filename}
       const filePath = `files/${companyId}/${userRecord.uid}/${file.name}`;
       const fileRef = bucket.file(filePath);
 
@@ -53,7 +57,6 @@ export async function POST(req: Request) {
         },
       });
 
-      // Generate a public URL for the file
       contractUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
     }
 
@@ -67,7 +70,9 @@ export async function POST(req: Request) {
       position: position || "N/A",
       companyId,
       managerId: managerId || "",
-      contractUrl: contractUrl, // Path to the file in storage
+      contractUrl: contractUrl,
+      totalLeaveDays: totalLeaveDays, // Total allowance
+      remainingLeaveDays: totalLeaveDays, // Initial balance
       createdBy,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),

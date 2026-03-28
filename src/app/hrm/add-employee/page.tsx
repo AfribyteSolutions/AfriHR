@@ -27,6 +27,7 @@ interface FormState {
   department: string;
   role: string;
   managerId: string;
+  totalLeaveDays: string; // Added field
 }
 
 export default function AddEmployeePage() {
@@ -48,6 +49,7 @@ export default function AddEmployeePage() {
     department: "",
     role: "employee",
     managerId: "",
+    totalLeaveDays: "20", // Default value
   });
 
   useEffect(() => {
@@ -107,7 +109,6 @@ export default function AddEmployeePage() {
     const toastId = toast.loading("Onboarding employee...");
 
     try {
-      // Use FormData to allow file uploads
       const data = new FormData();
       data.append("fullName", formData.fullName);
       data.append("email", formData.email);
@@ -116,6 +117,7 @@ export default function AddEmployeePage() {
       data.append("department", formData.department);
       data.append("role", formData.role);
       data.append("managerId", formData.managerId);
+      data.append("totalLeaveDays", formData.totalLeaveDays); // Added to FormData
       data.append("companyId", userCompanyId);
       data.append("createdBy", user.uid);
 
@@ -125,7 +127,6 @@ export default function AddEmployeePage() {
 
       const res = await fetch("/api/add-employee", {
         method: "POST",
-        // Browser automatically sets Content-Type to multipart/form-data with boundary
         body: data,
       });
 
@@ -155,7 +156,7 @@ export default function AddEmployeePage() {
                   Employee Onboarding
                 </h1>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Add a new employee and assign their system permissions.
+                  Add a new employee and assign their system permissions and leave.
                 </p>
               </div>
 
@@ -190,7 +191,7 @@ export default function AddEmployeePage() {
 
                 <section className="space-y-6">
                   <h2 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                    Organization & Permissions
+                    Organization & Leave
                   </h2>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -253,6 +254,16 @@ export default function AddEmployeePage() {
                         ))}
                       </select>
                     </div>
+
+                    <Input
+                      label="Annual Leave Allowance (Days)"
+                      type="number"
+                      required
+                      value={formData.totalLeaveDays}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        setFormData({ ...formData, totalLeaveDays: e.target.value })
+                      }
+                    />
                   </div>
                 </section>
 
