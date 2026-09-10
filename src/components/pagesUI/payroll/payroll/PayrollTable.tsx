@@ -49,7 +49,7 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || "Failed to load payroll");
       const snapshot = { docs: (result.data || []).map((item: any) => ({ id: item.id, data: () => item })) };
-      const data = snapshot.docs.map(d => ({
+      const data = snapshot.docs.map((d: { id: string; data: () => any }) => ({
         id: d.id,
         ...d.data(),
         salaryMonth: d.data().salaryMonth || (MONTHS.indexOf(d.data().month) + 1),
