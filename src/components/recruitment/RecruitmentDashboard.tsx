@@ -117,7 +117,7 @@ const RecruitmentDashboard = ({ userData }: { userData: any }) => {
       }
   
       toast.success(
-        `${applicant.firstName} is now an employee! A password reset email has been sent.`,
+        data.message || `${applicant.firstName} is now an employee and preboarding is ready.`,
         { id: toastId, duration: 5000 }
       );
       setIsDetailOpen(false);
