@@ -1,17 +1,83 @@
 {
+  "name": "User",
+  "type": "object",
   "properties": {
     "role": {
       "type": "string",
-      "description": "The role of the user in the app",
+      "description": "Base44 platform role",
       "enum": [
         "admin",
         "user"
       ]
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Owning AfriHR tenant",
+      "rls": {
+        "read": true,
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "app_role": {
+      "type": "string",
+      "enum": [
+        "platform_admin",
+        "tenant_admin",
+        "hr_manager",
+        "recruiter",
+        "manager",
+        "employee"
+      ],
+      "default": "employee",
+      "rls": {
+        "read": true,
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "employment_status": {
+      "type": "string",
+      "enum": [
+        "invited",
+        "preboarding",
+        "active",
+        "suspended",
+        "offboarding",
+        "offboarded"
+      ],
+      "default": "invited",
+      "rls": {
+        "read": true,
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "rls": {
+        "read": true,
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     }
   },
   "required": [
     "role"
-  ],
-  "name": "User",
-  "type": "object"
+  ]
 }
