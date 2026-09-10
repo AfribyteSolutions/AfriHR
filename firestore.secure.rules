@@ -15,10 +15,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if signedIn() && (request.auth.uid == userId || (isHr() && sameTenant(resource.data)));
       allow update: if signedIn() && request.auth.uid == userId
-        && request.resource.data.companyId == resource.data.companyId
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.accessStatus == resource.data.accessStatus;
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['companyId', 'role', 'status', 'accessStatus', 'employmentStatus', 'lifecycleStage', 'permissions']);
       allow create, delete: if false;
     }
 
@@ -31,11 +29,8 @@ service cloud.firestore {
       allow read: if signedIn() && (sameTenant(resource.data) || isSuperAdmin());
       allow update: if signedIn() && request.auth.uid == employeeId
         && sameTenant(resource.data)
-        && request.resource.data.companyId == resource.data.companyId
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.employmentStatus == resource.data.employmentStatus
-        && request.resource.data.lifecycleStage == resource.data.lifecycleStage;
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['companyId', 'role', 'status', 'accessStatus', 'employmentStatus', 'lifecycleStage', 'permissions', 'managerId', 'salary']);
       allow create, delete: if false;
     }
 
