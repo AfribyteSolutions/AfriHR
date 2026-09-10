@@ -1,0 +1,88 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "NEXT_PUBLIC_FIREBASE_API_KEY",
+      "description": "Firebase project API key (Firebase Console → Project Settings → General → Web API Key)",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+      "description": "Firebase auth domain, e.g. <project>.firebaseapp.com (Firebase Console → Project Settings → General)",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+      "description": "Firebase project ID (Firebase Console → Project Settings → General)",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+      "description": "Firebase storage bucket, e.g. <project>.appspot.com (Firebase Console → Project Settings → General)",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+      "description": "Firebase messaging sender ID (Firebase Console → Project Settings → Cloud Messaging)",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "NEXT_PUBLIC_FIREBASE_APP_ID",
+      "description": "Firebase app ID (Firebase Console → Project Settings → General → Web App)",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "FIREBASE_ADMIN_KEY",
+      "description": "Firebase Admin service account JSON (Firebase Console → Project Settings → Service Accounts → Generate New Private Key). Paste the full JSON object.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+      "description": "Stripe publishable key (Stripe Dashboard → Developers → API Keys → Publishable Key)",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "STRIPE_SECRET_KEY",
+      "description": "Stripe secret key (Stripe Dashboard → Developers → API Keys → Secret Key)",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "STRIPE_WEBHOOK_SECRET",
+      "description": "Stripe webhook signing secret (Stripe Dashboard → Developers → Webhooks → endpoint signing secret)",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "FAPSHI_API_KEY",
+      "description": "Fapshi API key (Fapshi merchant dashboard)",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "FAPSHI_API_USER",
+      "description": "Fapshi API username (Fapshi merchant dashboard)",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "EMAIL_USER",
+      "description": "Email address used by nodemailer for sending emails (e.g. notifications, payslips)",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "EMAIL_PASS",
+      "description": "Email app password for the EMAIL_USER account (nodemailer SMTP)",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "CRON_SECRET",
+      "description": "Secret token protecting the /api/cron/send-payslips endpoint",
+      "requiredAtBoot": false
+    }
+  ]
+}
