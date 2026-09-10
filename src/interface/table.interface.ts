@@ -28,7 +28,7 @@ export interface IPaylist {
   totalEarnings: number;
   totalDeductions: number;
   netPay: number;
-  status: "Paid" | "Unpaid";
+  status: "Draft" | "Approved" | "Paid" | "Voided" | "Unpaid";
   createdAt: any;
   updatedAt?: any;
 }
