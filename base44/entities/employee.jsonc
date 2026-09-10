@@ -1,0 +1,69 @@
+{
+  "name": "Employee",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "employee_number": {
+      "type": "string"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "department": {
+      "type": "string"
+    },
+    "job_title": {
+      "type": "string"
+    },
+    "manager_id": {
+      "type": "string"
+    },
+    "hire_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "lifecycle_stage": {
+      "type": "string",
+      "enum": [
+        "preboarding",
+        "active",
+        "leave",
+        "offboarding",
+        "offboarded"
+      ],
+      "default": "preboarding"
+    },
+    "employment_status": {
+      "type": "string",
+      "enum": [
+        "invited",
+        "active",
+        "suspended",
+        "terminated",
+        "resigned"
+      ],
+      "default": "invited"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "full_name",
+    "email",
+    "lifecycle_stage"
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}
