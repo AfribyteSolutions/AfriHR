@@ -45,8 +45,10 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
   const fetchPayroll = useCallback(async (cId: string) => {
     try {
       setLoading(true);
-      const q = query(collection(db, "payrolls"), where("companyId", "==", cId));
-      const snapshot = await getDocs(q);
+      const response = await fetch(`/api/payroll?companyId=${encodeURIComponent(cId)}`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || "Failed to load payroll");
+      const snapshot = { docs: (result.data || []).map((item: any) => ({ id: item.id, data: () => item })) };
       const data = snapshot.docs.map(d => ({
         id: d.id,
         ...d.data(),
@@ -73,6 +75,7 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
       toast.error("Confirmed payments cannot be reversed.");
       return;
     }
+    const nextStatus = row.status === "Approved" ? "Paid" : "Approved";
     const confirmPay = window.confirm(
       `Confirm payment for ${row.employeeName}?\nOnce marked as Paid, a payslip will be generated and emailed. This action cannot be undone.`
     );
@@ -80,7 +83,7 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
 
     const original = [...payrollData];
     setPayrollData(prev =>
-      prev.map(item => item.id === row.id ? { ...item, status: "Paid" } : item)
+      prev.map(item => item.id === row.id ? { ...item, status: nextStatus } : item)
     );
 
     try {
@@ -88,7 +91,8 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status: "Paid",
+          status: nextStatus,
+          companyId,
           emailStatus: "Pending",
           paidAt: new Date().toISOString()
         })
