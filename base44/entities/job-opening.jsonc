@@ -54,9 +54,21 @@
     "status"
   ],
   "rls": {
-    "create": false,
-    "read": false,
-    "update": false,
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
     "delete": false
   }
 }
