@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@base44/sdk": "^0.8.48",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@firebase/auth": "^1.10.7",
