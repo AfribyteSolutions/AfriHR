@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
-import { requireAuth, validateSubdomain } from "@/lib/auth-helper";
+import { requireAuth } from "@/lib/auth-helper";
 
 // Helper to safely serialize Firestore data
 function serializeFirestore(doc: FirebaseFirestore.DocumentSnapshot) {
