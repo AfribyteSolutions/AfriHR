@@ -1,4 +1,5 @@
 export type Stage =
+  | "application"
   | "applied"
   | "screening"
   | "interview"
@@ -26,4 +27,8 @@ export interface Applicant {
   notes: string;
   source: string;
   hiredEmployeeId?: string;
+  bankAccount?: {
+    bankName?: string;
+    accountNumber?: string;
+  };
 }
