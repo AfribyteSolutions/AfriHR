@@ -1,0 +1,93 @@
+{
+  "name": "Offboarding",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "employee_id": {
+      "type": "string"
+    },
+    "offboarding_type": {
+      "type": "string",
+      "enum": [
+        "resignation",
+        "termination",
+        "retirement",
+        "contract_end",
+        "other"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "last_working_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "initiated",
+        "in_progress",
+        "ready_to_complete",
+        "completed",
+        "cancelled"
+      ],
+      "default": "initiated"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "exit_interview_notes": {
+      "type": "string"
+    },
+    "final_document_uri": {
+      "type": "string"
+    },
+    "initiated_by": {
+      "type": "string"
+    },
+    "completed_by": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cancelled_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "employee_id",
+    "offboarding_type",
+    "last_working_date",
+    "status",
+    "tasks",
+    "initiated_by"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}
