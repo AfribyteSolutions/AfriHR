@@ -92,9 +92,9 @@ export default function PerformancePage() {
             {review.feedback && <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{review.feedback}</p>}
             {!!review.goals?.length && <ul className="mt-3 list-disc pl-5 text-sm text-slate-500">{review.goals.map((goal: string, i: number) => <li key={i}>{goal}</li>)}</ul>}
             <div className="flex gap-2 mt-5">
-              {review.status === "draft" && canCreate && <button onClick={() => void transition(review.id, "submit")} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold">Submit</button>}
-              {review.status === "submitted" && <button onClick={() => void transition(review.id, "acknowledge")} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold">Acknowledge</button>}
-              {review.status === "acknowledged" && isHr && <button onClick={() => void transition(review.id, "close")} className="px-4 py-2 rounded-xl border text-sm font-bold">Close</button>}
+              {review.can_submit && <button onClick={() => void transition(review.id, "submit")} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold">Submit</button>}
+              {review.can_acknowledge && <button onClick={() => void transition(review.id, "acknowledge")} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold">Acknowledge</button>}
+              {review.can_close && <button onClick={() => void transition(review.id, "close")} className="px-4 py-2 rounded-xl border text-sm font-bold">Close</button>}
             </div>
           </article>)}
           {!filtered.length && <div className="lg:col-span-2 py-16 text-center border-2 border-dashed rounded-2xl text-slate-400">No performance reviews found.</div>}
