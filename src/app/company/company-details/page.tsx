@@ -1,4 +1,6 @@
 "use client";
+
+export const dynamic = "force-dynamic";
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import CompanyDetailsMainArea from "@/components/pagesUI/company/company-details/CompanyDetailsMainArea";
 import MetaData from "@/hooks/useMetaData";
