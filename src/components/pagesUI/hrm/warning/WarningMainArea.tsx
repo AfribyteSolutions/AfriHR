@@ -2,12 +2,12 @@
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
 import WarningTablet from "./WarningTablet";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
+import { useAuthUserContext } from "@/context/UserAuthContext";
+
 import AddWarningModal from "./AddWarningModal"; 
 
 const WarningMainArea = () => {
-  const [user] = useAuthState(auth);
+  const { user } = useAuthUserContext();
   const [userRole, setUserRole] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);

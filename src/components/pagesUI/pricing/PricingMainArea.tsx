@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PLANS, formatPrice, FEATURE_LABELS } from "@/config/plans";
 import { PlanType } from "@/types/company";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { useAuthUserContext } from "@/context/UserAuthContext";
+import { base44 } from "@/lib/base44";
 
 const PricingMainArea: React.FC = () => {
   const [isAnnual, setIsAnnual] = useState(false);
@@ -15,27 +14,20 @@ const PricingMainArea: React.FC = () => {
   const [currentPlan, setCurrentPlan] = useState<PlanType | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { user: authUser, loading: authLoading } = useAuthUserContext();
 
-  // Check auth state and fetch current plan
+  // Check auth state and fetch current plan via Base44 SDK
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setIsLoggedIn(!!user);
+    if (authLoading) return;
 
-      if (user) {
+    setIsLoggedIn(!!authUser);
+
+    const fetchPlan = async () => {
+      if (authUser?.companyId) {
         try {
-          // Get user's company to find current plan
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            const companyId = userData.companyId;
-
-            if (companyId) {
-              const companyDoc = await getDoc(doc(db, "companies", companyId));
-              if (companyDoc.exists()) {
-                const companyData = companyDoc.data();
-                setCurrentPlan(companyData.plan || 'starter');
-              }
-            }
+          const tenant = await (base44.entities as any).Tenant.get(authUser.companyId);
+          if (tenant) {
+            setCurrentPlan(tenant.plan || 'starter');
           }
         } catch (error) {
           console.error("Error fetching user plan:", error);
@@ -43,11 +35,11 @@ const PricingMainArea: React.FC = () => {
       } else {
         setCurrentPlan(null);
       }
-
       setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    };
+
+    fetchPlan();
+  }, [authUser, authLoading]);
 
   const faqs = [
     {

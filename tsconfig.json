@@ -55,6 +55,7 @@
   ],
   "exclude": [
     "node_modules",
-    "base44"
+    "base44",
+    "scripts"
   ]
 }

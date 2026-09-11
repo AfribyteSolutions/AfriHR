@@ -7,10 +7,9 @@ import {
 import Link from "next/link";
 import { IPaylist } from "@/interface/table.interface";
 import EditSalaryModal from "./EditSalaryModal";
-import { db, auth } from "@/lib/firebase";
-import { collection, doc, getDocs, query, where, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
-import { useAuthState } from "react-firebase-hooks/auth";
+import { useAuthUserContext } from "@/context/UserAuthContext";
+import { base44 } from "@/lib/base44";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 const MONTHS = [
@@ -30,7 +29,7 @@ interface PayrollTableProps {
 }
 
 const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
-  const [user, authLoading] = useAuthState(auth);
+  const { user, loading: authLoading } = useAuthUserContext();
   const [payrollData, setPayrollData] = useState<IPaylist[]>([]);
   const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -45,13 +44,12 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
   const fetchPayroll = useCallback(async (cId: string) => {
     try {
       setLoading(true);
-      const q = query(collection(db, "payrolls"), where("companyId", "==", cId));
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-        salaryMonth: d.data().salaryMonth || (MONTHS.indexOf(d.data().month) + 1),
-        salaryYear: Number(d.data().salaryYear || d.data().year)
+      const results = await (base44.entities as any).Payroll.filter({ tenant_id: cId }, "-created_date");
+      const data = (results || []).map((r: any) => ({
+        id: r.id,
+        ...r,
+        salaryMonth: r.salary_month || (MONTHS.indexOf(r.month) + 1),
+        salaryYear: Number(r.salary_year || r.year)
       })) as IPaylist[];
       setPayrollData(data);
     } catch (err) {
@@ -227,14 +225,9 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
   }, [payrollData, statusFilter, searchQuery]);
 
   useEffect(() => {
-    if (user && !authLoading) {
-      getDoc(doc(db, "users", user.uid)).then(snap => {
-        if (snap.exists()) {
-          const cId = snap.data().companyId;
-          setCompanyId(cId);
-          fetchPayroll(cId);
-        }
-      });
+    if (user?.companyId && !authLoading) {
+      setCompanyId(user.companyId);
+      fetchPayroll(user.companyId);
     }
   }, [user, authLoading, fetchPayroll]);
 

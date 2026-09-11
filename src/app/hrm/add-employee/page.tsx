@@ -2,9 +2,8 @@
 
 import { useEffect, useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthState } from "react-firebase-hooks/auth";
 import toast from "react-hot-toast";
-import { auth } from "@/lib/firebase";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
 
@@ -32,7 +31,7 @@ interface FormState {
 
 export default function AddEmployeePage() {
   const router = useRouter();
-  const [user, loadingAuth] = useAuthState(auth);
+  const { user, loading: loadingAuth } = useAuthUserContext();
 
   const [loading, setLoading] = useState(false);
   const [fetchingManagers, setFetchingManagers] = useState(true);

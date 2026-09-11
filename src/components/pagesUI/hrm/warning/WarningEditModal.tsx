@@ -7,9 +7,8 @@ import { useForm } from "react-hook-form";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
 import { useAuthUserContext } from "@/context/UserAuthContext";
+
 
 interface WarningEditModalProps {
   open: boolean;
@@ -20,7 +19,7 @@ interface WarningEditModalProps {
 
 const WarningEditModal = ({ open, setOpen, editData, onSuccess }: WarningEditModalProps) => {
   const [selectWarningDate, setSelectWarningDate] = useState<Date | null>(new Date());
-  const [user] = useAuthState(auth);
+  const { user } = useAuthUserContext();
   const { user: userData } = useAuthUserContext(); // Pulls companyId/role context
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<string>("active");
