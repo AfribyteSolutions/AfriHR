@@ -41,7 +41,12 @@ Deno.serve(async (req) => {
           records = records.filter((r: any) => managed.has(r.employee_id) || r.employee_id === self.id);
         } else records = self ? records.filter((r: any) => r.employee_id === self.id) : [];
       }
-      return json({ success: true, data: records.map((r: any) => ({ ...r, employee: byId[r.employee_id] || null, reviewer: byId[r.reviewer_id] || null })) });
+      return json({ success: true, data: records.map((r: any) => ({
+        ...r, employee: byId[r.employee_id] || null, reviewer: byId[r.reviewer_id] || null,
+        can_submit: r.status === "draft" && canReviewEmployee(r.employee_id),
+        can_acknowledge: r.status === "submitted" && !!self && r.employee_id === self.id,
+        can_close: r.status === "acknowledged" && (platformAdmin || HR.has(role))
+      })) });
     }
 
     if (operation === "create") {
@@ -51,7 +56,7 @@ Deno.serve(async (req) => {
       if (!canReviewEmployee(employeeId)) return json({ success: false, error: "You can only review direct reports" }, 403);
       const start = clean(body.period_start, 10), end = clean(body.period_end, 10);
       if (!start || !end || end < start) return json({ success: false, error: "Valid review period required" }, 400);
-      const reviewerId = role === "manager" ? self?.id : clean(body.reviewer_id, 100) || self?.id;
+      const reviewerId = role === "manager" ? self?.id : clean(body.reviewer_id, 100) || self?.id || user.id;
       if (!reviewerId) return json({ success: false, error: "Reviewer employee profile required" }, 409);
       const record = await base44.asServiceRole.entities.PerformanceReview.create({
         tenant_id: tenantId, employee_id: employeeId, reviewer_id: reviewerId,
