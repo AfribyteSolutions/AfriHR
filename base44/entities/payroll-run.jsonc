@@ -20,6 +20,18 @@
     "currency": {
       "type": "string"
     },
+    "country_code": {
+      "type": "string"
+    },
+    "statutory_rule_set_id": {
+      "type": "string"
+    },
+    "statutory_deductions_minor": {
+      "type": "number"
+    },
+    "employer_contributions_minor": {
+      "type": "number"
+    },
     "status": {
       "type": "string",
       "enum": [
