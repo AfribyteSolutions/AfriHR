@@ -1,147 +1,30 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { getSubdomain } from '@/lib/getSubdomain';
-
-// A single set of protected routes
-const protectedRoutes = new Map<RegExp, string[]>([
-  [/^\/super-admin/, ['super-admin']],
-  [/^\/dashboard\/hrm-dashboard/, ['admin', 'manager', 'super-admin']],
-  [/^\/dashboard\/employee-dashboard/, ['employee', 'manager', 'admin', 'super-admin']],
-  [/^\/dashboard\/payroll/, ['admin', 'manager', 'super-admin']],
-  [/^\/dashboard\/company/, ['admin', 'super-admin']],
-]);
-
-// Routes that should be accessible without authentication
-const publicRoutes = [
-  '/auth/signin-basic',
-  '/auth/signup-basic',
-  '/auth/signup-advance',
-  '/auth/reset-password-basic',
-  '/auth/forgot-password',
-  '/auth/session-restore',
-  '/onboarding',
-  '/pricing',
-  '/checkout',
-  '/about',
-  '/contact',
-];
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getSubdomain } from "@/lib/getSubdomain";
 
 export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
-
-  // Skip middleware for API routes, Next.js internals, and static files
-  if (pathname.startsWith('/api') || pathname.startsWith('/_next/') || pathname.includes('.')) {
+  if (pathname.startsWith("/api") || pathname.startsWith("/_next/") || pathname.includes(".")) {
     return NextResponse.next();
   }
 
-  const hostname = req.headers.get('host') || '';
-  
-  // 🔹 MODIFICATION: If the hostname is EXACTLY www.afrihrm.com, 
-  // we treat it as no subdomain to prevent the redirect loop.
-  let subdomain = getSubdomain(hostname);
-  if (hostname === 'www.afrihrm.com') {
-    subdomain = null; 
-  }
-
-  const isLocalhost = hostname.includes('localhost') || hostname.includes('127.0.0.1');
-
-  const res = NextResponse.next();
-
-  // Set subdomain as a request header for server components
-  res.headers.set('x-subdomain', subdomain || '');
-
-  // Set subdomain cookie
-  const existingSubdomain = req.cookies.get('subdomain')?.value;
-  if (existingSubdomain !== subdomain) {
-    // Note: If no subdomain, we leave it empty or use your default
-    res.cookies.set("subdomain", subdomain || "", {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7
-    });
-  }
-
-  // Handle root path - always allow access to homepage
-  if (pathname === '/') {
-    return res;
-  }
-
-  // Allow public routes without authentication
-  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))) {
-    return res;
-  }
-
-  // Check if user is authenticated
-  const authToken = req.cookies.get('authToken')?.value;
-  const userRole = req.cookies.get('role')?.value;
-
-  // Check session timeout
-  const lastActivity = req.cookies.get('lastActivity')?.value;
-  if (lastActivity) {
-    const timeSinceActivity = Date.now() - parseInt(lastActivity);
-    const timeoutDuration = 30 * 60 * 1000; // 30 minutes
-
-    if (timeSinceActivity > timeoutDuration) {
-      console.log("⏰ Session expired due to inactivity");
-      const signInUrl = new URL('/auth/signin-basic', req.url);
-      signInUrl.searchParams.set('error', 'session_expired');
-      signInUrl.searchParams.set('message', 'Your session has expired. Please sign in again.');
-
-      // Clear cookies
-      const response = NextResponse.redirect(signInUrl);
-      response.cookies.delete('authToken');
-      response.cookies.delete('role');
-      response.cookies.delete('userId');
-      response.cookies.delete('userEmail');
-      response.cookies.delete('subdomain');
-      response.cookies.delete('lastActivity');
-
-      return response;
-    }
-  }
-
-  // Redirect unauthenticated users to sign-in
-  if (!authToken || !userRole) {
-    console.log("🚫 No auth token or role found, redirecting to sign-in");
-    const signInUrl = new URL('/auth/signin-basic', req.url);
-    if (pathname !== '/') {
-      signInUrl.searchParams.set('redirect', pathname);
-    }
-    return NextResponse.redirect(signInUrl);
-  }
-
-  // Check protected routes
-  let requiredRoles: string[] | undefined;
-  protectedRoutes.forEach((roles, pattern) => {
-    if (pattern.test(pathname)) {
-      requiredRoles = roles;
-    }
-  });
-
-  if (requiredRoles && userRole && !requiredRoles.includes(userRole)) {
-    console.log("🚫 Insufficient permissions, redirecting to sign-in");
-    const signInUrl = new URL('/auth/signin-basic', req.url);
-    signInUrl.searchParams.set('redirect', pathname);
-    signInUrl.searchParams.set('error', 'insufficient_permissions');
-    return NextResponse.redirect(signInUrl);
-  }
-
-  // Update lastActivity cookie on each request to protected routes
-  res.cookies.set('lastActivity', Date.now().toString(), {
+  const hostname = req.headers.get("host") || "";
+  const subdomain = hostname === "www.afrihrm.com" ? null : getSubdomain(hostname);
+  const response = NextResponse.next();
+  response.headers.set("x-subdomain", subdomain || "");
+  response.cookies.set("subdomain", subdomain || "", {
     httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 30
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
   });
 
-  return res;
+  // Base44 owns the authenticated session. Client-side protected shells validate
+  // base44.auth.me(); legacy Firebase cookies are intentionally no longer trusted.
+  return response;
 }
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
