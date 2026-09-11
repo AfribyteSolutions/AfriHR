@@ -48,6 +48,11 @@ Deno.serve(async(req)=>{
    const runs=await base44.asServiceRole.entities.PayrollRun.filter({tenant_id:tenantId},"-period_end",200);
    return json({success:true,data:runs});
   }
+  if(operation==="list_my_payslips"){
+   if(!self)return json({success:false,error:"No employee profile linked to this account"},409);
+   const items=await base44.asServiceRole.entities.PayrollItem.filter({tenant_id:tenantId,employee_id:self.id},"-created_date",200);
+   return json({success:true,data:items.filter((x:any)=>x.status==="finalized")});
+  }
   if(operation==="create_run"){
    const denied=requireHr();if(denied)return denied;
    const start=clean(body.period_start,10),end=clean(body.period_end,10),payDate=clean(body.pay_date,10),currency=clean(body.currency,3).toUpperCase(),key=clean(body.idempotency_key,120);
