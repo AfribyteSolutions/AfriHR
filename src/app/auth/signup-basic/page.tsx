@@ -3,30 +3,25 @@ import Image from 'next/image';
 import Link from 'next/link';
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { useAuth } from '@/context/AuthContext';
 import logoSvg from '../../../../public/assets/images/logo/logo.svg';
 import logoWhite from '../../../../public/assets/images/logo/logo-white.svg';
 import SignUpBasicForm from '@/form/auth/SignUp/basic-form';
 
 const SignUpBasicMain = () => {
   const router = useRouter();
+  const { isAuthenticated, loading } = useAuth();
 
   // Redirect to pricing page if already logged in
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        console.log('User already logged in, redirecting to pricing page');
-        router.replace('/pricing');
-      }
-    });
-    return () => unsubscribe();
-  }, [router]);
+    if (!loading && isAuthenticated) {
+      router.replace('/pricing');
+    }
+  }, [isAuthenticated, loading, router]);
 
   return (
     <>
-      <div 
-      >
+      <div>
         {/* -- Sign Up area start-- */}
         <div className="authentication-wrapper basic-authentication">
           <div className="authentication-inner">

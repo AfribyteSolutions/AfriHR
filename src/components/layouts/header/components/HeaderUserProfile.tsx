@@ -3,11 +3,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react'; 
 import { useAuthUserContext } from '@/context/UserAuthContext'; 
+import { useAuth } from '@/context/AuthContext';
 import avatarImg from "../../../../../public/assets/images/avatar/avatar.png";
 import UserIcon from '@/svg/header-svg/Profile/UserIcon';
 import ChatIcon from '@/svg/header-svg/Profile/ChatIcon';
 import LogOut from '@/svg/header-svg/Profile/LogOut';
-import { auth } from '@/lib/firebase'; 
 import { IEmployee } from '@/interface/IEmployee';
 
 // types
@@ -32,11 +32,12 @@ const HeaderUserProfile = ({ handleShowUserDrowdown, isOpenUserDropdown }: TUser
     // Get user data and loading state. 
     // We cast to 'any' first then to 'ExtendedUser' to bypass strict inheritance conflicts.
     const { user, loading: loadingAuthUser } = useAuthUserContext(); 
+    const { logout } = useAuth();
     const authUser = user as ExtendedUser;
 
     const handleLogout = async () => {
         try {
-            await auth.signOut();
+            await logout();
             window.location.href = '/auth/signin-basic'; 
         } catch (error) {
             console.error('Error signing out:', error);

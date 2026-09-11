@@ -3,8 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { signInWithCustomToken } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { base44 } from '@/lib/base44';
 
 export default function SessionRestorePage() {
   const router = useRouter();
@@ -25,7 +24,6 @@ export default function SessionRestorePage() {
         const sessionToken = searchParams.get('token');
         console.log('🔄 Session restore page loaded');
         console.log('🔑 Session token:', sessionToken ? 'Present' : 'Missing');
-        console.log('🌐 Current URL:', window.location.href);
 
         if (!sessionToken) {
           console.error('❌ No session token in URL');
@@ -39,11 +37,9 @@ export default function SessionRestorePage() {
 
         // 1. Get session data from the server using the one-time token
         const response = await fetch(`/api/auth/create-session-token?token=${sessionToken}`);
-        console.log('📡 Session data response status:', response.status);
 
         if (!response.ok) {
           const errorData = await response.json();
-          console.error('❌ Failed to get session data:', errorData);
           throw new Error(errorData.error || 'Failed to restore session');
         }
 
@@ -67,39 +63,24 @@ export default function SessionRestorePage() {
           }),
         });
 
-        console.log('🍪 Set cookie response status:', setCookieResponse.status);
-
         if (!setCookieResponse.ok) {
           const errorData = await setCookieResponse.json();
-          console.error('❌ Failed to set cookies:', errorData);
           throw new Error(errorData.error || 'Failed to set session cookies');
         }
 
-        const cookieResult = await setCookieResponse.json();
-        console.log('✅ Cookies set successfully:', cookieResult);
+        console.log('✅ Cookies set successfully');
 
-        // 3. Restore Firebase client auth using custom token
-        console.log('🔥 Restoring Firebase auth...');
+        // 3. Verify Base44 auth is active
+        console.log('🔐 Verifying Base44 auth...');
         try {
-          const customTokenResponse = await fetch('/api/auth/create-custom-token', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: data.userId,
-            }),
-          });
-
-          if (customTokenResponse.ok) {
-            const { customToken } = await customTokenResponse.json();
-            await signInWithCustomToken(auth, customToken);
-            console.log('✅ Firebase auth restored successfully');
+          const me = await base44.auth.me();
+          if (me) {
+            console.log('✅ Base44 auth verified');
           } else {
-            console.warn('⚠️ Could not restore Firebase auth, but session cookies are set');
+            console.warn('⚠️ Base44 auth not active, but session cookies are set');
           }
-        } catch (firebaseError) {
-          console.warn('⚠️ Firebase auth restoration failed, but session cookies are set:', firebaseError);
+        } catch (e) {
+          console.warn('⚠️ Base44 auth verification failed, but session cookies are set:', e);
           // Don't throw - cookies are set, so user can still access protected routes
         }
 
@@ -124,7 +105,6 @@ export default function SessionRestorePage() {
         }
 
         console.log('🔄 Redirecting to dashboard:', dashboardPath);
-        console.log('🌐 Will navigate to:', window.location.origin + dashboardPath);
 
         // Use window.location.href for a hard redirect to ensure cookies are recognized
         setTimeout(() => {
@@ -133,7 +113,6 @@ export default function SessionRestorePage() {
 
       } catch (error: any) {
         console.error('❌ Session restore error:', error);
-        console.error('❌ Error details:', error.message, error.stack);
         setStatus('error');
         toast.error(error.message || 'Failed to restore session');
         setTimeout(() => router.push('/auth/signin-basic'), 2000);

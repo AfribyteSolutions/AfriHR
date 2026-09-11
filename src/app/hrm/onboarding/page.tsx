@@ -4,7 +4,6 @@ import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
 import { useAuth } from "@/context/AuthContext";
 import { base44 } from "@/lib/base44";
-import { DEFAULT_TENANT_ID } from "@/lib/base44";
 import type { OnboardingRecord, OnboardingTaskRecord, EmployeeRecord } from "@/types/base44-entities";
 import { LoadingState, EmptyState, ErrorState, StatusBadge, PageHeader, Card, ConfirmDialog } from "@/components/hr/SharedUI";
 import { toast } from "sonner";
@@ -21,7 +20,7 @@ const OnboardingPage: React.FC = () => {
   const [selectedRecord, setSelectedRecord] = useState<OnboardingRecord | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
 
-  const tid = tenantId || DEFAULT_TENANT_ID;
+  const tid = tenantId;
 
   const fetchData = useCallback(async () => {
     setLoading(true);

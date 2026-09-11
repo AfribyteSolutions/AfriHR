@@ -4,7 +4,7 @@ import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
 import { useAuth } from "@/context/AuthContext";
 import { base44 } from "@/lib/base44";
-import { DEFAULT_TENANT_ID } from "@/lib/base44";
+
 import type { EmployeeDocumentRecord, EmployeeRecord } from "@/types/base44-entities";
 import { LoadingState, EmptyState, ErrorState, StatusBadge, PageHeader, Card } from "@/components/hr/SharedUI";
 import { toast } from "sonner";
@@ -20,7 +20,7 @@ const DocumentPage: React.FC = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const tid = tenantId || DEFAULT_TENANT_ID;
+  const tid = tenantId;
   const myEmployeeId = user?.employee_id || user?.id || "";
 
   const fetchData = useCallback(async () => {

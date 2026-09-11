@@ -4,7 +4,7 @@ import Wrapper from "@/components/layouts/DefaultWrapper";
 import MetaData from "@/hooks/useMetaData";
 import { useAuth } from "@/context/AuthContext";
 import { base44 } from "@/lib/base44";
-import { DEFAULT_TENANT_ID } from "@/lib/base44";
+
 import type { LeaveRequestRecord, EmployeeRecord, LeaveStatus, LeaveType } from "@/types/base44-entities";
 import { LoadingState, EmptyState, ErrorState, StatusBadge, PageHeader, Card, ConfirmDialog } from "@/components/hr/SharedUI";
 import { toast } from "sonner";
@@ -20,7 +20,7 @@ const AdminLeavesPage: React.FC = () => {
   const [reviewing, setReviewing] = useState<{ rec: LeaveRequestRecord; action: "approved" | "rejected" } | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
 
-  const tid = tenantId || DEFAULT_TENANT_ID;
+  const tid = tenantId;
 
   const fetchData = useCallback(async () => {
     setLoading(true);

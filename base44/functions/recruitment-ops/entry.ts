@@ -14,10 +14,11 @@ export default async function (req: Request): Promise<Response> {
     }
 
     const body = await req.json();
-    const { action, tenant_id } = body;
+    const { action } = body;
 
-    // Resolve tenant_id from the authenticated user, never from the request body
-    const tid = user.tenant_id || tenant_id;
+    // SECURITY: Resolve tenant_id ONLY from the authenticated user.
+    // Never trust tenant_id from the request body — this prevents cross-tenant access.
+    const tid = user.tenant_id;
 
     if (!tid) {
       return Response.json({ error: "No tenant context" }, { status: 403 });

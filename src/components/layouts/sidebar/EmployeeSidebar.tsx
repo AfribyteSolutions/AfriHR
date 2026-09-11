@@ -5,8 +5,7 @@ import React, { useEffect, useState } from "react";
 import useGlobalContext from "@/hooks/use-context";
 import { defaultEmployeeSidebar } from "@/data/employeeSideBarData/employee-sidebar-data";
 import { employeeSidebarAddons, EmployeeSidebarAddon } from "@/data/employeeSideBarData/employee-addon-sidebar";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import Cookies from "js-cookie";
 import { Company } from "@/types/company";
@@ -18,8 +17,8 @@ interface SidebarPermissions {
 
 const EmployeeSidebar = () => {
   const { isCollapse, setIsCollapse } = useGlobalContext();
+  const { user, loading: loadingAuth, isAuthenticated } = useAuth();
   const [sidebarItems, setSidebarItems] = useState<any[]>([]);
-  const [user, loadingAuth, errorAuth] = useAuthState(auth);
   const [userPermissions, setUserPermissions] = useState<SidebarPermissions | null>(null);
   const [loadingPermissions, setLoadingPermissions] = useState(true);
   const [company, setCompany] = useState<Company | null>(null);
@@ -72,7 +71,8 @@ const EmployeeSidebar = () => {
 
       setLoadingPermissions(true);
       try {
-        const res = await fetch(`/api/user-data?uid=${user.uid}`);
+        // Use Base44 user id instead of Firebase uid
+        const res = await fetch(`/api/user-data?uid=${user.id}`);
         if (!res.ok) throw new Error("Failed to fetch user permissions.");
 
         const data = await res.json();
@@ -83,7 +83,6 @@ const EmployeeSidebar = () => {
         }
       } catch (error: any) {
         console.error("Error fetching user permissions:", error);
-        toast.error("Failed to load user permissions.");
         setUserPermissions({});
       } finally {
         setLoadingPermissions(false);
@@ -129,15 +128,14 @@ const EmployeeSidebar = () => {
     );
   }
 
-  if (errorAuth) {
-    console.error("Authentication error:", errorAuth);
+  if (!isAuthenticated) {
     return (
       <aside className={`app-sidebar ${isCollapse ? "collapsed close_sidebar" : ""}`}>
         <div className="common-scrollbar max-h-screen overflow-y-auto">
           <nav className="main-menu-container nav nav-pills flex-column sub-open mt-[80px]">
             <ul className="main-menu">
               <li className="sidebar__menu-category">
-                <span className="category-name">Error Loading Menu</span>
+                <span className="category-name">Not Authenticated</span>
               </li>
             </ul>
           </nav>

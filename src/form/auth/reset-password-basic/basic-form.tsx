@@ -7,8 +7,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { confirmPasswordReset } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { base44 } from "@/lib/base44";
 
 // ✅ Declare props interface
 interface ResetPasswordBasicFormProps {
@@ -34,11 +33,13 @@ const ResetPasswordBasicForm: React.FC<ResetPasswordBasicFormProps> = ({ oobCode
     }
 
     try {
-      await confirmPasswordReset(auth, oobCode, data.password);
+      // Use Base44 SDK for password reset confirmation (no Firebase)
+      await base44.auth.confirmPasswordReset(oobCode, data.password);
       toast.success("Password reset successfully. You can now log in.");
       router.push("/auth/signin-basic");
     } catch (error: any) {
-      toast.error(error.message || "Something went wrong.");
+      const msg = error?.response?.data?.detail || error?.message || "Something went wrong.";
+      toast.error(msg);
     }
   };
 

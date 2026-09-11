@@ -6,8 +6,7 @@ import Link from 'next/link';
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { base44 } from '@/lib/base44';
 
 const ForgotBasicForm = () => {
   const {
@@ -18,16 +17,12 @@ const ForgotBasicForm = () => {
 
   const onSubmit = async (data: IForgotForm) => {
     try {
-      await sendPasswordResetEmail(auth, data.email);
+      // Use Base44 SDK for password reset (no Firebase)
+      await base44.auth.sendPasswordResetEmail(data.email);
       toast.success("Reset link sent successfully. Check your email.");
     } catch (error: any) {
-      if (error.code === "auth/user-not-found") {
-        toast.error("No user found with this email.");
-      } else if (error.code === "auth/invalid-email") {
-        toast.error("Invalid email address.");
-      } else {
-        toast.error("Failed to send reset link. Try again later.");
-      }
+      const msg = error?.response?.data?.detail || error?.message || "Failed to send reset link. Try again later.";
+      toast.error(msg);
     }
   };
 

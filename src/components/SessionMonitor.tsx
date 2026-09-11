@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from 'react';
-import { auth } from '@/lib/firebase';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { onAuthStateChanged } from 'firebase/auth';
 
 interface SessionMonitorProps {
   inactivityTimeout?: number; // in milliseconds, default 30 minutes
@@ -12,19 +11,22 @@ interface SessionMonitorProps {
 const SessionMonitor: React.FC<SessionMonitorProps> = ({ 
   inactivityTimeout = 30 * 60 * 1000 // 30 minutes default
 }) => {
+  const { isAuthenticated, logout } = useAuth();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
   const hasShownWarningRef = useRef<boolean>(false);
   const isAuthenticatedRef = useRef<boolean>(false);
 
+  // Keep ref in sync with auth state
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
+
   const clearSession = async () => {
     try {
-      // Sign out from Firebase
-      await auth.signOut();
-      
-      // Clear all cookies by calling logout API
-      await fetch('/api/auth/log-out', { method: 'POST' });
+      // Sign out via Base44
+      await logout();
       
       // Clear local/session storage
       localStorage.clear();
@@ -96,26 +98,21 @@ const SessionMonitor: React.FC<SessionMonitorProps> = ({
   };
 
   useEffect(() => {
-    // Monitor Firebase Auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      isAuthenticatedRef.current = !!user;
-      
-      if (user) {
-        console.log('👤 User authenticated, starting session monitor');
-        resetInactivityTimer();
-      } else {
-        console.log('👤 User not authenticated, stopping session monitor');
-        // Clear timers if user is not authenticated
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-        }
-        if (warningTimeoutRef.current) {
-          clearTimeout(warningTimeoutRef.current);
-          warningTimeoutRef.current = null;
-        }
+    if (isAuthenticated) {
+      console.log('👤 User authenticated, starting session monitor');
+      resetInactivityTimer();
+    } else {
+      console.log('👤 User not authenticated, stopping session monitor');
+      // Clear timers if user is not authenticated
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
-    });
+      if (warningTimeoutRef.current) {
+        clearTimeout(warningTimeoutRef.current);
+        warningTimeoutRef.current = null;
+      }
+    }
 
     // Events that indicate user activity
     const activityEvents = [
@@ -181,7 +178,6 @@ const SessionMonitor: React.FC<SessionMonitorProps> = ({
 
     // Cleanup
     return () => {
-      unsubscribe();
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
@@ -196,7 +192,7 @@ const SessionMonitor: React.FC<SessionMonitorProps> = ({
       });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [inactivityTimeout]);
+  }, [inactivityTimeout, isAuthenticated]);
 
   // This component doesn't render anything
   return null;

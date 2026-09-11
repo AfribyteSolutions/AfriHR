@@ -1,37 +1,22 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { 
-  collection, 
-  addDoc, 
-  doc, 
-  updateDoc, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot,
-  serverTimestamp,
-  Timestamp
-} from 'firebase/firestore';
+// lib/firebase.tsx
+// Firebase-free compatibility shim.
+// All Firebase imports have been removed from the active runtime path.
+// This module provides stub exports so legacy components that still import
+// from "@/lib/firebase" don't crash at module load time.
+// Notification functions are now backed by the Base44 SDK.
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+import { base44 } from "@/lib/base44";
+
+// ==================== STUB EXPORTS (no Firebase) ====================
+
+export const app = {};
+export const auth = {
+  signOut: async () => {},
+  onAuthStateChanged: (_cb: (user: any) => void) => () => {},
+  currentUser: null as any,
 };
-
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
-
-setPersistence(auth, browserLocalPersistence).catch((error) => {
-  console.error("Failed to set auth persistence:", error);
-});
+export const db = {} as any;
+export const storage = {} as any;
 
 // ==================== NOTIFICATION TYPES ====================
 
@@ -58,94 +43,82 @@ export interface CreateNotificationData {
   image?: string;
 }
 
-// ==================== NOTIFICATION FUNCTIONS ====================
-
-const NOTIFICATIONS_COLLECTION = 'notifications';
+// ==================== NOTIFICATION FUNCTIONS (Base44-backed) ====================
 
 export async function createNotification(data: CreateNotificationData): Promise<string> {
   try {
-    const notificationRef = await addDoc(collection(db, NOTIFICATIONS_COLLECTION), {
-      userId: data.userId,
+    const result = await (base44.entities as any).Notification.create({
+      user_id: data.userId,
       title: data.title,
       message: data.message,
       category: data.category,
       link: data.link,
       image: data.image || null,
-      isRead: false,
-      createdAt: serverTimestamp(),
+      is_read: false,
     });
-    
-    return notificationRef.id;
+    return result?.id || "";
   } catch (error) {
     console.error('Error creating notification:', error);
-    throw error;
+    // Non-blocking — notifications are best-effort
+    return "";
   }
 }
 
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
   try {
-    const notificationRef = doc(db, NOTIFICATIONS_COLLECTION, notificationId);
-    await updateDoc(notificationRef, {
-      isRead: true,
+    await (base44.entities as any).Notification.update(notificationId, {
+      is_read: true,
     });
   } catch (error) {
     console.error('Error marking notification as read:', error);
-    throw error;
   }
 }
 
-/**
- * FIX: Improved timestamp conversion to handle null values during local optimistic updates
- */
 export function convertTimestampToDate(timestamp: any): Date {
-  if (timestamp instanceof Timestamp) {
-    return timestamp.toDate();
-  }
-  // If it's null (common during serverTimestamp() pending phase), return current date
+  if (!timestamp) return new Date();
+  if (timestamp instanceof Date) return timestamp;
+  if (typeof timestamp === 'string') return new Date(timestamp);
   return new Date();
 }
 
-/**
- * FIX: Added SnapshotOptions to ensure data is retrieved correctly even when 
- * server timestamps are still pending.
- */
 export function subscribeToNotifications(
   userId: string,
   callback: (notifications: Notification[]) => void
 ): () => void {
-  const q = query(
-    collection(db, NOTIFICATIONS_COLLECTION),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
-  );
+  let cancelled = false;
 
-  const unsubscribe = onSnapshot(
-    q,
-    (snapshot) => {
-      // Use "estimate" for server timestamps that haven't synced yet
-      const notifications: Notification[] = snapshot.docs.map((doc) => {
-        const data = doc.data({ serverTimestamps: 'estimate' }); 
-        return {
-          id: doc.id,
-          userId: data.userId,
-          title: data.title,
-          message: data.message,
-          category: data.category,
-          link: data.link,
-          image: data.image,
-          isRead: data.isRead,
-          createdAt: convertTimestampToDate(data.createdAt),
-        };
-      });
+  const poll = async () => {
+    if (cancelled) return;
+    try {
+      const results = await (base44.entities as any).Notification.filter(
+        { user_id: userId },
+        "-created_date"
+      );
+      if (cancelled) return;
+      const notifications: Notification[] = (results || []).map((r: any) => ({
+        id: r.id,
+        userId: r.user_id,
+        title: r.title || "",
+        message: r.message || "",
+        category: r.category || "system",
+        link: r.link || "",
+        image: r.image || undefined,
+        isRead: r.is_read || false,
+        createdAt: convertTimestampToDate(r.created_date),
+      }));
       callback(notifications);
-    },
-    (error) => {
+    } catch (error) {
       console.error('Error fetching notifications:', error);
       callback([]);
     }
-  );
+  };
 
-  return unsubscribe;
+  poll();
+  // Poll every 30 seconds as a lightweight real-time substitute
+  const interval = setInterval(poll, 30000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
 }
-
-export { app, auth, db, storage };
