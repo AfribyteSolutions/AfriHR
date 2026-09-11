@@ -12,7 +12,7 @@ import { useSearchParams } from "next/navigation";
 
 const ResetPasswordBasicMain = () => {
   const searchParams = useSearchParams();
-  const oobCode = searchParams.get("oobCode") || "";
+  const oobCode = searchParams.get("token") || searchParams.get("resetToken") || searchParams.get("oobCode") || "";
   const email = searchParams.get("email");
 
   return (
