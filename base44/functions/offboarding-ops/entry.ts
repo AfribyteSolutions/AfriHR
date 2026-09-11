@@ -48,9 +48,8 @@ Deno.serve(async (req) => {
       })) });
     }
 
-    if (!isHr) return json({ success: false, error: "HR access required" }, 403);
-
     if (operation === "initiate") {
+      if (!isHr) return json({ success: false, error: "HR access required" }, 403);
       const employeeId = clean(body.employee_id, 100);
       const employee = byId[employeeId];
       const type = clean(body.offboarding_type, 50);
@@ -76,7 +75,18 @@ Deno.serve(async (req) => {
     const id = clean(body.offboarding_id, 100);
     const record = id ? await base44.asServiceRole.entities.Offboarding.get(id) : null;
     if (!record || record.tenant_id !== tenantId) return json({ success: false, error: "Offboarding record not found" }, 404);
-    if (["completed", "cancelled"].includes(record.status) && operation !== "download_final_document") {
+
+    if (operation === "download_final_document") {
+      const ownsRecord = !!self && self.id === record.employee_id;
+      if (!isHr && !ownsRecord) return json({ success: false, error: "Forbidden" }, 403);
+      if (!record.final_document_uri) return json({ success: false, error: "No final document uploaded" }, 404);
+      const signed = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: record.final_document_uri, expires_in: 300 });
+      await audit("offboarding.final_document_downloaded", id, { employee_id: record.employee_id });
+      return json({ success: true, data: { signed_url: signed.signed_url, expires_in: 300 } });
+    }
+
+    if (!isHr) return json({ success: false, error: "HR access required" }, 403);
+    if (["completed", "cancelled"].includes(record.status)) {
       return json({ success: false, error: "This offboarding record is locked" }, 409);
     }
 
