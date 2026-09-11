@@ -8,6 +8,21 @@ const dateOk=(v:string)=>/^\d{4}-\d{2}-\d{2}$/.test(v);
 const money=(v:unknown)=>{const n=Number(v);return Number.isSafeInteger(n)&&n>=0?n:null};
 const lines=(v:unknown,taxable=false)=>Array.isArray(v)?v.slice(0,30).map((x:any)=>({code:clean(x?.code,40),name:clean(x?.name,100),amount_minor:money(x?.amount_minor),...(taxable?{taxable:!!x?.taxable}:{})})).filter((x:any)=>x.code&&x.name&&x.amount_minor!==null):[];
 const previousDay=(date:string)=>new Date(new Date(date+"T00:00:00Z").getTime()-86400000).toISOString().slice(0,10);
+const statutoryRules=(value:unknown)=>Array.isArray(value)?value.slice(0,50).map((r:any)=>({
+ code:clean(r?.code,40),name:clean(r?.name,100),calculation:clean(r?.calculation,20),
+ base:["gross","taxable_gross"].includes(r?.base)?r.base:"gross",
+ rate_basis_points:money(r?.rate_basis_points)||0,fixed_minor:money(r?.fixed_minor)||0,
+ threshold_minor:money(r?.threshold_minor)||0,cap_minor:money(r?.cap_minor),
+ brackets:Array.isArray(r?.brackets)?r.brackets.slice(0,30).map((b:any)=>({up_to_minor:b?.up_to_minor===null?null:money(b?.up_to_minor),rate_basis_points:money(b?.rate_basis_points)||0})).filter((b:any)=>b.up_to_minor===null||b.up_to_minor!==null):[]
+})).filter((r:any)=>r.code&&r.name&&["percentage","fixed","progressive"].includes(r.calculation)):[];
+const calculateRule=(rule:any,gross:number)=>{
+ const taxable=Math.max(0,gross-(rule.threshold_minor||0));let amount=0;
+ if(rule.calculation==="fixed")amount=rule.fixed_minor||0;
+ if(rule.calculation==="percentage")amount=Math.round(taxable*(rule.rate_basis_points||0)/10000);
+ if(rule.calculation==="progressive"){let lower=0;for(const b of rule.brackets){const upper=b.up_to_minor===null?taxable:Math.min(taxable,b.up_to_minor);if(upper>lower)amount+=Math.round((upper-lower)*b.rate_basis_points/10000);lower=upper;if(lower>=taxable)break}}
+ if(rule.cap_minor!==null&&rule.cap_minor!==undefined)amount=Math.min(amount,rule.cap_minor);
+ return Math.max(0,amount);
+};
 
 Deno.serve(async(req)=>{
  const base44=createClientFromRequest(req),requestId=crypto.randomUUID();
