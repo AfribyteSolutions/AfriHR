@@ -13,7 +13,7 @@ const statutoryRules=(value:unknown)=>Array.isArray(value)?value.slice(0,50).map
  base:["gross","taxable_gross"].includes(r?.base)?r.base:"gross",
  rate_basis_points:money(r?.rate_basis_points)||0,fixed_minor:money(r?.fixed_minor)||0,
  threshold_minor:money(r?.threshold_minor)||0,cap_minor:money(r?.cap_minor),
- brackets:Array.isArray(r?.brackets)?r.brackets.slice(0,30).filter((b:any)=>b?.up_to_minor===null||money(b?.up_to_minor)!==null).map((b:any)=>({up_to_minor:b.up_to_minor===null?null:money(b.up_to_minor),rate_basis_points:money(b.rate_basis_points)||0})).filter((b:any)=>b.rate_basis_points>0&&b.rate_basis_points<=10000).sort((a:any,bb:any)=>(a.up_to_minor??Number.MAX_SAFE_INTEGER)-(b.up_to_minor??Number.MAX_SAFE_INTEGER)):[]
+ brackets:Array.isArray(r?.brackets)?r.brackets.slice(0,30).filter((b:any)=>b?.up_to_minor===null||money(b?.up_to_minor)!==null).map((b:any)=>({up_to_minor:b.up_to_minor===null?null:money(b.up_to_minor),rate_basis_points:money(b.rate_basis_points)||0})).filter((b:any)=>b.rate_basis_points>0&&b.rate_basis_points<=10000).sort((a:any,bb:any)=>(a.up_to_minor??Number.MAX_SAFE_INTEGER)-(bb.up_to_minor??Number.MAX_SAFE_INTEGER)):[]
 })).filter((r:any)=>r.code&&r.name&&((r.calculation==="percentage"&&r.rate_basis_points>0&&r.rate_basis_points<=10000)||(r.calculation==="fixed"&&r.fixed_minor>0)||(r.calculation==="progressive"&&r.brackets.length>0))):[];
 const calculateRule=(rule:any,gross:number)=>{
  const taxable=Math.max(0,gross-(rule.threshold_minor||0));let amount=0;
