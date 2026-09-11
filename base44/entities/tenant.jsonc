@@ -21,6 +21,22 @@
     "country": {
       "type": "string"
     },
+    "company_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "industry": {
+      "type": "string"
+    },
+    "company_size": {
+      "type": "number"
+    },
+    "address": {
+      "type": "string"
+    },
+    "primary_color": {
+      "type": "string"
+    },
     "default_currency": {
       "type": "string",
       "default": "XAF"
