@@ -36,6 +36,12 @@
       ],
       "default": "initiated"
     },
+    "previous_lifecycle_stage": {
+      "type": "string"
+    },
+    "previous_employment_status": {
+      "type": "string"
+    },
     "tasks": {
       "type": "array",
       "items": {
