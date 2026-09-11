@@ -13,8 +13,8 @@ const statutoryRules=(value:unknown)=>Array.isArray(value)?value.slice(0,50).map
  base:["gross","taxable_gross"].includes(r?.base)?r.base:"gross",
  rate_basis_points:money(r?.rate_basis_points)||0,fixed_minor:money(r?.fixed_minor)||0,
  threshold_minor:money(r?.threshold_minor)||0,cap_minor:money(r?.cap_minor),
- brackets:Array.isArray(r?.brackets)?r.brackets.slice(0,30).map((b:any)=>({up_to_minor:b?.up_to_minor===null?null:money(b?.up_to_minor),rate_basis_points:money(b?.rate_basis_points)||0})).filter((b:any)=>b.up_to_minor===null||b.up_to_minor!==null):[]
-})).filter((r:any)=>r.code&&r.name&&["percentage","fixed","progressive"].includes(r.calculation)):[];
+ brackets:Array.isArray(r?.brackets)?r.brackets.slice(0,30).filter((b:any)=>b?.up_to_minor===null||money(b?.up_to_minor)!==null).map((b:any)=>({up_to_minor:b.up_to_minor===null?null:money(b.up_to_minor),rate_basis_points:money(b.rate_basis_points)||0})).filter((b:any)=>b.rate_basis_points>0&&b.rate_basis_points<=10000).sort((a:any,bb:any)=>(a.up_to_minor??Number.MAX_SAFE_INTEGER)-(b.up_to_minor??Number.MAX_SAFE_INTEGER)):[]
+})).filter((r:any)=>r.code&&r.name&&((r.calculation==="percentage"&&r.rate_basis_points>0&&r.rate_basis_points<=10000)||(r.calculation==="fixed"&&r.fixed_minor>0)||(r.calculation==="progressive"&&r.brackets.length>0))):[];
 const calculateRule=(rule:any,gross:number)=>{
  const taxable=Math.max(0,gross-(rule.threshold_minor||0));let amount=0;
  if(rule.calculation==="fixed")amount=rule.fixed_minor||0;
@@ -63,6 +63,7 @@ Deno.serve(async(req)=>{
    if(record.status!=="draft")return json({success:false,error:"Only draft rule sets can be activated"},409);
    if(clean(body.confirmation,160)!==`${record.country_code}:${record.version}`)return json({success:false,error:"Confirmation does not match country and version"},400);
    const active=await base44.asServiceRole.entities.StatutoryRuleSet.filter({tenant_id:tenantId,country_code:record.country_code,currency:record.currency,status:"active"},"-effective_from",100);
+   if(active.some((x:any)=>x.effective_from>=record.effective_from))return json({success:false,error:"New rule versions must start after the currently active version"},409);
    for(const oldRule of active)await base44.asServiceRole.entities.StatutoryRuleSet.update(oldRule.id,{status:"superseded",effective_to:previousDay(record.effective_from)});
    const updated=await base44.asServiceRole.entities.StatutoryRuleSet.update(id,{status:"active",activated_by:user.id,activated_at:new Date().toISOString()});
    await audit("statutory_rule.activated","StatutoryRuleSet",id,{country:record.country_code,currency:record.currency,version:record.version});return json({success:true,data:updated});
