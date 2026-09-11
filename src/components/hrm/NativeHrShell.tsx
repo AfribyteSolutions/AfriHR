@@ -11,6 +11,7 @@ const links = [
   ["/hrm/leaves", "Leave"],
   ["/hrm/attendance", "Time"],
   ["/payroll/payroll", "Payroll"],
+  ["/payroll/statutory", "Statutory"],
   ["/hrm/performance", "Performance"],
   ["/hrm/documents", "Documents"],
   ["/hrm/offboarding", "Offboarding"]
