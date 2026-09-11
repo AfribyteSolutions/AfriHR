@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import React from "react";
 import logoSvg from "../../../../public/assets/images/logo/logo.svg";
