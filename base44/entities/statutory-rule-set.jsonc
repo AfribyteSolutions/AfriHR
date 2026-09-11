@@ -1,0 +1,103 @@
+{
+  "name": "StatutoryRuleSet",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "country_code": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "effective_from": {
+      "type": "string",
+      "format": "date"
+    },
+    "effective_to": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "superseded"
+      ],
+      "default": "draft"
+    },
+    "employee_rules": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "employer_rules": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "source_note": {
+      "type": "string"
+    },
+    "verified_on": {
+      "type": "string",
+      "format": "date"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "activated_by": {
+      "type": "string"
+    },
+    "activated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "country_code",
+    "currency",
+    "name",
+    "version",
+    "effective_from",
+    "status",
+    "employee_rules",
+    "employer_rules",
+    "source_url",
+    "verified_on",
+    "created_by"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}
