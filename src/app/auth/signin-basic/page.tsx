@@ -14,7 +14,15 @@ export default function SignInBasicMain() {
 
   useEffect(() => {
     base44.auth.isAuthenticated()
-      .then(ok => { if (ok) router.replace("/hrm/recruitment-flow"); })
+      .then(async ok => {
+        if (!ok) return;
+        const user = await base44.auth.me();
+        if (["suspended", "offboarded"].includes(user?.employment_status)) {
+          await base44.auth.logout("/auth/signin-basic?reason=account-disabled");
+          return;
+        }
+        router.replace("/hrm/recruitment-flow");
+      })
       .catch(() => undefined);
   }, [router]);
 
