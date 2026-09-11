@@ -115,13 +115,6 @@ Deno.serve(async (req) => {
       return json({ success: true, data: { ...updated, final_document_uri: undefined } });
     }
 
-    if (operation === "download_final_document") {
-      if (!record.final_document_uri) return json({ success: false, error: "No final document uploaded" }, 404);
-      const signed = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: record.final_document_uri, expires_in: 300 });
-      await audit("offboarding.final_document_downloaded", id, { employee_id: record.employee_id });
-      return json({ success: true, data: { signed_url: signed.signed_url, expires_in: 300 } });
-    }
-
     if (operation === "cancel") {
       const employee = byId[record.employee_id];
       if (employee) await base44.asServiceRole.entities.Employee.update(employee.id, {
