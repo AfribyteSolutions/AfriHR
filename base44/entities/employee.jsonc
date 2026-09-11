@@ -18,6 +18,9 @@
       "type": "string",
       "format": "email"
     },
+    "phone": {
+      "type": "string"
+    },
     "department": {
       "type": "string"
     },
@@ -30,6 +33,9 @@
     "hire_date": {
       "type": "string",
       "format": "date"
+    },
+    "contract_file_uri": {
+      "type": "string"
     },
     "lifecycle_stage": {
       "type": "string",
