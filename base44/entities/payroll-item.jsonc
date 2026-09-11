@@ -1,0 +1,95 @@
+{
+  "name": "PayrollItem",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "payroll_run_id": {
+      "type": "string"
+    },
+    "employee_id": {
+      "type": "string"
+    },
+    "employee_name": {
+      "type": "string"
+    },
+    "employee_number": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "base_minor": {
+      "type": "number"
+    },
+    "allowances": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "deductions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "gross_minor": {
+      "type": "number"
+    },
+    "deductions_total_minor": {
+      "type": "number"
+    },
+    "net_minor": {
+      "type": "number"
+    },
+    "compensation_record_id": {
+      "type": "string"
+    },
+    "calculation_key": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "calculated",
+        "finalized"
+      ]
+    },
+    "snapshot": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "payroll_run_id",
+    "employee_id",
+    "currency",
+    "base_minor",
+    "gross_minor",
+    "deductions_total_minor",
+    "net_minor",
+    "compensation_record_id",
+    "calculation_key",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}
