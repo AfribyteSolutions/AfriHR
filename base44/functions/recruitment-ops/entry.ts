@@ -21,6 +21,7 @@ Deno.serve(async (req) => {
   try {
     const user = await base44.auth.me();
     if (!user) return json({ success: false, error: "Unauthorized", request_id: requestId }, 401);
+    if (["suspended", "offboarded"].includes(user.employment_status)) return json({ success: false, error: "Account disabled", request_id: requestId }, 403);
 
     const userTenant = clean(user.tenant_id, 100);
     const appRole = clean(user.app_role, 50);
