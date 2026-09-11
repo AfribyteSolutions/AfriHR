@@ -80,7 +80,10 @@ Deno.serve(async(req)=>{
     if(operation==="list_timesheets"){
       let records=await base44.asServiceRole.entities.TimesheetEntry.filter({tenant_id:tenantId},"-work_date",500);
       records=records.filter((r:any)=>canSee(r.employee_id));
-      return json({success:true,data:records.map((r:any)=>({...r,employee:byId[r.employee_id]||null}))});
+      return json({success:true,data:records.map((r:any)=>({...r,employee:byId[r.employee_id]||null,
+        can_submit:!!self&&r.employee_id===self.id&&["draft","rejected"].includes(r.status),
+        can_review:r.status==="submitted"&&(isHr||(role==="manager"&&managed.has(r.employee_id)))
+      }))});
     }
     if(operation==="save_timesheet"){
       const requested=clean(body.employee_id,100);
