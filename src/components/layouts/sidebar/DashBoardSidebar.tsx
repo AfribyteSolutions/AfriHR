@@ -9,9 +9,7 @@ import sidebarImg from "../../../../public/assets/images/bg/side-bar.png";
 import sidebarData from "@/data/sidebar-data";
 import { usePathname } from "next/navigation";
 import { filterSidebarByRole, UserRole } from "@/lib/utils/sidebarFilter";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const DashBoardSidebar = () => {
   const { isCollapse, setIsCollapse } = useGlobalContext();
@@ -19,61 +17,10 @@ const DashBoardSidebar = () => {
   const [linkIdTwo, setlinkIdTwo] = useState<number | null>(null);
   const [linkIdThree, setlinkIdThree] = useState<number | null>(null);
   const [linkIdFour, setlinkIdFour] = useState<number | null>(null);
-  const [userRole, setUserRole] = useState<UserRole>("employee");
-  const [filteredSidebarData, setFilteredSidebarData] = useState(sidebarData);
-  const [user, loading] = useAuthState(auth);
+  const { userRole, isAuthenticated } = useUserRole();
   const pathName = usePathname();
 
-  // Fetch user role from Firestore
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      const isLocalhost = typeof window !== "undefined" && window.location.hostname === "localhost";
-      
-      if (user) {
-        // Authenticated user - fetch role from Firestore
-        try {
-          const userDocRef = doc(db, "users", user.uid);
-          const userSnap = await getDoc(userDocRef);
-          if (userSnap.exists()) {
-            const userData = userSnap.data();
-            const role = userData.role as UserRole;
-            setUserRole(role);
-            
-            // Filter sidebar data based on user role
-            const filtered = filterSidebarByRole(sidebarData, role);
-            setFilteredSidebarData(filtered);
-          } else {
-            // User document doesn't exist - fallback to employee
-            setUserRole("employee");
-            const filtered = filterSidebarByRole(sidebarData, "employee");
-            setFilteredSidebarData(filtered);
-          }
-        } catch (error) {
-          console.error("Error fetching user role:", error);
-          // Fallback to employee role if error occurs
-          setUserRole("employee");
-          const filtered = filterSidebarByRole(sidebarData, "employee");
-          setFilteredSidebarData(filtered);
-        }
-      } else if (!loading) {
-        // Unauthenticated user
-        if (isLocalhost && process.env.NODE_ENV === "development") {
-          // Development mode on localhost - show everything for testing
-          setUserRole("super-admin");
-          setFilteredSidebarData(sidebarData); // Show all unfiltered items
-        } else {
-          // Production or non-localhost - minimal access
-          setUserRole("employee");
-          const filtered = filterSidebarByRole(sidebarData, "employee");
-          setFilteredSidebarData(filtered);
-        }
-      }
-    };
-
-    if (!loading) {
-      fetchUserRole();
-    }
-  }, [user, loading]);
+  const filteredSidebarData = filterSidebarByRole(sidebarData, (userRole || "employee") as UserRole);
 
   // Utility function to handle collapse behavior for all screen sizes
   const handleCollapse = (shouldCollapse: boolean) => {
@@ -89,7 +36,6 @@ const DashBoardSidebar = () => {
       setlinkIdThree(null);
       setlinkIdFour(null);
     }
-    // Close sidebar on mobile after clicking menu item
     if (window.matchMedia("(max-width: 1199px)").matches) {
       handleCollapse(false);
     }
@@ -103,7 +49,6 @@ const DashBoardSidebar = () => {
       setlinkIdThree(null);
       setlinkIdFour(null);
     }
-    // Close sidebar on mobile after clicking menu item
     if (window.matchMedia("(max-width: 1199px)").matches) {
       handleCollapse(false);
     }
@@ -116,7 +61,6 @@ const DashBoardSidebar = () => {
       setlinkIdThree(id);
       setlinkIdFour(null);
     }
-    // Close sidebar on mobile after clicking menu item
     if (window.matchMedia("(max-width: 1199px)").matches) {
       handleCollapse(false);
     }
@@ -128,20 +72,17 @@ const DashBoardSidebar = () => {
     } else {
       setlinkIdFour(id);
     }
-    // Close sidebar on mobile after clicking menu item
     if (window.matchMedia("(max-width: 1199px)").matches) {
       handleCollapse(false);
     }
   };
 
-  // UseEffect to find and set the active menu based on the current path
   useEffect(() => {
     const findLayerIds = () => {
       let foundFirstLayerId = null;
       let foundSecondLayerId = null;
       let foundThirdLayerId = null;
 
-      // Use filtered sidebar data instead of original
       filteredSidebarData.forEach((category) => {
         category.items.forEach((item) => {
           if (item.link === pathName) {
@@ -176,24 +117,6 @@ const DashBoardSidebar = () => {
     findLayerIds();
   }, [pathName, filteredSidebarData]);
 
-  // Show loading state while fetching user role
-  if (loading) {
-    return (
-      <div className={`app-sidebar ${isCollapse ? "collapsed close_sidebar" : ""}`}>
-        <div className="main-sidebar-header">
-          <Link href="/" className="header-logo">
-            <Image className="main-logo" src={sidebarMainLogo} priority alt="logo" />
-            <Image className="dark-logo" src={sidebarDarkLogo} priority alt="logo" />
-          </Link>
-        </div>
-        <div className="p-4 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-500">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
       <div className={`app-sidebar ${isCollapse ? "collapsed close_sidebar" : ""}`}>
@@ -205,10 +128,9 @@ const DashBoardSidebar = () => {
         </div>
 
         <div className="common-scrollbar max-h-screen overflow-y-auto">
-          {/* User Role Indicator (Optional - can be removed in production) */}
           {process.env.NODE_ENV === "development" && (
             <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-400">
-              Role: {userRole} {!user && "(Development Mode)"}
+              Role: {userRole} {!isAuthenticated && "(Not authenticated)"}
             </div>
           )}
 
@@ -234,7 +156,6 @@ const DashBoardSidebar = () => {
                             e.preventDefault();
                             handleClick(item.id);
                           } else {
-                            // Close sidebar on mobile when navigating
                             handleCollapse(false);
                           }
                         }}
@@ -278,7 +199,6 @@ const DashBoardSidebar = () => {
                                     e.preventDefault();
                                     handleClickTwo(index);
                                   } else {
-                                    // Close sidebar on mobile when navigating
                                     handleCollapse(false);
                                   }
                                 }}
@@ -313,7 +233,6 @@ const DashBoardSidebar = () => {
                                             e.preventDefault();
                                             handleClickThree(subIndex);
                                           } else {
-                                            // Close sidebar on mobile when navigating
                                             handleCollapse(false);
                                           }
                                         }}
@@ -347,7 +266,6 @@ const DashBoardSidebar = () => {
                                               >
                                                 <Link
                                                   onClick={() => {
-                                                    // Close sidebar on mobile when navigating
                                                     handleCollapse(false);
                                                   }}
                                                   href={subThree.link || "#"}
@@ -375,7 +293,6 @@ const DashBoardSidebar = () => {
             </ul>
           </nav>
 
-          {/* Show upgrade section only for non-super-admin users */}
           {userRole !== "super-admin" && (
             <div
               className="sidebar__thumb sidebar-bg"
@@ -396,7 +313,6 @@ const DashBoardSidebar = () => {
           )}
         </div>
       </div>
-      {/* Overlay for mobile - visible when sidebar is open */}
       <div
         onClick={() => setIsCollapse(true)}
         className={`app__offcanvas-overlay ${!isCollapse ? "overlay-open" : ""}`}

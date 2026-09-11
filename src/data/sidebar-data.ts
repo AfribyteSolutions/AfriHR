@@ -33,6 +33,9 @@ const sidebarData: SidebarCategory[] = [
           { label: "Admin leaves", link: "/hrm/leaves" },
           { label: "Warning", link: "/hrm/warning" },
           { label: "Recruitment Flow", link: "/hrm/recruitment-flow" },
+          { label: "Onboarding", link: "/hrm/onboarding" },
+          { label: "Performance", link: "/hrm/performance" },
+          { label: "Offboarding", link: "/hrm/offboarding" },
           { label: "Reports", link: "/hrm/reports" },
         ],
       },
@@ -126,18 +129,6 @@ const sidebarData: SidebarCategory[] = [
         icon: "icon-promotion",
         link: "/promotion",
       },
-      // {
-      //   id: 14,
-      //   label: "Award",
-      //   icon: "icon-trophy",
-      //   link: "/award",
-      // },
-      // {
-      //   id: 15,
-      //   label: "Meeting",
-      //   icon: "icon-meeting",
-      //   link: "/meeting",
-      // },
       {
         id: 16,
         label: "Tickets",
@@ -147,12 +138,6 @@ const sidebarData: SidebarCategory[] = [
           { label: "Tickets Reply", link: "/tickets/tickets-reply" },
         ],
       },
-      // {
-      //   id: 17,
-      //   label: "Transfer",
-      //   icon: "fa-sharp fa-regular fa-right-left",
-      //   link: "/transfer",
-      // },
       {
         id: 18,
         label: "Termination",
@@ -185,7 +170,7 @@ const sidebarData: SidebarCategory[] = [
       {
         id: 22,
         label: "Company Organogram",
-        icon: "fa-light fa-sitemap", // Best choice for a company tree
+        icon: "fa-light fa-sitemap",
         link: "/organogram",
       },
       {

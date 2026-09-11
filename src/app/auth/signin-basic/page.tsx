@@ -3,32 +3,20 @@ import Image from 'next/image';
 import Link from 'next/link';
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { useAuth } from '@/context/AuthContext';
 import logoSvg from '../../../../public/assets/images/logo/logo.svg';
 import logoWhite from '../../../../public/assets/images/logo/logo-white.svg';
 import SignInBasicForm from '@/form/auth/SignIn/basic-form';
-import SocialLinks from '@/components/SocialLinks/SocialLinks';
 
 const SignInBasicMain = () => {
     const router = useRouter();
+    const { isAuthenticated, loading } = useAuth();
 
-    // Redirect to dashboard if already logged in (skip if there's an auth error in the URL)
     useEffect(() => {
-        const errorParam = new URLSearchParams(window.location.search).get('error');
-        if (errorParam) {
-            // Sign out stale Firebase session so the form is usable
-            auth.signOut();
-            return;
+        if (!loading && isAuthenticated) {
+            router.replace('/dashboard');
         }
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) {
-                console.log('User already logged in, redirecting to dashboard');
-                router.replace('/dashboard');
-            }
-        });
-        return () => unsubscribe();
-    }, [router]);
+    }, [isAuthenticated, loading, router]);
 
     return (
         <>
@@ -56,11 +44,6 @@ const SignInBasicMain = () => {
                                     <span>Forgot Password?</span>
                                 </Link>
                             </p>
-                            {/* <div className="divider mb-2.5 text-center">
-                                <div className="divider-text">or</div>
-                            </div> */}
-                            {/* Social link*/}
-                            {/* <SocialLinks /> */}
                         </div>
                     </div>
                 </div>

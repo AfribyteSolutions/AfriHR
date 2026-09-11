@@ -5,7 +5,7 @@ import ReduxProvider from "@/redux/provider";
 import { DirectionProvider } from "@/hooks/useDirection";
 import Setting from "@/common/setting/Setting";
 import { Toaster } from "sonner";
-import { AuthUserProvider } from '@/context/UserAuthContext';
+import { AuthProvider } from "@/context/AuthContext";
 
 export default function RootLayout({
   children,
@@ -52,9 +52,9 @@ export default function RootLayout({
           <ReduxProvider>
             <AppProvider>
               <DirectionProvider>
-                <AuthUserProvider>
+                <AuthProvider>
                   {children}
-                </AuthUserProvider>
+                </AuthProvider>
                 <Setting />
               </DirectionProvider>
             </AppProvider>

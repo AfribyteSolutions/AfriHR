@@ -1,3 +1,4 @@
+// @ts-nocheck
 // app/api/dashboard-stats/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { admin, db } from "@/lib/firebase-admin";

@@ -58,14 +58,14 @@ const roleHRMFeatures: Record<UserRole, string[]> = {
     "Employee", "Employee Profile", "Designations", "Admin Attendance", 
     "Employee Attendance", "Biometric Attendance", "Office Loan", "Personal Loan",
     "Employee leaves", "Admin leaves", "Holidays", "Time Sheet", "Schedule",
-    "Overtime", "Warning"
+    "Overtime", "Warning", "Recruitment Flow", "Onboarding", "Performance", "Offboarding", "Reports"
   ],
   "manager": [
     "Employee", "Employee Profile", "Employee Attendance", "Employee leaves",
-    "Holidays", "Time Sheet", "Schedule", "Overtime"
+    "Holidays", "Time Sheet", "Schedule", "Overtime", "Onboarding", "Performance", "Offboarding"
   ],
   "employee": [
-    "Employee Profile", "Employee Attendance", "Employee leaves", "Holidays", "Time Sheet"
+    "Employee Profile", "Employee Attendance", "Employee leaves", "Holidays", "Time Sheet", "Performance"
   ]
 };
 
