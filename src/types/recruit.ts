@@ -1,43 +1,29 @@
-// components/recruitment/types.ts
-
 export type Stage =
-  | "application"
+  | "applied"
   | "screening"
   | "interview"
+  | "assessment"
   | "offer"
   | "hired"
-  | "rejected";
-
-export interface Comment {
-  id: string;
-  author: string;
-  message: string;
-  timestamp: Date;
-  stage: Stage;
-}
+  | "rejected"
+  | "withdrawn";
 
 export interface Applicant {
   id: string;
+  fullName: string;
   firstName: string;
-  photoURL: string;
-  notes: string;
   lastName: string;
-  companyName: string;
-  department: string;
-  // 🔹 Changed this to an object structure
-  bankAccount: {
-    bankName: string;
-    accountNumber: string;
-    accountHolderName?: string;
-    branchName?: string;
-  };
   email: string;
   phone: string;
   position: string;
+  department: string;
   stage: Stage;
-  appliedDate: Date;
-  cvFile?: File;
+  appliedDate: string;
+  resumeFileUri?: string;
+  photoFileUri?: string;
   cvUrl?: string;
-  comments: Comment[];
-  source: 'internal' | 'external';
+  photoURL?: string;
+  notes: string;
+  source: string;
+  hiredEmployeeId?: string;
 }
