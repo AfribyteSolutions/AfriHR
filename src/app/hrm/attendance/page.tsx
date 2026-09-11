@@ -17,7 +17,7 @@ export default function AttendancePage(){
  const router=useRouter(),params=useSearchParams();
  const [tab,setTab]=useState(params.get("tab")==="timesheets"?"timesheets":"attendance");
  const [attendance,setAttendance]=useState<any[]>([]),[timesheets,setTimesheets]=useState<any[]>([]);
- const [employees,setEmployees]=useState<any[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState("");
+ const [employees,setEmployees]=useState<any[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(""),[serverToday,setServerToday]=useState("");
  const [showForm,setShowForm]=useState(false);
  const [form,setForm]=useState({employee_id:"",work_date:new Date().toISOString().slice(0,10),hours:"8",description:"",project_code:""});
  const tenantId=user?.tenantId||"",isHr=!!user&&HR.includes(user.appRole);
@@ -25,10 +25,10 @@ export default function AttendancePage(){
  const invoke=useCallback(async(payload:any)=>{const result=unwrap(await base44.functions.invoke("workforce-time-ops",{tenant_id:tenantId,...payload}));if(!result?.success)throw new Error(result?.error||"Time operation failed");return result},[tenantId]);
  const load=useCallback(async()=>{if(!tenantId){setLoading(false);return}setLoading(true);try{
    const [a,t,e]=await Promise.all([invoke({operation:"list_attendance"}),invoke({operation:"list_timesheets"}),isHr?base44.functions.invoke("employee-ops",{operation:"list_employees",tenant_id:tenantId}):Promise.resolve(null)]);
-   setAttendance(a.data||[]);setTimesheets(t.data||[]);if(e){const x=unwrap(e);setEmployees(x?.success?x.data||[]:[])}
+   setAttendance(a.data||[]);setServerToday(a.today||"");setTimesheets(t.data||[]);if(e){const x=unwrap(e);setEmployees(x?.success?x.data||[]:[])}
  }catch(error:any){toast.error(error.message)}finally{setLoading(false)}},[tenantId,isHr,invoke]);
  useEffect(()=>{void load()},[load]);
- const today=useMemo(()=>new Date().toISOString().slice(0,10),[]);
+ const today=serverToday||new Date().toISOString().slice(0,10);
  const mineToday=attendance.find(r=>r.work_date===today&&(!r.clock_out||r.status==="clocked_in"));
  const clock=async(operation:"clock_in"|"clock_out")=>{setBusy(operation);try{await invoke({operation,idempotency_key:`${user?.id}-${operation}-${Date.now()}`});toast.success(operation==="clock_in"?"Clocked in.":"Clocked out.");await load()}catch(e:any){toast.error(e.message)}finally{setBusy("")}};
  const addEntry=async(event:React.FormEvent)=>{event.preventDefault();setBusy("entry");try{await invoke({operation:"save_timesheet",...form,minutes:Math.round(Number(form.hours)*60),idempotency_key:`${user?.id}-timesheet-${crypto.randomUUID()}`});toast.success("Timesheet entry saved.");setShowForm(false);await load()}catch(e:any){toast.error(e.message)}finally{setBusy("")}};
