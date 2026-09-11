@@ -9,11 +9,13 @@ import type { Applicant, Stage } from "@/types/recruit";
 
 const STAGES: Stage[] = ["applied", "screening", "interview", "assessment", "offer", "hired", "rejected", "withdrawn"];
 const COLORS: Record<Stage, string> = {
+  application: "bg-slate-400",
   applied: "bg-slate-400", screening: "bg-amber-400", interview: "bg-blue-400",
   assessment: "bg-cyan-500", offer: "bg-purple-500", hired: "bg-emerald-500",
   rejected: "bg-red-500", withdrawn: "bg-zinc-500"
 };
 const ALLOWED: Record<Stage, Stage[]> = {
+  application: ["screening", "rejected", "withdrawn"],
   applied: ["screening", "rejected", "withdrawn"],
   screening: ["interview", "rejected", "withdrawn"],
   interview: ["assessment", "offer", "rejected", "withdrawn"],
