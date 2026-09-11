@@ -23,6 +23,11 @@ const SignInBasicForm = () => {
     try {
       const result = await base44.auth.loginViaEmailPassword(data.email.trim().toLowerCase(), data.password);
       const user = result.user;
+      if (["suspended", "offboarded"].includes(user?.employment_status)) {
+        await base44.auth.logout("/auth/signin-basic?reason=account-disabled");
+        toast.error("This account has been disabled. Contact your HR administrator.");
+        return;
+      }
       await refreshUser();
       toast.success(`Welcome back, ${user.full_name || "User"}!`);
       const requested = searchParams.get("redirect") || searchParams.get("returnUrl");
