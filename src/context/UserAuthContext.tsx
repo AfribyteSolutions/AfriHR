@@ -63,7 +63,14 @@ export const AuthUserProvider = ({ children }: { children: React.ReactNode }) =>
         setAuthUser(null);
         return;
       }
-      setAuthUser(mapUser(await base44.auth.me()));
+      const current = await base44.auth.me();
+      if (["suspended", "offboarded"].includes(current?.employment_status)) {
+        setAuthUser(null);
+        setError(new Error("This account has been disabled."));
+        await base44.auth.logout("/auth/signin-basic?reason=account-disabled");
+        return;
+      }
+      setAuthUser(mapUser(current));
     } catch (err) {
       setAuthUser(null);
       setError(err);
