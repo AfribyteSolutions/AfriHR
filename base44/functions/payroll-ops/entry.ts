@@ -96,14 +96,14 @@ Deno.serve(async(req)=>{
   }
   if(operation==="create_run"){
    const denied=requireHr();if(denied)return denied;
-   const start=clean(body.period_start,10),end=clean(body.period_end,10),payDate=clean(body.pay_date,10),currency=clean(body.currency,3).toUpperCase(),key=clean(body.idempotency_key,120);
-   if(!dateOk(start)||!dateOk(end)||!dateOk(payDate)||start>end||!CURRENCIES.has(currency)||!key)return json({success:false,error:"Valid period, pay date, currency and idempotency key required"},400);
+   const start=clean(body.period_start,10),end=clean(body.period_end,10),payDate=clean(body.pay_date,10),currency=clean(body.currency,3).toUpperCase(),country=clean(body.country_code,2).toUpperCase(),key=clean(body.idempotency_key,120);
+   if(!dateOk(start)||!dateOk(end)||!dateOk(payDate)||start>end||!CURRENCIES.has(currency)||!/^[A-Z]{2}$/.test(country)||!key)return json({success:false,error:"Valid period, pay date, country, currency and idempotency key required"},400);
    const duplicate=await base44.asServiceRole.entities.PayrollRun.filter({tenant_id:tenantId,idempotency_key:key},"-created_date",1);
    if(duplicate.length)return json({success:true,data:duplicate[0],idempotent:true});
    const all=await base44.asServiceRole.entities.PayrollRun.filter({tenant_id:tenantId,currency},"-period_end",200);
    if(all.some((r:any)=>r.status!=="voided"&&start<=r.period_end&&end>=r.period_start))return json({success:false,error:"This payroll period overlaps an existing run"},409);
-   const run=await base44.asServiceRole.entities.PayrollRun.create({tenant_id:tenantId,period_start:start,period_end:end,pay_date:payDate,currency,status:"draft",gross_minor:0,deductions_minor:0,net_minor:0,employee_count:0,idempotency_key:key});
-   await audit("payroll.run_created","PayrollRun",run.id,{start,end,currency});
+   const run=await base44.asServiceRole.entities.PayrollRun.create({tenant_id:tenantId,period_start:start,period_end:end,pay_date:payDate,currency,country_code:country,status:"draft",gross_minor:0,deductions_minor:0,statutory_deductions_minor:0,employer_contributions_minor:0,net_minor:0,employee_count:0,idempotency_key:key});
+   await audit("payroll.run_created","PayrollRun",run.id,{start,end,c,currency,country});
    return json({success:true,data:run},201);
   }
 
