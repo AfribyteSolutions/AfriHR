@@ -3,6 +3,9 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { base44 } from "@/lib/base44";
+import { useAuth } from "@/context/AuthContext";
 
 interface IOnboardingForm {
   name: string;
@@ -21,8 +24,15 @@ interface IOnboardingForm {
   logo?: FileList;
 }
 
+type Step = "form" | "otp";
+
 const SignUpBasicForm = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<Step>("form");
+  const [otpCode, setOtpCode] = useState("");
+  const [formData, setFormData] = useState<IOnboardingForm | null>(null);
+  const router = useRouter();
+  const { login, refreshUser } = useAuth();
 
   const {
     register,
@@ -41,50 +51,78 @@ const SignUpBasicForm = () => {
 
   const onActualSubmit = async (data: IOnboardingForm) => {
     setIsLoading(true);
-    const toastId = toast.loading("Synthesizing your workspace...");
-    
+    const toastId = toast.loading("Creating your account...");
+
     try {
-      let logoData = null;
-      if (data.logo?.[0]) {
-        const file = data.logo[0];
-        const base64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => resolve(reader.result);
-        });
-        logoData = { base64, filename: file.name, contentType: file.type };
-      }
-
-      const payload = { 
-        ...data, 
-        fullName: data.name, 
-        logoData, 
-        companySize: Number(data.companySize) 
-      };
-
-      const response = await fetch("/api/onboarding-company", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      await base44.auth.register({
+        email: data.email,
+        password: data.password!,
       });
 
-      const result = await response.json();
-      if (!result.success) throw new Error(result.message);
-
-      toast.success("Deployment Successful!", { id: toastId });
-      
-      // 🔹 MODIFICATION: Get the base domain (afrihrm.com) 
-      // without 'www' or any current subdomains.
-      const hostParts = window.location.host.split('.');
-      const baseDomain = hostParts.length >= 2 
-        ? `${hostParts[hostParts.length - 2]}.${hostParts[hostParts.length - 1]}` 
-        : window.location.host;
-
-      // This creates tenant.afrihrm.com
-      window.location.href = `${window.location.protocol}//${result.subdomain}.${baseDomain}/auth/signin-basic?welcome=true`;
-
+      toast.success("Account created! Check your email for a verification code.", { id: toastId });
+      setFormData(data);
+      setStep("otp");
     } catch (error: any) {
-      toast.error(error.message || "Connection error", { id: toastId });
+      const msg = error?.message || "Registration failed";
+      toast.error(msg, { id: toastId });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onVerifyOtp = async () => {
+    if (!otpCode || !formData) return;
+    setIsLoading(true);
+    const toastId = toast.loading("Verifying your code...");
+
+    try {
+      await base44.auth.verifyOtp({
+        email: formData.email,
+        otpCode,
+      });
+
+      toast.loading("Logging you in...", { id: toastId });
+
+      const user = await login(formData.email, formData.password!);
+
+      toast.loading("Setting up your workspace...", { id: toastId });
+
+      // Create Tenant entity
+      const tenant = await base44.entities.Tenant.create({
+        name: formData.companyName,
+        subdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, ""),
+        plan: "trial",
+        status: "active",
+        settings: {
+          industry: formData.industry,
+          country: formData.country,
+          address: formData.address,
+          companySize: Number(formData.companySize),
+          primaryColor: formData.primaryColor,
+        },
+      });
+
+      // Create Employee entity
+      await base44.entities.Employee.create({
+        tenant_id: tenant.id,
+        user_id: user.id,
+        full_name: formData.name,
+        email: formData.email,
+        department: formData.department,
+        job_title: formData.position,
+        start_date: new Date().toISOString().split("T")[0],
+        status: "active",
+      });
+
+      // Refresh user context to pick up new roles
+      await refreshUser();
+
+      toast.success("Workspace ready! Redirecting...", { id: toastId });
+
+      router.push("/dashboard/hrm-dashboard");
+    } catch (error: any) {
+      const msg = error?.message || "Verification failed";
+      toast.error(msg, { id: toastId });
     } finally {
       setIsLoading(false);
     }
@@ -99,6 +137,46 @@ const SignUpBasicForm = () => {
     }
   };
 
+  // ── OTP verification step ──
+  if (step === "otp") {
+    return (
+      <div className="max-w-md mx-auto px-4 py-20 font-sans text-center">
+        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-10 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl mx-auto mb-6">
+            <i className="fa-solid fa-envelope-open-text"></i>
+          </div>
+          <h3 className="text-xl font-bold dark:text-white mb-3">Verify Your Email</h3>
+          <p className="text-sm text-slate-500 mb-8">
+            We sent a verification code to <span className="font-semibold text-indigo-600">{formData?.email}</span>.
+            Enter it below to activate your workspace.
+          </p>
+          <input
+            type="text"
+            value={otpCode}
+            onChange={(e) => setOtpCode(e.target.value)}
+            placeholder="Enter verification code"
+            className="w-full px-6 py-4 rounded-2xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-white text-center text-lg tracking-widest focus:ring-4 focus:ring-indigo-500/20 outline-none transition-all"
+            onKeyDown={(e) => e.key === "Enter" && onVerifyOtp()}
+          />
+          <button
+            onClick={onVerifyOtp}
+            disabled={isLoading || !otpCode}
+            className="w-full mt-6 py-4 bg-gradient-to-r from-indigo-600 to-indigo-800 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {isLoading ? "Verifying..." : "Verify & Continue"}
+          </button>
+          <button
+            onClick={() => setStep("form")}
+            className="mt-4 text-sm text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            ← Back to form
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Signup form step ──
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 font-sans">
       <form onSubmit={handleSubmit(onActualSubmit, onErrors)} className="space-y-8">
@@ -185,7 +263,7 @@ const SignUpBasicForm = () => {
 
         <div className="flex flex-col items-center pt-10">
           <button type="submit" disabled={isLoading} className="w-full lg:w-1/2 py-5 bg-gradient-to-r from-indigo-600 to-indigo-800 text-white rounded-[2rem] font-bold text-xl shadow-2xl shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
-            {isLoading ? "Synthesizing Environment..." : "Deploy Workspace"}
+            {isLoading ? "Creating Account..." : "Deploy Workspace"}
           </button>
           <p className="mt-6 text-slate-500 text-sm">
             Already have a subdomain? <Link href="/auth/signin-basic" className="text-indigo-600 font-bold hover:underline">Sign In</Link>
