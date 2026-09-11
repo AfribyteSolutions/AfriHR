@@ -135,12 +135,40 @@ Deno.serve(async (req) => {
       const expected = clean(employee.employee_number, 100) || clean(employee.email, 255);
       if (clean(body.confirmation, 255) !== expected) return json({ success: false, error: `Enter ${expected} to confirm irreversible completion` }, 400);
       const employmentStatus = record.offboarding_type === "resignation" ? "resigned" : "terminated";
-      await base44.asServiceRole.entities.Employee.update(employee.id, { lifecycle_stage: "offboarded", employment_status: employmentStatus });
-      const updated = await base44.asServiceRole.entities.Offboarding.update(id, {
-        status: "completed", completed_by: user.id, completed_at: new Date().toISOString()
-      });
-      await audit("offboarding.completed", id, { employee_id: employee.id, employment_status: employmentStatus });
-      return json({ success: true, data: updated });
+      let linkedUser: any = null;
+      if (employee.user_id) linkedUser = await base44.asServiceRole.entities.User.get(employee.user_id).catch(() => null);
+      if (!linkedUser && employee.email) {
+        const matches = await base44.asServiceRole.entities.User.filter({ email: employee.email }, "-created_date", 5);
+        linkedUser = matches.find((candidate: any) => candidate.tenant_id === tenantId) || null;
+      }
+      if (linkedUser?.app_role === "platform_admin") return json({ success: false, error: "Platform administrators cannot be disabled through tenant offboarding" }, 409);
+
+      let userDisabled = false;
+      let employeeUpdated = false;
+      try {
+        if (linkedUser) {
+          await base44.asServiceRole.entities.User.update(linkedUser.id, { employment_status: "offboarded" });
+          userDisabled = true;
+        }
+        await base44.asServiceRole.entities.Employee.update(employee.id, { lifecycle_stage: "offboarded", employment_status: employmentStatus });
+        employeeUpdated = true;
+        const updated = await base44.asServiceRole.entities.Offboarding.update(id, {
+          status: "completed", completed_by: user.id, completed_at: new Date().toISOString()
+        });
+        await audit("offboarding.completed", id, {
+          employee_id: employee.id, employment_status: employmentStatus,
+          linked_user_id: linkedUser?.id || null, access_disabled: userDisabled
+        });
+        return json({ success: true, data: updated, access_disabled: userDisabled });
+      } catch (completionError) {
+        if (employeeUpdated) await base44.asServiceRole.entities.Employee.update(employee.id, {
+          lifecycle_stage: employee.lifecycle_stage, employment_status: employee.employment_status
+        }).catch(() => undefined);
+        if (userDisabled && linkedUser) await base44.asServiceRole.entities.User.update(linkedUser.id, {
+          employment_status: linkedUser.employment_status || "active"
+        }).catch(() => undefined);
+        throw completionError;
+      }
     }
 
     return json({ success: false, error: "Unsupported operation" }, 400);
