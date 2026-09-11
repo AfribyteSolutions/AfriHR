@@ -18,6 +18,12 @@
     "phone": {
       "type": "string"
     },
+    "position": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
     "source": {
       "type": "string"
     },
@@ -35,9 +41,11 @@
       ],
       "default": "applied"
     },
-    "resume_url": {
-      "type": "string",
-      "format": "uri"
+    "resume_file_uri": {
+      "type": "string"
+    },
+    "photo_file_uri": {
+      "type": "string"
     },
     "notes": {
       "type": "string"
