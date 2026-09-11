@@ -135,7 +135,7 @@ Deno.serve(async(req)=>{
    }
    const items=await base44.asServiceRole.entities.PayrollItem.filter({tenant_id:tenantId,payroll_run_id:run.id},"employee_name",500);
    const totals=items.reduce((a:any,x:any)=>({gross_minor:a.gross_minor+(money(x.gross_minor)||0),deductions_minor:a.deductions_minor+(money(x.deductions_total_minor)||0),statutory_deductions_minor:a.statutory_deductions_minor+(money(x.statutory_deductions_total_minor)||0),employer_contributions_minor:a.employer_contributions_minor+(money(x.employer_contributions_total_minor)||0),net_minor:a.net_minor+(money(x.net_minor)||0)}),{gross_minor:0,deductions_minor:0,statutory_deductions_minor:0,employer_contributions_minor:0,net_minor:0});
-   const updated=await base44.asServiceRole.entities.PayrollRun.update(run.id,{status:"calculated",...totals,employee_count:items.length});
+   const updated=await base44.asServiceRole.entities.PayrollRun.update(run.id,{status:"calculated",...totals,statutory_rule_set_id:ruleSet.id,employee_count:items.length});
    await audit("payroll.calculated","PayrollRun",run.id,{employee_count:items.length,...totals});
    return json({success:true,data:updated,items});
   }
@@ -162,7 +162,7 @@ Deno.serve(async(req)=>{
   if(operation==="export_run"){
    const denied=requireHr();if(denied)return denied;
    if(!["finalized","exported"].includes(run.status))return json({success:false,error:"Finalize the run before export"},409);
-   const payload={schema_version:"1.0",target:"Africount-ready",source_system:"AfriHR",source_id:run.id,tenant_id:tenantId,idempotency_key:`afrihr-payroll-${run.id}`,currency:run.currency,period:{start:run.period_start,end:run.period_end,pay_date:run.pay_date},totals:{gross_minor:run.gross_minor,deductions_minor:run.deductions_minor,net_minor:run.net_minor},journal_lines:[{side:"debit",account_key:"payroll_expense",amount_minor:run.gross_minor},{side:"credit",account_key:"payroll_deductions_payable",amount_minor:run.deductions_minor},{side:"credit",account_key:"payroll_payable",amount_minor:run.net_minor}]};
+   const payload={schema_version:"1.0",target:"Africount-ready",source_system:"AfriHR",source_id:run.id,tenant_id:tenantId,idempotency_key:`afrihr-payroll-${run.id}`,currency:run.currency,period:{start:run.period_start,end:run.period_end,pay_date:run.pay_date},totals:{gross_minor:run.gross_minor,deductions_minor:run.deductions_minor,statutory_deductions_minor:run.statutory_deductions_minor,employer_contributions_minor:run.employer_contributions_minor,net_minor:run.net_minor},journal_lines:[{side:"debit",account_key:"payroll_expense",amount_minor:run.gross_minor},{side:"credit",account_key:"payroll_deductions_payable",amount_minor:run.deductions_minor},{side:"credit",account_key:"statutory_employee_payable",amount_minor:run.statutory_deductions_minor},{side:"credit",account_key:"payroll_payable",amount_minor:run.net_minor},{side:"debit",account_key:"employer_contributions_expense",amount_minor:run.employer_contributions_minor},{side:"credit",account_key:"statutory_employer_payable",amount_minor:run.employer_contributions_minor}]};
    if(run.status==="exported")return json({success:true,data:payload,reference:run.export_reference,idempotent:true});
    const reference=`AFRIHR-${run.id}`,updated=await base44.asServiceRole.entities.PayrollRun.update(run.id,{status:"exported",export_reference:reference,exported_at:new Date().toISOString()});
    await audit("payroll.exported","PayrollRun",run.id,{reference,target:"Africount-ready"});return json({success:true,data:payload,run:updated,reference});
