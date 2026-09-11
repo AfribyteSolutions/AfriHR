@@ -15,6 +15,8 @@ export interface AfriHRUser {
   companyId: string;
   employmentStatus: string;
   permissions: string[];
+  photoURL?: string;
+  profilePictureUrl?: string;
 }
 
 interface AuthUserContextType {
@@ -42,6 +44,8 @@ function mapUser(user: any): AfriHRUser {
     companyId: tenantId,
     employmentStatus: user.employment_status || "invited",
     permissions: Array.isArray(user.permissions) ? user.permissions : [],
+    photoURL: user.photo_url || user.profile_picture_url || "",
+    profilePictureUrl: user.profile_picture_url || user.photo_url || "",
   };
 }
 
