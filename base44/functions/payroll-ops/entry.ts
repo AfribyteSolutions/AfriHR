@@ -41,6 +41,32 @@ Deno.serve(async(req)=>{
   const requireHr=()=>isHr?null:json({success:false,error:"HR access required"},403);
   const audit=(action:string,type:string,id:string,metadata:Record<string,unknown>={})=>base44.asServiceRole.entities.AuditLog.create({tenant_id:tenantId,actor_user_id:user.id,actor_email:user.email,action,resource_type:type,resource_id:id,request_id:requestId,metadata,occurred_at:new Date().toISOString()});
 
+  if(operation==="list_statutory_rules"){
+   const denied=requireHr();if(denied)return denied;
+   const records=await base44.asServiceRole.entities.StatutoryRuleSet.filter({tenant_id:tenantId},"-effective_from",200);
+   return json({success:true,data:records});
+  }
+  if(operation==="save_statutory_rule"){
+   const denied=requireHr();if(denied)return denied;
+   const country=clean(body.country_code,2).toUpperCase(),currency=clean(body.currency,3).toUpperCase(),name=clean(body.name,100),version=clean(body.version,40),effectiveFrom=clean(body.effective_from,10),sourceUrl=clean(body.source_url,500),verifiedOn=clean(body.verified_on,10);
+   const employeeRules=statutoryRules(body.employee_rules),employerRules=statutoryRules(body.employer_rules);
+   if(!/^[A-Z]{2}$/.test(country)||!CURRENCIES.has(currency)||!name||!version||!dateOk(effectiveFrom)||!dateOk(verifiedOn)||!/^https:\/\//i.test(sourceUrl)||(employeeRules.length+employerRules.length===0))return json({success:false,error:"Country, currency, version, effective date, HTTPS source, verification date and at least one valid rule are required"},400);
+   const duplicate=await base44.asServiceRole.entities.StatutoryRuleSet.filter({tenant_id:tenantId,country_code:country,currency,version},"-created_date",1);
+   if(duplicate.length)return json({success:false,error:"This statutory rule version already exists"},409);
+   const record=await base44.asServiceRole.entities.StatutoryRuleSet.create({tenant_id:tenantId,country_code:country,currency,name,version,effective_from:effectiveFrom,status:"draft",employee_rules:employeeRules,employer_rules:employerRules,source_url:sourceUrl,source_note:clean(body.source_note),verified_on:verifiedOn,created_by:user.id});
+   await audit("statutory_rule.created","StatutoryRuleSet",record.id,{country,currency,version});return json({success:true,data:record},201);
+  }
+  if(operation==="activate_statutory_rule"){
+   const denied=requireHr();if(denied)return denied;
+   const id=clean(body.rule_set_id,100),record=await base44.asServiceRole.entities.StatutoryRuleSet.get(id).catch(()=>null);
+   if(!record||record.tenant_id!==tenantId)return json({success:false,error:"Statutory rule set not found"},404);
+   if(record.status!=="draft")return json({success:false,error:"Only draft rule sets can be activated"},409);
+   if(clean(body.confirmation,160)!==`${record.country_code}:${record.version}`)return json({success:false,error:"Confirmation does not match country and version"},400);
+   const active=await base44.asServiceRole.entities.StatutoryRuleSet.filter({tenant_id:tenantId,country_code:record.country_code,currency:record.currency,status:"active"},"-effective_from",100);
+   for(const oldRule of active)await base44.asServiceRole.entities.StatutoryRuleSet.update(oldRule.id,{status:"superseded",effective_to:previousDay(record.effective_from)});
+   const updated=await base44.asServiceRole.entities.StatutoryRuleSet.update(id,{status:"active",activated_by:user.id,activated_at:new Date().toISOString()});
+   await audit("statutory_rule.activated","StatutoryRuleSet",id,{country:record.country_code,currency:record.currency,version:record.version});return json({success:true,data:updated});
+  }
   if(operation==="list_compensation"){
    let records=await base44.asServiceRole.entities.CompensationRecord.filter({tenant_id:tenantId},"-effective_from",500);
    if(!isHr)records=self?records.filter((x:any)=>x.employee_id===self.id):[];
