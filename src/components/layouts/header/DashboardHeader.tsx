@@ -27,7 +27,7 @@ const DashboardHeader = () => {
   const [isMobile, setIsMobile] = useState(false);
 
   // Cast the user to ExtendedUser to access fullName and displayName safely
-  const authUser = user as ExtendedUser;
+  const authUser = user as unknown as ExtendedUser;
 
   // Sync mobile state with sidebar breakpoint
   useEffect(() => {
