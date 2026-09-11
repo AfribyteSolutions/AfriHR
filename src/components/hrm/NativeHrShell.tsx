@@ -9,6 +9,7 @@ const links = [
   ["/hrm/employee", "Employees"],
   ["/hrm/onboarding", "Onboarding"],
   ["/hrm/leaves", "Leave"],
+  ["/hrm/attendance", "Time"],
   ["/hrm/performance", "Performance"],
   ["/hrm/documents", "Documents"],
   ["/hrm/offboarding", "Offboarding"]
