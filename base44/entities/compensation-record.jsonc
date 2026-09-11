@@ -1,0 +1,110 @@
+{
+  "name": "CompensationRecord",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "employee_id": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "XAF",
+        "XOF",
+        "NGN",
+        "GHS",
+        "KES",
+        "ZAR",
+        "UGX",
+        "RWF",
+        "TZS",
+        "ETB",
+        "MAD",
+        "EGP",
+        "DZD",
+        "AOA",
+        "BWP",
+        "MZN",
+        "NAD",
+        "ZMW",
+        "USD",
+        "EUR",
+        "GBP"
+      ]
+    },
+    "base_salary_minor": {
+      "type": "number"
+    },
+    "pay_frequency": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "biweekly",
+        "weekly",
+        "daily",
+        "hourly"
+      ]
+    },
+    "allowances": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "deductions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "effective_from": {
+      "type": "string",
+      "format": "date"
+    },
+    "effective_to": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "superseded"
+      ],
+      "default": "active"
+    },
+    "created_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "employee_id",
+    "currency",
+    "base_salary_minor",
+    "pay_frequency",
+    "effective_from",
+    "status",
+    "created_by"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}
