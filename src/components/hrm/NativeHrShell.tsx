@@ -7,7 +7,8 @@ import { base44 } from "@/lib/base44";
 const links = [
   ["/hrm/recruitment-flow", "Recruitment"],
   ["/hrm/employee", "Employees"],
-  ["/hrm/onboarding", "Onboarding"]
+  ["/hrm/onboarding", "Onboarding"],
+  ["/hrm/leaves", "Leave"]
 ];
 
 export default function NativeHrShell({ title, subtitle, children, action }: {
