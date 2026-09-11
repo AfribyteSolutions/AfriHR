@@ -10,6 +10,7 @@ Deno.serve(async (req) => {
   try {
     const user = await base44.auth.me();
     if (!user) return json({ success: false, error: "Unauthorized" }, 401);
+    if (["suspended", "offboarded"].includes(user.employment_status)) return json({ success: false, error: "Account disabled" }, 403);
     const platformAdmin = user.role === "admin" || user.app_role === "platform_admin";
     if (!platformAdmin && !ADMIN_ROLES.has(user.app_role)) return json({ success: false, error: "Forbidden" }, 403);
     const body = await req.json().catch(() => ({}));
