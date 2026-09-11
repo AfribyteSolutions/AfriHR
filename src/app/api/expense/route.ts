@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase-admin";
-import admin from "firebase-admin";
+import { db, admin } from "@/lib/firebase-admin";
 
 // GET - Fetch all expenses for a company
 export async function GET(request: NextRequest) {

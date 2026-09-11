@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { IEmployee, ISocialProfile } from "@/interface";
 import { toast } from "sonner";
 import InputField from "@/components/elements/SharedInputs/InputField";
-import { doc, updateDoc, setDoc } from "firebase/firestore";
+import { doc, updateDoc, setDoc } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 
 interface PropsType {

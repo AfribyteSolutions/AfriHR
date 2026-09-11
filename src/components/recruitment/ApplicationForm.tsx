@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Camera, FileText } from "lucide-react";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import { useAuthUserContext } from "@/context/UserAuthContext";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "@/lib/storage-compat";
 import { app } from "@/lib/firebase"; // your firebase client init
 
 interface ApplicationFormProps {

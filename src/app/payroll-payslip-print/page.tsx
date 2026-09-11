@@ -2,7 +2,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 import PayslipAndBillingAddress from "@/components/pagesUI/payroll/payroll-payslip/PayslipAndBillingAddress";
 import EarningTable from "@/components/pagesUI/payroll/payroll-payslip/EarningTable";

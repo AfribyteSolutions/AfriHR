@@ -1,25 +1,14 @@
 // lib/firebase.tsx
 // Firebase-free compatibility shim.
-// All Firebase imports have been removed from the active runtime path.
-// This module provides stub exports so legacy components that still import
-// from "@/lib/firebase" don't crash at module load time.
-// Notification functions are now backed by the Base44 SDK.
+// All Firebase imports have been removed. This module re-exports
+// the Base44-backed compatibility layers so legacy components that
+// still import from "@/lib/firebase" don't crash at module load time.
 
-import { base44 } from "@/lib/base44";
+// Re-export db and storage from compat modules
+export { db } from "@/lib/firestore-compat";
+export { storage } from "@/lib/storage-compat";
 
-// ==================== STUB EXPORTS (no Firebase) ====================
-
-export const app = {};
-export const auth = {
-  signOut: async () => {},
-  onAuthStateChanged: (_cb: (user: any) => void) => () => {},
-  currentUser: null as any,
-};
-export const db = {} as any;
-export const storage = {} as any;
-
-// ==================== NOTIFICATION TYPES ====================
-
+// Notification types and functions (Base44-backed)
 export type NotificationCategory = 'task' | 'hr' | 'leave' | 'system';
 
 export interface Notification {
@@ -43,7 +32,9 @@ export interface CreateNotificationData {
   image?: string;
 }
 
-// ==================== NOTIFICATION FUNCTIONS (Base44-backed) ====================
+// ── NOTIFICATION FUNCTIONS (Base44-backed) ──
+
+import { base44 } from "@/lib/base44";
 
 export async function createNotification(data: CreateNotificationData): Promise<string> {
   try {
@@ -59,7 +50,6 @@ export async function createNotification(data: CreateNotificationData): Promise<
     return result?.id || "";
   } catch (error) {
     console.error('Error creating notification:', error);
-    // Non-blocking — notifications are best-effort
     return "";
   }
 }
@@ -114,7 +104,6 @@ export function subscribeToNotifications(
   };
 
   poll();
-  // Poll every 30 seconds as a lightweight real-time substitute
   const interval = setInterval(poll, 30000);
 
   return () => {
@@ -122,3 +111,11 @@ export function subscribeToNotifications(
     clearInterval(interval);
   };
 }
+
+// Stub exports for legacy code that imports app/auth from here
+export const app = {};
+export const auth = {
+  signOut: async () => {},
+  onAuthStateChanged: (_cb: (user: any) => void) => () => {},
+  currentUser: null as any,
+};

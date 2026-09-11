@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import UpdateExperienceDetailsModal from "./UpdateExperienceDetailsModal";
 import Link from "next/link";
 import { IEmployee } from "@/interface";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 import { WorkExperience } from "@/interface"; // Centralized WorkExperience type
 

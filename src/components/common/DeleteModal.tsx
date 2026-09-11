@@ -3,7 +3,7 @@ import React from "react";
 import { Dialog, DialogContent } from "@mui/material";
 import ModalWarningSvg from "@/svg/ModalWarningSvg";
 import { db } from "@/lib/firebase";
-import { doc, deleteDoc } from "firebase/firestore";
+import { doc, deleteDoc } from "@/lib/firestore-compat";
 
 interface statePropsType {
   open: boolean;

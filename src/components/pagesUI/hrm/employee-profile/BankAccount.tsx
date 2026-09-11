@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import UpdateBankAccountModal from "./UpdateBankAccountModal";
 import { IEmployee, IBankAccount } from "@/interface";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 
 interface propsType {

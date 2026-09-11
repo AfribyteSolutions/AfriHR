@@ -1,12 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  allowedDevOrigins: process.env.BASE44_PUBLIC_HOST_SUFFIX
-    ? ['3000-' + process.env.BASE44_PUBLIC_HOST_SUFFIX]
-    : [],
-  experimental: {
-    turbo: false, // ⬅️ THIS LINE FIXES YOUR ERROR
-  },
-
   images: {
     remotePatterns: [
       {
@@ -22,11 +15,9 @@ const nextConfig = {
     ],
   },
 
-  serverExternalPackages: ['firebase-admin', '@react-pdf/renderer'],
-
   webpack: (config, { isServer }) => {
     if (isServer) {
-      config.externals.push('firebase-admin');
+      config.externals.push('@react-pdf/renderer');
     }
 
     config.resolve.alias = {

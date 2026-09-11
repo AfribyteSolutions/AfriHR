@@ -6,7 +6,7 @@ import { IDocument } from "@/interface/table.interface";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import { statePropsType } from "@/interface/common.interface";
 import { toast } from "sonner";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL } from "@/lib/storage-compat";
 import { storage } from "@/lib/firebase";
 import { useAuthUserContext } from "@/context/UserAuthContext";
 

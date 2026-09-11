@@ -4,7 +4,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import { toast } from "sonner";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 import { IEmployee, IEducation } from "@/interface"; // Import IEducation
 

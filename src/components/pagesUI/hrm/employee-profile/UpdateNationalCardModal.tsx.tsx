@@ -8,7 +8,7 @@ import InputField from "@/components/elements/SharedInputs/InputField";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
-import { doc, updateDoc, setDoc, Timestamp } from "firebase/firestore";
+import { doc, updateDoc, setDoc, Timestamp } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 
 interface PropsType {

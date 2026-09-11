@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { IBankAccount, IEmployee } from "@/interface";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import { toast } from "sonner";
-import { doc, updateDoc, setDoc } from "firebase/firestore";
+import { doc, updateDoc, setDoc } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 
 interface PropsType {

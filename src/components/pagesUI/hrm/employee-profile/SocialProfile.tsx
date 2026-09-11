@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import UpdateSocialProfileModal from "./UpdateSocialProfileModal";
 import Link from "next/link";
 import { IEmployee, ISocialProfile } from "@/interface";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 
 interface propsType {

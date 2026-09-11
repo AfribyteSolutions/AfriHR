@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import UpdateNationalCardModal from "./UpdateNationalCardModal.tsx";
 import { IEmployee, INationalCard } from "@/interface";
-import { doc, onSnapshot, Timestamp } from "firebase/firestore";
+import { doc, onSnapshot, Timestamp } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 
 interface propsType {

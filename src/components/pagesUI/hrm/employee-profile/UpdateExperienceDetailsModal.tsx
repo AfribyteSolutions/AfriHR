@@ -6,7 +6,7 @@ import InputField from "@/components/elements/SharedInputs/InputField";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 import { IEmployee, WorkExperience } from "@/interface"; // Centralized WorkExperience type
 
