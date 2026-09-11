@@ -10,7 +10,8 @@ const links = [
   ["/hrm/onboarding", "Onboarding"],
   ["/hrm/leaves", "Leave"],
   ["/hrm/performance", "Performance"],
-  ["/hrm/documents", "Documents"]
+  ["/hrm/documents", "Documents"],
+  ["/hrm/offboarding", "Offboarding"]
 ];
 
 export default function NativeHrShell({ title, subtitle, children, action }: {
