@@ -103,7 +103,7 @@ Deno.serve(async(req)=>{
    const all=await base44.asServiceRole.entities.PayrollRun.filter({tenant_id:tenantId,currency},"-period_end",200);
    if(all.some((r:any)=>r.status!=="voided"&&start<=r.period_end&&end>=r.period_start))return json({success:false,error:"This payroll period overlaps an existing run"},409);
    const run=await base44.asServiceRole.entities.PayrollRun.create({tenant_id:tenantId,period_start:start,period_end:end,pay_date:payDate,currency,country_code:country,status:"draft",gross_minor:0,deductions_minor:0,statutory_deductions_minor:0,employer_contributions_minor:0,net_minor:0,employee_count:0,idempotency_key:key});
-   await audit("payroll.run_created","PayrollRun",run.id,{start,end,c,currency,country});
+   await audit("payroll.run_created","PayrollRun",run.id,{start,end,currency,country});
    return json({success:true,data:run},201);
   }
 
