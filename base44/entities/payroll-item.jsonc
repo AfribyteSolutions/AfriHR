@@ -35,6 +35,27 @@
         "type": "object"
       }
     },
+    "statutory_deductions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "employer_contributions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "statutory_deductions_total_minor": {
+      "type": "number"
+    },
+    "employer_contributions_total_minor": {
+      "type": "number"
+    },
+    "statutory_rule_set_id": {
+      "type": "string"
+    },
     "gross_minor": {
       "type": "number"
     },
