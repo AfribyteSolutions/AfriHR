@@ -115,6 +115,10 @@ Deno.serve(async(req)=>{
    const denied=requireHr();if(denied)return denied;
    if(!["draft","calculated"].includes(run.status))return json({success:false,error:"Only draft or calculated runs can be calculated"},409);
    const compensation=await base44.asServiceRole.entities.CompensationRecord.filter({tenant_id:tenantId,currency:run.currency},"-effective_from",500);
+   const ruleSets=await base44.asServiceRole.entities.StatutoryRuleSet.filter({tenant_id:tenantId,country_code:run.country_code,currency:run.currency,status:"active"},"-effective_from",100);
+   const ruleSet=ruleSets.find((x:any)=>x.effective_from<=run.period_end&&(!x.effective_to||x.effective_to>=run.period_start));
+   if(!ruleSet)return json({success:false,error:"No active statutory rule set covers this payroll period"},409);
+   const employeeStatutory=statutoryRules(ruleSet.employee_rules),employerStatutory=statutoryRules(ruleSet.employer_rules);
    const eligible=employees.filter((e:any)=>!["offboarded","terminated","inactive"].includes(String(e.status||e.employment_status||"").toLowerCase()));
    for(const employee of eligible){
     const comp=compensation.find((c:any)=>c.employee_id===employee.id&&c.effective_from<=run.period_end&&(!c.effective_to||c.effective_to>=run.period_start));
@@ -124,11 +128,13 @@ Deno.serve(async(req)=>{
     if(existing.length)continue;
     const allowances=lines(comp.allowances,true),deductions=lines(comp.deductions),base=money(comp.base_salary_minor)||0;
     const allowanceTotal=allowances.reduce((s:number,x:any)=>s+x.amount_minor,0),deductionTotal=deductions.reduce((s:number,x:any)=>s+x.amount_minor,0),gross=base+allowanceTotal;
-    if(deductionTotal>gross)return json({success:false,error:`Deductions exceed gross pay for ${employee.full_name||employee.id}`},409);
-    await base44.asServiceRole.entities.PayrollItem.create({tenant_id:tenantId,payroll_run_id:run.id,employee_id:employee.id,employee_name:employee.full_name||[employee.first_name,employee.last_name].filter(Boolean).join(" "),employee_number:employee.employee_number||"",currency:run.currency,base_minor:base,allowances,deductions,gross_minor:gross,deductions_total_minor:deductionTotal,net_minor:gross-deductionTotal,compensation_record_id:comp.id,calculation_key:calculationKey,status:"calculated",snapshot:{period_start:run.period_start,period_end:run.period_end,pay_date:run.pay_date,pay_frequency:comp.pay_frequency,effective_from:comp.effective_from}});
+    const statutory_deductions=employeeStatutory.map((r:any)=>({code:r.code,name:r.name,amount_minor:calculateRule(r,gross)})),employer_contributions=employerStatutory.map((r:any)=>({code:r.code,name:r.name,amount_minor:calculateRule(r,gross)}));
+    const statutoryTotal=statutory_deductions.reduce((s:number,x:any)=>s+x.amount_minor,0),employerTotal=employer_contributions.reduce((s:number,x:any)=>s+x.amount_minor,0);
+    if(deductionTotal+statutoryTotal>gross)return json({success:false,error:`Deductions exceed gross pay for ${employee.full_name||employee.id}`},409);
+    await base44.asServiceRole.entities.PayrollItem.create({tenant_id:tenantId,payroll_run_id:run.id,employee_id:employee.id,employee_name:employee.full_name||[employee.first_name,employee.last_name].filter(Boolean).join(" "),employee_number:employee.employee_number||"",currency:run.currency,base_minor:base,allowances,deductions,statutory_deductions,employer_contributions,gross_minor:gross,deductions_total_minor:deductionTotal,statutory_deductions_total_minor:statutoryTotal,employer_contributions_total_minor:employerTotal,net_minor:gross-deductionTotal-statutoryTotal,compensation_record_id:comp.id,statutory_rule_set_id:ruleSet.id,calculation_key:calculationKey,status:"calculated",snapshot:{period_start:run.period_start,period_end:run.period_end,pay_date:run.pay_date,pay_frequency:comp.pay_frequency,effective_from:comp.effective_from,country_code:run.country_code,statutory_rule:{id:ruleSet.id,name:ruleSet.name,version:ruleSet.version,effective_from:ruleSet.effective_from,source_url:ruleSet.source_url,verified_on:ruleSet.verified_on}}});
    }
    const items=await base44.asServiceRole.entities.PayrollItem.filter({tenant_id:tenantId,payroll_run_id:run.id},"employee_name",500);
-   const totals=items.reduce((a:any,x:any)=>({gross_minor:a.gross_minor+(money(x.gross_minor)||0),deductions_minor:a.deductions_minor+(money(x.deductions_total_minor)||0),net_minor:a.net_minor+(money(x.net_minor)||0)}),{gross_minor:0,deductions_minor:0,net_minor:0});
+   const totals=items.reduce((a:any,x:any)=>({gross_minor:a.gross_minor+(money(x.gross_minor)||0),deductions_minor:a.deductions_minor+(money(x.deductions_total_minor)||0),statutory_deductions_minor:a.statutory_deductions_minor+(money(x.statutory_deductions_total_minor)||0),employer_contributions_minor:a.employer_contributions_minor+(money(x.employer_contributions_total_minor)||0),net_minor:a.net_minor+(money(x.net_minor)||0)}),{gross_minor:0,deductions_minor:0,statutory_deductions_minor:0,employer_contributions_minor:0,net_minor:0});
    const updated=await base44.asServiceRole.entities.PayrollRun.update(run.id,{status:"calculated",...totals,employee_count:items.length});
    await audit("payroll.calculated","PayrollRun",run.id,{employee_count:items.length,...totals});
    return json({success:true,data:updated,items});
