@@ -18,7 +18,7 @@ const ForgotBasicForm = () => {
   const onSubmit = async (data: IForgotForm) => {
     try {
       // Use Base44 SDK for password reset (no Firebase)
-      await base44.auth.sendPasswordResetEmail(data.email);
+      await base44.auth.resetPasswordRequest(data.email);
       toast.success("Reset link sent successfully. Check your email.");
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error?.message || "Failed to send reset link. Try again later.";

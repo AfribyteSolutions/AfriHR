@@ -33,8 +33,8 @@ const ResetPasswordBasicForm: React.FC<ResetPasswordBasicFormProps> = ({ oobCode
     }
 
     try {
-      // Use Base44 SDK for password reset confirmation (no Firebase)
-      await base44.auth.confirmPasswordReset(oobCode, data.password);
+      // Use Base44 SDK for password reset confirmation
+      await base44.auth.resetPassword({ resetToken: oobCode, newPassword: data.password });
       toast.success("Password reset successfully. You can now log in.");
       router.push("/auth/signin-basic");
     } catch (error: any) {
