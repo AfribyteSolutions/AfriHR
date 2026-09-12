@@ -1,18 +1,2 @@
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import PersonalLoanMainArea from "@/components/pagesUI/hrm/personal-loan/PersonalLoanMainArea";
-import MetaData from "@/hooks/useMetaData";
-import React from "react";
-
-const page = () => {
-  return (
-    <>
-      <MetaData pageTitle="Personal Loan">
-        <Wrapper>
-          <PersonalLoanMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
-};
-
-export default page;
+import NativeWorkforceOperationsPage from "@/components/hrm/NativeWorkforceOperationsPage";
+export default function Page(){return <NativeWorkforceOperationsPage initialTab="loans"/>;}
