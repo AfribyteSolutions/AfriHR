@@ -21,6 +21,48 @@
     "phone": {
       "type": "string"
     },
+    "date_of_birth": {
+      "type": "string",
+      "format": "date"
+    },
+    "gender": {
+      "type": "string"
+    },
+    "nationality": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "emergency_contact_name": {
+      "type": "string"
+    },
+    "emergency_contact_phone": {
+      "type": "string"
+    },
+    "emergency_contact_relationship": {
+      "type": "string"
+    },
+    "employment_type": {
+      "type": "string",
+      "enum": [
+        "permanent",
+        "fixed_term",
+        "part_time",
+        "contractor",
+        "intern",
+        "casual"
+      ]
+    },
     "department": {
       "type": "string"
     },
