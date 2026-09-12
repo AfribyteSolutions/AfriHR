@@ -16,8 +16,11 @@ Deno.serve(async(req)=>{
   const tenantId=platform?clean(body.tenant_id,100)||clean(user.tenant_id,100):clean(user.tenant_id,100);
   if(!tenantId)return json({success:false,error:"Tenant required"},400);
   if(!platform&&body.tenant_id&&body.tenant_id!==tenantId)return json({success:false,error:"Cross-tenant access denied"},403);
-  const canManage=platform||ADMIN.has(clean(user.app_role,50));
+  const role=clean(user.app_role,50),permissions=new Set(Array.isArray(user.permissions)?user.permissions:[]);
+  const canView=platform||ADMIN.has(role)||permissions.has("organization.view")||permissions.has("organization.manage");
+  const canManage=platform||ADMIN.has(role)||permissions.has("organization.manage");
   const operation=clean(body.operation,50);
+  if(!canView)return json({success:false,error:"Organization view permission required"},403);
   const audit=(action:string,type:string,id:string,metadata:Record<string,unknown>={})=>base44.asServiceRole.entities.AuditLog.create({tenant_id:tenantId,actor_user_id:user.id,actor_email:user.email,action,resource_type:type,resource_id:id,request_id:requestId,metadata,occurred_at:new Date().toISOString()});
   if(operation==="list"){
    const [departments,designations,holidays,employees]=await Promise.all([
