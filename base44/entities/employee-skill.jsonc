@@ -1,0 +1,86 @@
+{
+  "name": "EmployeeSkill",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "employee_id": {
+      "type": "string"
+    },
+    "skill_name": {
+      "type": "string"
+    },
+    "proficiency": {
+      "type": "string",
+      "enum": [
+        "awareness",
+        "beginner",
+        "intermediate",
+        "advanced",
+        "expert"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "training",
+        "assessment",
+        "qualification",
+        "manager_verified"
+      ]
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "certification_name": {
+      "type": "string"
+    },
+    "verified_by": {
+      "type": "string"
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "expired",
+        "revoked"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "employee_id",
+    "skill_name",
+    "proficiency",
+    "source",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}
