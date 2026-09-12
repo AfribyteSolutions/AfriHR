@@ -22,7 +22,8 @@ Deno.serve(async(req)=>{
   const tenantId=platform?clean(body.tenant_id,100)||clean(user.tenant_id,100):clean(user.tenant_id,100);
   if(!tenantId)return json({success:false,error:"Tenant required"},400);
   if(!platform&&body.tenant_id&&body.tenant_id!==tenantId)return json({success:false,error:"Cross-tenant access denied"},403);
-  const role=clean(user.app_role,50)||"employee",isHr=platform||HR.has(role);
+  const role=clean(user.app_role,50)||"employee",permissions=new Set(Array.isArray(user.permissions)?user.permissions:[]);
+  const canViewAll=platform||HR.has(role)||permissions.has("relations.view")||permissions.has("relations.manage"),canManage=platform||HR.has(role)||permissions.has("relations.manage");
   const employees=await base44.asServiceRole.entities.Employee.filter({tenant_id:tenantId},"full_name",500);
   const self=employees.find((e:any)=>e.user_id===user.id)||employees.find((e:any)=>String(e.email).toLowerCase()===String(user.email).toLowerCase());
   const byId=Object.fromEntries(employees.map((e:any)=>[e.id,e])),operation=clean(body.operation,50);
@@ -30,14 +31,14 @@ Deno.serve(async(req)=>{
 
   if(operation==="list"){
    let records=await base44.asServiceRole.entities.EmployeeAction.filter({tenant_id:tenantId},"-effective_date",500);
-   if(!isHr)records=self?records.filter((x:any)=>x.employee_id===self.id):[];
-   return json({success:true,data:records.map((x:any)=>({...x,employee:byId[x.employee_id]||null})),employees:isHr?employees.map((e:any)=>({id:e.id,full_name:e.full_name,department:e.department,job_title:e.job_title,lifecycle_stage:e.lifecycle_stage})):[],can_manage:isHr,self_employee_id:self?.id||""});
+   if(!canViewAll)records=self?records.filter((x:any)=>x.employee_id===self.id):[];
+   return json({success:true,data:records.map((x:any)=>({...x,employee:byId[x.employee_id]||null})),employees:canManage?employees.map((e:any)=>({id:e.id,full_name:e.full_name,department:e.department,job_title:e.job_title,lifecycle_stage:e.lifecycle_stage})):[],can_manage:canManage,self_employee_id:self?.id||""});
   }
   if(operation==="create"){
    const type=clean(body.action_type,30);if(!TYPES.has(type))return json({success:false,error:"Invalid action type"},400);
-   const employeeId=type==="resignation"&&!isHr?self?.id:clean(body.employee_id,100),employee=employeeId?byId[employeeId]:null;
+   const employeeId=type==="resignation"&&!canManage?self?.id:clean(body.employee_id,100),employee=employeeId?byId[employeeId]:null;
    if(!employee)return json({success:false,error:"Employee not found"},404);
-   if(!isHr&&type!=="resignation")return json({success:false,error:"HR access required"},403);
+   if(!canManage&&type!=="resignation")return json({success:false,error:"Employee relations management permission required"},403);
    if(["resignation","termination"].includes(type)&&employee.lifecycle_stage==="offboarded")return json({success:false,error:"Employee is already offboarded"},409);
    const title=clean(body.title,160)||type[0].toUpperCase()+type.slice(1),reason=clean(body.reason),effective=clean(body.effective_date,10),key=clean(body.idempotency_key,120);
    if(!reason||!dateOk(effective)||!key)return json({success:false,error:"Reason, effective date and idempotency key are required"},400);
@@ -58,7 +59,7 @@ Deno.serve(async(req)=>{
    const updated=await base44.asServiceRole.entities.EmployeeAction.update(id,{status:"acknowledged",acknowledged_by:user.id,acknowledged_at:new Date().toISOString()});await audit("employee_action.warning.acknowledged","EmployeeAction",id,{employee_id:self.id});return json({success:true,data:updated});
   }
   if(operation==="decide"){
-   if(!isHr)return json({success:false,error:"HR access required"},403);
+   if(!canManage)return json({success:false,error:"Employee relations management permission required"},403);
    if(record.status!=="pending")return json({success:false,error:"Only pending actions can be reviewed"},409);
    const decision=clean(body.decision,20);if(!["approved","rejected"].includes(decision))return json({success:false,error:"Invalid decision"},400);
    if(record.action_type==="termination"&&record.requested_by===user.id&&!platform)return json({success:false,error:"Termination requires approval by a different HR administrator"},409);
@@ -78,7 +79,7 @@ Deno.serve(async(req)=>{
   }
   if(operation==="cancel"){
    const owns=!!self&&record.employee_id===self.id&&record.action_type==="resignation";
-   if(!isHr&&!owns)return json({success:false,error:"Forbidden"},403);
+   if(!canManage&&!owns)return json({success:false,error:"Forbidden"},403);
    if(record.status!=="pending")return json({success:false,error:"Only pending actions can be cancelled"},409);
    const updated=await base44.asServiceRole.entities.EmployeeAction.update(id,{status:"cancelled"});await audit("employee_action.cancelled","EmployeeAction",id,{employee_id:record.employee_id});return json({success:true,data:updated});
   }
