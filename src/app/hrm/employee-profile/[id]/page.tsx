@@ -1,19 +1,5 @@
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import EmployeeProfileMainArea from "@/components/pagesUI/hrm/employee-profile/EmployeeProfileMainArea";
-import MetaData from "@/hooks/useMetaData";
-import React from "react";
+import { redirect } from "next/navigation";
 
-const page = ({ params }: { params: { id: number } }) => {
-  const id = params.id;
-  return (
-    <>
-      <MetaData pageTitle="Employee Details Dynamic">
-        <Wrapper>
-          <EmployeeProfileMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
-};
-
-export default page;
+export default function EmployeeProfileDetailsPage() {
+  redirect("/hrm/employee");
+}
