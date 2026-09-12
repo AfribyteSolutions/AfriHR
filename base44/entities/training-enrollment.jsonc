@@ -1,0 +1,80 @@
+{
+  "name": "TrainingEnrollment",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "employee_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "enrolled",
+        "in_progress",
+        "completed",
+        "failed",
+        "withdrawn"
+      ],
+      "default": "enrolled"
+    },
+    "enrolled_by": {
+      "type": "string"
+    },
+    "enrolled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "score": {
+      "type": "number"
+    },
+    "completion_note": {
+      "type": "string"
+    },
+    "certificate_file_uri": {
+      "type": "string"
+    },
+    "certificate_expiry_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "idempotency_key": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "course_id",
+    "employee_id",
+    "status",
+    "enrolled_by",
+    "enrolled_at",
+    "idempotency_key"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}
