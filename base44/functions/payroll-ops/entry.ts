@@ -1,6 +1,7 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
 
-const HR=new Set(["platform_admin","tenant_admin","hr_manager"]);
+const PAYROLL_VIEW=new Set(["platform_admin","tenant_admin","payroll_manager","finance_manager"]);
+const PAYROLL_MANAGE=new Set(["platform_admin","tenant_admin","payroll_manager"]);
 const CURRENCIES=new Set(["XAF","XOF","NGN","GHS","KES","ZAR","UGX","RWF","TZS","ETB","MAD","EGP","DZD","AOA","BWP","MZN","NAD","ZMW","USD","EUR","GBP"]);
 const clean=(v:unknown,max=2000)=>typeof v==="string"?v.trim().slice(0,max):"";
 const json=(body:unknown,status=200)=>Response.json(body,{status});
@@ -34,15 +35,18 @@ Deno.serve(async(req)=>{
   const tenantId=platformAdmin?clean(body.tenant_id,100)||clean(user.tenant_id,100):clean(user.tenant_id,100);
   if(!tenantId)return json({success:false,error:"Tenant required"},400);
   if(!platformAdmin&&body.tenant_id&&body.tenant_id!==tenantId)return json({success:false,error:"Cross-tenant access denied"},403);
-  const role=clean(user.app_role,50)||"employee",isHr=platformAdmin||HR.has(role),operation=clean(body.operation,50);
+  const role=clean(user.app_role,50)||"employee",permissions=new Set(Array.isArray(user.permissions)?user.permissions:[]);
+  const canViewPayroll=platformAdmin||PAYROLL_VIEW.has(role)||permissions.has("payroll.view")||permissions.has("payroll.manage");
+  const canManagePayroll=platformAdmin||PAYROLL_MANAGE.has(role)||permissions.has("payroll.manage");
+  const isHr=canViewPayroll,operation=clean(body.operation,50);
   const employees=await base44.asServiceRole.entities.Employee.filter({tenant_id:tenantId},"-created_date",500);
   const self=employees.find((e:any)=>e.user_id===user.id)||employees.find((e:any)=>String(e.email).toLowerCase()===String(user.email).toLowerCase());
   const employeeById=Object.fromEntries(employees.map((e:any)=>[e.id,e]));
-  const requireHr=()=>isHr?null:json({success:false,error:"HR access required"},403);
+  const requireHr=()=>canManagePayroll?null:json({success:false,error:"Payroll management permission required"},403);
   const audit=(action:string,type:string,id:string,metadata:Record<string,unknown>={})=>base44.asServiceRole.entities.AuditLog.create({tenant_id:tenantId,actor_user_id:user.id,actor_email:user.email,action,resource_type:type,resource_id:id,request_id:requestId,metadata,occurred_at:new Date().toISOString()});
 
   if(operation==="list_statutory_rules"){
-   const denied=requireHr();if(denied)return denied;
+   if(!canViewPayroll)return json({success:false,error:"Payroll view permission required"},403);
    const records=await base44.asServiceRole.entities.StatutoryRuleSet.filter({tenant_id:tenantId},"-effective_from",200);
    return json({success:true,data:records});
   }
