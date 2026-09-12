@@ -1,18 +1,5 @@
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import LeavesEmployeeMainArea from "@/components/pagesUI/hrm/leaves-employee/LeavesEmployeeMainArea";
-import MetaData from "@/hooks/useMetaData";
-import React from "react";
+import { redirect } from "next/navigation";
 
-const page = () => {
-  return (
-    <>
-      <MetaData pageTitle="Leaves Employee">
-        <Wrapper>
-          <LeavesEmployeeMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
-};
-
-export default page;
+export default function EmployeeLeavePage() {
+  redirect("/hrm/leaves");
+}
