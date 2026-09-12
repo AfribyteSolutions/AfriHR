@@ -12,15 +12,16 @@ Deno.serve(async(req)=>{
   const tenantId=platform?clean(body.tenant_id,100)||clean(user.tenant_id,100):clean(user.tenant_id,100);
   if(!tenantId)return json({success:false,error:"Tenant required"},400);
   if(!platform&&body.tenant_id&&body.tenant_id!==tenantId)return json({success:false,error:"Cross-tenant access denied"},403);
-  const isHr=platform||HR.has(clean(user.app_role,50)),operation=clean(body.operation,50);
+  const role=clean(user.app_role,50),permissions=new Set(Array.isArray(user.permissions)?user.permissions:[]);
+  const canViewAll=platform||HR.has(role)||permissions.has("learning.view")||permissions.has("learning.manage"),canManage=platform||HR.has(role)||permissions.has("learning.manage"),operation=clean(body.operation,50);
   const employees=await base44.asServiceRole.entities.Employee.filter({tenant_id:tenantId},"full_name",500),self=employees.find((e:any)=>e.user_id===user.id)||employees.find((e:any)=>String(e.email).toLowerCase()===String(user.email).toLowerCase()),byId=Object.fromEntries(employees.map((e:any)=>[e.id,e]));
   const audit=(action:string,type:string,id:string,metadata:Record<string,unknown>={})=>base44.asServiceRole.entities.AuditLog.create({tenant_id:tenantId,actor_user_id:user.id,actor_email:user.email,action,resource_type:type,resource_id:id,request_id:requestId,metadata,occurred_at:new Date().toISOString()});
   if(operation==="list"){
    const [courses,enrollments,skills]=await Promise.all([base44.asServiceRole.entities.TrainingCourse.filter({tenant_id:tenantId},"-start_date",500),base44.asServiceRole.entities.TrainingEnrollment.filter({tenant_id:tenantId},"-enrolled_at",500),base44.asServiceRole.entities.EmployeeSkill.filter({tenant_id:tenantId},"-verified_at",500)]);
-   const visibleEnrollments=isHr?enrollments:enrollments.filter((x:any)=>x.employee_id===self?.id),visibleSkills=isHr?skills:skills.filter((x:any)=>x.employee_id===self?.id);
-   return json({success:true,data:{courses:courses.filter((x:any)=>isHr||x.status!=="draft"),enrollments:visibleEnrollments.map((x:any)=>({...x,employee:byId[x.employee_id]||null})),skills:visibleSkills.map((x:any)=>({...x,employee:byId[x.employee_id]||null})),employees:isHr?employees.map((e:any)=>({id:e.id,full_name:e.full_name})):[]},can_manage:isHr,self_employee_id:self?.id||""});
+   const visibleEnrollments=canViewAll?enrollments:enrollments.filter((x:any)=>x.employee_id===self?.id),visibleSkills=canViewAll?skills:skills.filter((x:any)=>x.employee_id===self?.id);
+   return json({success:true,data:{courses:courses.filter((x:any)=>canViewAll||x.status!=="draft"),enrollments:visibleEnrollments.map((x:any)=>({...x,employee:byId[x.employee_id]||null})),skills:visibleSkills.map((x:any)=>({...x,employee:byId[x.employee_id]||null})),employees:canManage?employees.map((e:any)=>({id:e.id,full_name:e.full_name})):[]},can_manage:canManage,self_employee_id:self?.id||""});
   }
-  if(!isHr&&operation!=="self_enroll")return json({success:false,error:"HR access required"},403);
+  if(!canManage&&operation!=="self_enroll")return json({success:false,error:"Learning management permission required"},403);
   if(operation==="save_course"){
    const id=clean(body.id,100),title=clean(body.title,180),mode=clean(body.delivery_mode,30),start=clean(body.start_date,10),end=clean(body.end_date,10),currency=clean(body.currency,3).toUpperCase(),capacity=Number(body.capacity||0),cost=Number(body.cost_minor||0);
    if(!title||!["in_person","virtual","self_paced","hybrid"].includes(mode)||!dateOk(start)||!dateOk(end)||end<start||!/^[A-Z]{3}$/.test(currency)||!Number.isInteger(capacity)||capacity<0||!Number.isInteger(cost)||cost<0)return json({success:false,error:"Complete valid course details are required"},400);
