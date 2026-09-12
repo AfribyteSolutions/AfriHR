@@ -38,7 +38,7 @@ Deno.serve(async(req)=>{
   const role=clean(user.app_role,50)||"employee",permissions=new Set(Array.isArray(user.permissions)?user.permissions:[]);
   const canViewPayroll=platformAdmin||PAYROLL_VIEW.has(role)||permissions.has("payroll.view")||permissions.has("payroll.manage");
   const canManagePayroll=platformAdmin||PAYROLL_MANAGE.has(role)||permissions.has("payroll.manage");
-  const isHr=canViewPayroll,operation=clean(body.operation,50);
+  const operation=clean(body.operation,50);
   const employees=await base44.asServiceRole.entities.Employee.filter({tenant_id:tenantId},"-created_date",500);
   const self=employees.find((e:any)=>e.user_id===user.id)||employees.find((e:any)=>String(e.email).toLowerCase()===String(user.email).toLowerCase());
   const employeeById=Object.fromEntries(employees.map((e:any)=>[e.id,e]));
@@ -74,8 +74,8 @@ Deno.serve(async(req)=>{
   }
   if(operation==="list_compensation"){
    let records=await base44.asServiceRole.entities.CompensationRecord.filter({tenant_id:tenantId},"-effective_from",500);
-   if(!isHr)records=self?records.filter((x:any)=>x.employee_id===self.id):[];
-   return json({success:true,data:records.map((x:any)=>({...x,employee:employeeById[x.employee_id]||null})),can_manage:isHr});
+   if(!canViewPayroll)records=self?records.filter((x:any)=>x.employee_id===self.id):[];
+   return json({success:true,data:records.map((x:any)=>({...x,employee:employeeById[x.employee_id]||null})),can_manage:canManagePayroll});
   }
   if(operation==="set_compensation"){
    const denied=requireHr();if(denied)return denied;
@@ -90,7 +90,7 @@ Deno.serve(async(req)=>{
    return json({success:true,data:record},201);
   }
   if(operation==="list_runs"){
-   if(!isHr)return json({success:true,data:[]});
+   if(!canViewPayroll)return json({success:true,data:[]});
    const runs=await base44.asServiceRole.entities.PayrollRun.filter({tenant_id:tenantId},"-period_end",200);
    return json({success:true,data:runs});
   }
@@ -161,7 +161,7 @@ Deno.serve(async(req)=>{
   }
   if(operation==="list_items"){
    let items=await base44.asServiceRole.entities.PayrollItem.filter({tenant_id:tenantId,payroll_run_id:run.id},"employee_name",500);
-   if(!isHr)items=self?items.filter((x:any)=>x.employee_id===self.id&&x.status==="finalized"):[];
+   if(!canViewPayroll)items=self?items.filter((x:any)=>x.employee_id===self.id&&x.status==="finalized"):[];
    return json({success:true,data:items});
   }
   if(operation==="export_run"){
