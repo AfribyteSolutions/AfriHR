@@ -44,7 +44,7 @@ export default function SignInBasicMain() {
             <SignInBasicForm />
             <p className="text-center">
               <span>Use the credentials registered in Base44.</span><br />
-              <Link href="/auth/forgot-password-basic"><span>Forgot Password?</span></Link>
+              <Link href="/auth/forgot-password"><span>Forgot Password?</span></Link>
             </p>
           </div>
         </div>
