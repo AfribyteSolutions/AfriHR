@@ -63,7 +63,6 @@ export default function EmployeeProfileDetailsPage({ params }: { params: { id: s
       const rows = (await invoke({ operation: "list_employees" })).data || [];
       setEmployees(rows);
       const employee = rows.find((row: any) => row.id === params.id);
-      if (employee) setForm(Object.fromEntries(editableFields.map(([key]) => [key, employee[key] || ""])).concat ? {} : {});
       if (employee) {
         const next: Record<string, string> = {};
         editableFields.forEach(([key]) => { next[key] = employee[key] || ""; });
