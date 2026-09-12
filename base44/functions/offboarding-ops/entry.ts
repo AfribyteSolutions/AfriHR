@@ -26,7 +26,9 @@ Deno.serve(async (req) => {
     if (!tenantId) return json({ success: false, error: "Tenant required" }, 400);
     if (!platformAdmin && body.tenant_id && body.tenant_id !== tenantId) return json({ success: false, error: "Cross-tenant access denied" }, 403);
     const role = clean(user.app_role, 50) || "employee";
-    const isHr = platformAdmin || HR.has(role);
+    const permissions = new Set(Array.isArray(user.permissions) ? user.permissions : []);
+    const canViewAll = platformAdmin || HR.has(role) || permissions.has("offboarding.view") || permissions.has("offboarding.manage");
+    const canManage = platformAdmin || HR.has(role) || permissions.has("offboarding.manage");
     const employees = await base44.asServiceRole.entities.Employee.filter({ tenant_id: tenantId }, "-created_date", 500);
     const self = employees.find((e: any) => e.user_id === user.id) || employees.find((e: any) => String(e.email).toLowerCase() === String(user.email).toLowerCase());
     const byId = Object.fromEntries(employees.map((e: any) => [e.id, e]));
@@ -40,17 +42,17 @@ Deno.serve(async (req) => {
 
     if (operation === "list") {
       let records = await base44.asServiceRole.entities.Offboarding.filter({ tenant_id: tenantId }, "-created_date", 250);
-      if (!isHr) records = self ? records.filter((r: any) => r.employee_id === self.id) : [];
+      if (!canViewAll) records = self ? records.filter((r: any) => r.employee_id === self.id) : [];
       return json({ success: true, data: records.map((r: any) => ({
         ...r, final_document_uri: undefined, employee: byId[r.employee_id] || null,
-        can_manage: isHr && !["completed", "cancelled"].includes(r.status),
-        can_complete: isHr && r.status === "ready_to_complete",
-        can_download: !!r.final_document_uri && (isHr || (!!self && self.id === r.employee_id))
+        can_manage: canManage && !["completed", "cancelled"].includes(r.status),
+        can_complete: canManage && r.status === "ready_to_complete",
+        can_download: !!r.final_document_uri && (canViewAll || (!!self && self.id === r.employee_id))
       })) });
     }
 
     if (operation === "initiate") {
-      if (!isHr) return json({ success: false, error: "HR access required" }, 403);
+      if (!canManage) return json({ success: false, error: "Offboarding management permission required" }, 403);
       const employeeId = clean(body.employee_id, 100);
       const employee = byId[employeeId];
       const type = clean(body.offboarding_type, 50);
@@ -79,14 +81,14 @@ Deno.serve(async (req) => {
 
     if (operation === "download_final_document") {
       const ownsRecord = !!self && self.id === record.employee_id;
-      if (!isHr && !ownsRecord) return json({ success: false, error: "Forbidden" }, 403);
+      if (!canViewAll && !ownsRecord) return json({ success: false, error: "Forbidden" }, 403);
       if (!record.final_document_uri) return json({ success: false, error: "No final document uploaded" }, 404);
       const signed = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: record.final_document_uri, expires_in: 300 });
       await audit("offboarding.final_document_downloaded", id, { employee_id: record.employee_id });
       return json({ success: true, data: { signed_url: signed.signed_url, expires_in: 300 } });
     }
 
-    if (!isHr) return json({ success: false, error: "HR access required" }, 403);
+    if (!canManage) return json({ success: false, error: "Offboarding management permission required" }, 403);
     if (["completed", "cancelled"].includes(record.status)) {
       return json({ success: false, error: "This offboarding record is locked" }, 409);
     }
