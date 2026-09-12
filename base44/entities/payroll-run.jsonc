@@ -1,0 +1,111 @@
+{
+  "name": "PayrollRun",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "pay_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "country_code": {
+      "type": "string"
+    },
+    "statutory_rule_set_id": {
+      "type": "string"
+    },
+    "statutory_deductions_minor": {
+      "type": "number"
+    },
+    "employer_contributions_minor": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "calculated",
+        "approved",
+        "finalized",
+        "exported",
+        "voided"
+      ],
+      "default": "draft"
+    },
+    "gross_minor": {
+      "type": "number"
+    },
+    "deductions_minor": {
+      "type": "number"
+    },
+    "net_minor": {
+      "type": "number"
+    },
+    "employee_count": {
+      "type": "number"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finalized_by": {
+      "type": "string"
+    },
+    "finalized_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "export_reference": {
+      "type": "string"
+    },
+    "exported_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "period_start",
+    "period_end",
+    "pay_date",
+    "currency",
+    "status",
+    "idempotency_key"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}

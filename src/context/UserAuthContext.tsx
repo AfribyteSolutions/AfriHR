@@ -1,43 +1,92 @@
 "use client";
-// Compatibility shim: maps the new Base44 AuthContext to the old UserAuthContext interface.
-// This allows existing components that use useAuthUserContext to work with Base44 auth
-// without requiring individual updates.
 
-import { useAuth } from "@/context/AuthContext";
-import type { UserRecord } from "@/types/base44-entities";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { base44 } from "@/lib/base44";
 
-// Map Base44 UserRecord to the old IEmployee-like shape that components expect
-function mapUser(user: UserRecord | null): any {
-  if (!user) return null;
+export interface AfriHRUser {
+  id: string;
+  uid: string;
+  email: string;
+  name: string;
+  fullName: string;
+  role: string;
+  appRole: string;
+  tenantId: string;
+  companyId: string;
+  employmentStatus: string;
+  permissions: string[];
+  photoURL?: string;
+  profilePictureUrl?: string;
+}
+
+interface AuthUserContextType {
+  user: AfriHRUser | null;
+  loading: boolean;
+  error: unknown;
+  setAuthUser: (user: AfriHRUser | null) => void;
+  refreshUser: () => Promise<void>;
+}
+
+const AuthUserContext = createContext<AuthUserContextType | undefined>(undefined);
+
+function mapUser(user: any): AfriHRUser {
+  const appRole = user.app_role || (user.role === "admin" ? "platform_admin" : "employee");
+  const tenantId = user.tenant_id || "";
   return {
-    uid: user.id,
     id: user.id,
-    email: user.email,
-    fullName: user.full_name || "",
-    name: user.full_name || "",
-    role: user.app_role || user.role || "employee",
-    companyId: user.tenant_id || "",
-    tenant_id: user.tenant_id,
-    app_role: user.app_role,
-    employment_status: user.employment_status,
-    employee_id: user.employee_id,
+    uid: user.id,
+    email: user.email || "",
+    name: user.full_name || user.email || "User",
+    fullName: user.full_name || user.email || "User",
+    role: appRole === "platform_admin" ? "super-admin" : appRole === "tenant_admin" || appRole === "hr_manager" || appRole === "recruiter" ? "admin" : appRole,
+    appRole,
+    tenantId,
+    companyId: tenantId,
+    employmentStatus: user.employment_status || "invited",
+    permissions: Array.isArray(user.permissions) ? user.permissions : [],
+    photoURL: user.photo_url || user.profile_picture_url || "",
+    profilePictureUrl: user.profile_picture_url || user.photo_url || "",
   };
 }
 
-export const useAuthUserContext = () => {
-  const auth = useAuth();
-  return {
-    user: mapUser(auth.user),
-    loading: auth.loading,
-    error: auth.error,
-    isAuthenticated: auth.isAuthenticated,
-    setAuthUser: () => {}, // no-op; auth is managed by Base44
-    // pass through for convenience
-    login: auth.login,
-    logout: auth.logout,
-    refreshUser: auth.refreshUser,
-  };
+export const AuthUserProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setAuthUser] = useState<AfriHRUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
+
+  const refreshUser = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const authenticated = await base44.auth.isAuthenticated();
+      if (!authenticated) {
+        setAuthUser(null);
+        return;
+      }
+      const current = await base44.auth.me();
+      if (["suspended", "offboarded"].includes(current?.employment_status)) {
+        setAuthUser(null);
+        setError(new Error("This account has been disabled."));
+        await base44.auth.logout("/auth/signin-basic?reason=account-disabled");
+        return;
+      }
+      setAuthUser(mapUser(current));
+    } catch (err) {
+      setAuthUser(null);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void refreshUser(); }, [refreshUser]);
+
+  const value = useMemo(() => ({ user, loading, error, setAuthUser, refreshUser }), [user, loading, error, refreshUser]);
+  return <AuthUserContext.Provider value={value}>{children}</AuthUserContext.Provider>;
 };
 
-// Re-export for components that import AuthUserProvider
-export { AuthProvider as AuthUserProvider } from "@/context/AuthContext";
+export const useAuthUserContext = () => {
+  const context = useContext(AuthUserContext);
+  if (!context) throw new Error("useAuthUserContext must be used within an AuthUserProvider");
+  return context;
+};

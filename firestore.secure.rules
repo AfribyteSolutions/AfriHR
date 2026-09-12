@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function myCompany() { return me().companyId; }
+    function isSuperAdmin() { return signedIn() && me().role == 'super-admin'; }
+    function isHr() { return signedIn() && me().role in ['super-admin', 'admin', 'manager']; }
+    function sameTenant(data) { return signedIn() && data.companyId == myCompany(); }
+    function sameTenantAfter() { return signedIn() && request.resource.data.companyId == myCompany(); }
+    function targetUserInMyTenant(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.companyId == myCompany();
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || (isHr() && sameTenant(resource.data)));
+      allow update: if signedIn() && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['companyId', 'role', 'status', 'accessStatus', 'employmentStatus', 'lifecycleStage', 'permissions']);
+      allow create, delete: if false;
+    }
+
+    match /companies/{companyId} {
+      allow read: if signedIn() && (companyId == myCompany() || isSuperAdmin());
+      allow write: if false;
+    }
+
+    match /employees/{employeeId} {
+      allow read: if signedIn() && (sameTenant(resource.data) || isSuperAdmin());
+      allow update: if signedIn() && request.auth.uid == employeeId
+        && sameTenant(resource.data)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['companyId', 'role', 'status', 'accessStatus', 'employmentStatus', 'lifecycleStage', 'permissions', 'managerId', 'salary']);
+      allow create, delete: if false;
+    }
+
+    match /recruitment/{id} {
+      allow read: if isHr() && sameTenant(resource.data);
+      allow create, update, delete: if false;
+    }
+
+    match /leaves/{id} {
+      allow read: if signedIn() && sameTenant(resource.data) && (isHr() || resource.data.employeeId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /attendance/{id} {
+      allow read: if signedIn() && sameTenant(resource.data) && (isHr() || resource.data.employeeId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /payrolls/{id} {
+      allow read: if signedIn() && sameTenant(resource.data) && (isHr() || resource.data.employeeUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /resignations/{id} {
+      allow read: if signedIn() && sameTenant(resource.data) && (isHr() || resource.data.employeeId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /terminations/{id} {
+      allow read: if isHr() && sameTenant(resource.data);
+      allow create, update, delete: if false;
+    }
+
+    match /offboardingCases/{id} {
+      allow read: if signedIn() && sameTenant(resource.data) && (isHr() || resource.data.employeeId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /warnings/{id} {
+      allow read: if signedIn() && sameTenant(resource.data) && (isHr() || resource.data.employeeId == request.auth.uid);
+      allow create: if isHr() && sameTenantAfter() && targetUserInMyTenant(request.resource.data.employeeId);
+      allow update: if isHr() && sameTenant(resource.data)
+        && request.resource.data.companyId == resource.data.companyId
+        && request.resource.data.employeeId == resource.data.employeeId;
+      allow delete: if false;
+    }
+
+    match /announcements/{id} {
+      allow read: if signedIn() && sameTenant(resource.data);
+      allow create: if isHr() && sameTenantAfter() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isHr() && sameTenant(resource.data) && request.resource.data.companyId == resource.data.companyId;
+      allow delete: if isHr() && sameTenant(resource.data);
+    }
+
+    match /notifications/{id} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update: if signedIn() && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId;
+      allow create: if signedIn() && (
+        request.resource.data.userId == request.auth.uid ||
+        (isHr() && targetUserInMyTenant(request.resource.data.userId))
+      );
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /messages/{id} {
+      allow read: if signedIn() && sameTenant(resource.data)
+        && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+      allow create: if signedIn() && sameTenantAfter()
+        && request.resource.data.senderId == request.auth.uid
+        && targetUserInMyTenant(request.resource.data.receiverId);
+      allow update: if signedIn() && sameTenant(resource.data)
+        && resource.data.receiverId == request.auth.uid
+        && request.resource.data.senderId == resource.data.senderId
+        && request.resource.data.receiverId == resource.data.receiverId
+        && request.resource.data.companyId == resource.data.companyId;
+      allow delete: if false;
+    }
+
+    match /auditLogs/{id} {
+      allow read: if isHr() && sameTenant(resource.data);
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

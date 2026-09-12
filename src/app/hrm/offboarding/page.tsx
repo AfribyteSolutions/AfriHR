@@ -1,320 +1,179 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import MetaData from "@/hooks/useMetaData";
-import { useAuth } from "@/context/AuthContext";
-import { base44 } from "@/lib/base44";
-import type { OffboardingRecord, OffboardingTaskRecord, EmployeeRecord } from "@/types/base44-entities";
-import { LoadingState, EmptyState, ErrorState, StatusBadge, PageHeader, Card, ConfirmDialog } from "@/components/hr/SharedUI";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Download, Plus, ShieldAlert, Upload, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useUserRole } from "@/hooks/useUserRole";
+import { base44 } from "@/lib/base44";
+import { useAuthUserContext } from "@/context/UserAuthContext";
+import NativeHrShell from "@/components/hrm/NativeHrShell";
 
-const OffboardingPage: React.FC = () => {
-  const { user, tenantId } = useAuth();
-  const { canAccessAdminFeatures } = useUserRole();
-  const [records, setRecords] = useState<OffboardingRecord[]>([]);
-  const [employees, setEmployees] = useState<Record<string, EmployeeRecord>>({});
-  const [tasks, setTasks] = useState<Record<string, OffboardingTaskRecord[]>>({});
+const unwrap = (r: any) => r?.data?.success !== undefined ? r.data : r;
+const HR_ROLES = ["platform_admin", "tenant_admin", "hr_manager"];
+
+export default function OffboardingPage() {
+  const { user, loading: authLoading } = useAuthUserContext();
+  const router = useRouter();
+  const [records, setRecords] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showStartModal, setShowStartModal] = useState(false);
-  const [activeEmployees, setActiveEmployees] = useState<EmployeeRecord[]>([]);
-  const [confirmComplete, setConfirmComplete] = useState<OffboardingRecord | null>(null);
-  const [selectedRecord, setSelectedRecord] = useState<OffboardingRecord | null>(null);
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [starting, setStarting] = useState(false);
+  const [busy, setBusy] = useState("");
+  const [filter, setFilter] = useState("active");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ employee_id: "", offboarding_type: "resignation", last_working_date: "", reason: "" });
+  const tenantId = user?.tenantId || "";
+  const isHr = !!user && HR_ROLES.includes(user.appRole);
 
-  const tid = tenantId;
+  useEffect(() => { if (!authLoading && !user) router.replace("/auth/signin-basic?redirect=/hrm/offboarding"); }, [authLoading, user, router]);
 
-  const fetchData = useCallback(async () => {
+  const invoke = useCallback(async (payload: any) => {
+    const result = unwrap(await base44.functions.invoke("offboarding-ops", { tenant_id: tenantId, ...payload }));
+    if (!result?.success) throw new Error(result?.error || "Offboarding operation failed");
+    return result;
+  }, [tenantId]);
+
+  const load = useCallback(async () => {
+    if (!tenantId) { setLoading(false); return; }
     setLoading(true);
-    setError(null);
     try {
-      const data = await base44.entities.Offboarding.filter({ tenant_id: tid }, "-created_date");
-      setRecords(data as OffboardingRecord[]);
-
-      const emps = await base44.entities.Employee.filter({ tenant_id: tid });
-      const empMap: Record<string, EmployeeRecord> = {};
-      (emps as EmployeeRecord[]).forEach(e => { empMap[e.id] = e; });
-      setEmployees(empMap);
-
-      const active = (emps as EmployeeRecord[]).filter(e => e.status === "active" || e.status === "on_leave" || e.status === "suspended");
-      setActiveEmployees(active);
-
-      const taskMap: Record<string, OffboardingTaskRecord[]> = {};
-      for (const rec of data as OffboardingRecord[]) {
-        try {
-          const recTasks = await base44.entities.OffboardingTask.filter({ offboarding_id: rec.id });
-          taskMap[rec.id] = recTasks as OffboardingTaskRecord[];
-        } catch { taskMap[rec.id] = []; }
+      const [offboardingResult, employeeRaw] = await Promise.all([
+        invoke({ operation: "list" }),
+        isHr ? base44.functions.invoke("employee-ops", { operation: "list_employees", tenant_id: tenantId }) : Promise.resolve(null)
+      ]);
+      setRecords(offboardingResult.data || []);
+      if (employeeRaw) {
+        const result = unwrap(employeeRaw);
+        setEmployees(result?.success ? (result.data || []).filter((e: any) => e.lifecycle_stage !== "offboarded") : []);
       }
-      setTasks(taskMap);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load offboarding records");
-    } finally {
-      setLoading(false);
-    }
-  }, [tid]);
+    } catch (error: any) { toast.error(error.message); }
+    finally { setLoading(false); }
+  }, [tenantId, isHr, invoke]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { void load(); }, [load]);
 
-  const handleStart = async (formData: { employee_id: string; reason: string; last_working_day: string }) => {
-    setStarting(true);
-    const emp = activeEmployees.find(e => e.id === formData.employee_id);
-    if (!emp) { toast.error("Employee not found"); setStarting(false); return; }
+  const filtered = useMemo(() => {
+    if (filter === "all") return records;
+    if (filter === "active") return records.filter(r => !["completed", "cancelled"].includes(r.status));
+    return records.filter(r => r.status === filter);
+  }, [records, filter]);
+
+  const initiate = async (event: React.FormEvent) => {
+    event.preventDefault(); setBusy("initiate");
     try {
-      // Call the recruitment-ops / offboarding backend function for idempotent completion
-      const res = await base44.functions.invoke("recruitment-ops", {
-        action: "start_offboarding",
-        tenant_id: tid,
-        employee_id: emp.id,
-        employee_name: emp.full_name,
-        reason: formData.reason,
-        last_working_day: formData.last_working_day,
-        initiated_by: user?.id || "",
-        initiated_by_name: user?.full_name || "",
-      });
-      toast.success("Offboarding started");
-      setShowStartModal(false);
-      fetchData();
-    } catch (err: any) {
-      // Fallback: create directly if backend function not available
-      try {
-        await base44.entities.Offboarding.create({
-          tenant_id: tid,
-          employee_id: emp.id,
-          employee_name: emp.full_name,
-          status: "planned",
-          reason: formData.reason,
-          last_working_day: formData.last_working_day,
-          initiated_by: user?.id || "",
-          initiated_by_name: user?.full_name || "",
-          exit_interview_status: "pending",
-        } as any);
-        await base44.entities.Employee.update(emp.id, { status: "offboarding" });
-        toast.success("Offboarding started");
-        setShowStartModal(false);
-        fetchData();
-      } catch (err2: any) {
-        toast.error(err2?.message || "Failed to start offboarding");
+      const result = await invoke({ operation: "initiate", ...form });
+      toast.success(result.idempotent ? "Existing offboarding record opened." : "Offboarding initiated.");
+      setShowForm(false); setForm({ employee_id: "", offboarding_type: "resignation", last_working_date: "", reason: "" });
+      await load();
+    } catch (error: any) { toast.error(error.message); }
+    finally { setBusy(""); }
+  };
+
+  const updateTask = async (recordId: string, task: any) => {
+    setBusy(task.id);
+    try { await invoke({ operation: "update_task", offboarding_id: recordId, task_id: task.id, completed: !task.completed }); await load(); }
+    catch (error: any) { toast.error(error.message); }
+    finally { setBusy(""); }
+  };
+
+  const saveDetails = async (record: any, notes: string, file?: File) => {
+    setBusy(`details-${record.id}`);
+    try {
+      let final_document_uri: string | undefined;
+      if (file) {
+        if (file.size > 10 * 1024 * 1024) throw new Error("Final document must be 10 MB or smaller");
+        final_document_uri = (await base44.integrations.Core.UploadPrivateFile({ file })).file_uri;
       }
-    } finally {
-      setStarting(false);
-    }
+      await invoke({ operation: "save_details", offboarding_id: record.id, exit_interview_notes: notes, ...(final_document_uri ? { final_document_uri } : {}) });
+      toast.success("Offboarding details saved."); await load();
+    } catch (error: any) { toast.error(error.message); }
+    finally { setBusy(""); }
   };
 
-  const handleComplete = async (rec: OffboardingRecord) => {
-    try {
-      const res = await base44.functions.invoke("recruitment-ops", {
-        action: "complete_offboarding",
-        tenant_id: tid,
-        offboarding_id: rec.id,
-        employee_id: rec.employee_id,
-        completed_by: user?.id || "",
-      });
-      toast.success("Offboarding completed - employee terminated");
-      setConfirmComplete(null);
-      fetchData();
-    } catch (err: any) {
-      // Fallback: complete directly
-      try {
-        await base44.entities.Offboarding.update(rec.id, {
-          status: "completed",
-          completed_date: new Date().toISOString(),
-        });
-        await base44.entities.Employee.update(rec.employee_id, { status: "terminated" });
-        await base44.entities.AuditLog.create({
-          tenant_id: tid,
-          user_id: user?.id || "",
-          user_name: user?.full_name || "",
-          action: "offboarding_completed",
-          entity_type: "Offboarding",
-          entity_id: rec.id,
-          details: `Offboarding completed for ${rec.employee_name}`,
-        } as any);
-        toast.success("Offboarding completed - employee terminated");
-        setConfirmComplete(null);
-        fetchData();
-      } catch (err2: any) {
-        toast.error(err2?.message || "Failed to complete offboarding");
-      }
-    }
+  const download = async (id: string) => {
+    try { const result = await invoke({ operation: "download_final_document", offboarding_id: id }); window.open(result.data.signed_url, "_blank", "noopener,noreferrer"); }
+    catch (error: any) { toast.error(error.message); }
   };
 
-  const updateTaskStatus = async (taskId: string, status: string) => {
-    try {
-      await base44.entities.OffboardingTask.update(taskId, {
-        status,
-        completed_date: status === "completed" ? new Date().toISOString() : null,
-      });
-      toast.success("Task updated");
-      fetchData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to update task");
-    }
+  const cancel = async (record: any) => {
+    if (!window.confirm(`Cancel offboarding for ${record.employee?.full_name}? Their previous employment state will be restored.`)) return;
+    setBusy(`cancel-${record.id}`);
+    try { await invoke({ operation: "cancel", offboarding_id: record.id }); toast.success("Offboarding cancelled."); await load(); }
+    catch (error: any) { toast.error(error.message); }
+    finally { setBusy(""); }
   };
 
-  return (
-    <MetaData pageTitle="Offboarding">
-      <Wrapper>
-        <div className="p-4">
-          <PageHeader
-            title="Offboarding"
-            subtitle="Manage employee exit processes and checklists"
-            action={canAccessAdminFeatures ? (
-              <button onClick={() => setShowStartModal(true)} className="btn btn-primary">
-                <i className="fa-solid fa-plus mr-1"></i> Start Offboarding
-              </button>
-            ) : undefined}
-          />
-
-          {loading && <LoadingState />}
-          {error && <ErrorState message={error} onRetry={fetchData} />}
-          {!loading && !error && records.length === 0 && (
-            <EmptyState title="No offboarding records" message="Start an offboarding process for an active employee." />
-          )}
-          {!loading && !error && records.length > 0 && (
-            <div className="grid gap-4">
-              {records.map((rec) => {
-                const emp = employees[rec.employee_id];
-                const recTasks = tasks[rec.id] || [];
-                const doneTasks = recTasks.filter(t => t.status === "completed").length;
-                return (
-                  <Card key={rec.id} className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-800">{emp?.full_name || rec.employee_name}</h3>
-                        <p className="text-sm text-gray-500">{emp?.job_title || ""} · {emp?.department || ""}</p>
-                      </div>
-                      <StatusBadge status={rec.status} />
-                    </div>
-                    <div className="text-sm text-gray-600 space-y-1 mb-3">
-                      <p><strong>Reason:</strong> {rec.reason}</p>
-                      <p><strong>Last Working Day:</strong> {rec.last_working_day ? new Date(rec.last_working_day).toLocaleDateString() : "N/A"}</p>
-                      <p><strong>Exit Interview:</strong> <StatusBadge status={rec.exit_interview_status || "pending"} /></p>
-                      <p><strong>Tasks:</strong> {doneTasks}/{recTasks.length} completed</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => { setSelectedRecord(rec); setShowTaskModal(true); }} className="btn btn-light btn-sm">
-                        <i className="fa-regular fa-list-check mr-1"></i> View Tasks
-                      </button>
-                      {canAccessAdminFeatures && rec.status !== "completed" && rec.status !== "cancelled" && (
-                        <button onClick={() => setConfirmComplete(rec)} className="btn btn-danger btn-sm">
-                          Complete Offboarding
-                        </button>
-                      )}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Start Offboarding Modal */}
-        {showStartModal && (
-          <StartOffboardingModal
-            employees={activeEmployees}
-            onClose={() => setShowStartModal(false)}
-            onStart={handleStart}
-            starting={starting}
-          />
-        )}
-
-        {/* Task Modal */}
-        {showTaskModal && selectedRecord && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b">
-                <h3 className="text-lg font-semibold">Offboarding Tasks</h3>
-                <button onClick={() => setShowTaskModal(false)} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark text-xl"></i></button>
-              </div>
-              <div className="p-5">
-                {(tasks[selectedRecord.id] || []).length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">No tasks for this offboarding record.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {(tasks[selectedRecord.id] || []).map((task) => (
-                      <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-800">{task.title}</p>
-                          {task.description && <p className="text-sm text-gray-500">{task.description}</p>}
-                          <p className="text-xs text-gray-400 mt-1">Category: {task.category} · Assigned to: {task.assigned_to_name || "N/A"}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <StatusBadge status={task.status} />
-                          {canAccessAdminFeatures && task.status !== "completed" && (
-                            <button onClick={() => updateTaskStatus(task.id, "completed")} className="btn btn-success btn-sm">Complete</button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Complete Confirmation */}
-        <ConfirmDialog
-          open={!!confirmComplete}
-          title="Complete Offboarding"
-          message={`This will permanently set ${confirmComplete?.employee_name}'s status to "terminated". This action cannot be undone. Continue?`}
-          confirmText="Complete & Terminate"
-          confirmClass="btn-danger"
-          onConfirm={() => confirmComplete && handleComplete(confirmComplete)}
-          onCancel={() => setConfirmComplete(null)}
-        />
-      </Wrapper>
-    </MetaData>
-  );
-};
-
-const StartOffboardingModal: React.FC<{
-  employees: EmployeeRecord[];
-  onClose: () => void;
-  onStart: (data: { employee_id: string; reason: string; last_working_day: string }) => void;
-  starting: boolean;
-}> = ({ employees, onClose, onStart, starting }) => {
-  const [formData, setFormData] = useState({ employee_id: "", reason: "", last_working_day: "" });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onStart(formData);
+  const complete = async (record: any) => {
+    const expected = record.employee?.employee_number || record.employee?.email;
+    const confirmation = window.prompt(`This locks the record and marks the employee offboarded. Enter ${expected} to continue.`);
+    if (confirmation === null) return;
+    setBusy(`complete-${record.id}`);
+    try { await invoke({ operation: "complete", offboarding_id: record.id, confirmation }); toast.success("Employee offboarding completed."); await load(); }
+    catch (error: any) { toast.error(error.message); }
+    finally { setBusy(""); }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
-        <div className="flex items-center justify-between p-5 border-b">
-          <h3 className="text-lg font-semibold">Start Offboarding</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark text-xl"></i></button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Employee *</label>
-            <select required value={formData.employee_id} onChange={e => setFormData({...formData, employee_id: e.target.value})} className="form-control">
-              <option value="">Select employee...</option>
-              {employees.map(e => <option key={e.id} value={e.id}>{e.full_name} - {e.job_title}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reason *</label>
-            <textarea required rows={2} value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} className="form-control" placeholder="e.g. Resignation, end of contract..." />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Last Working Day *</label>
-            <input required type="date" value={formData.last_working_day} onChange={e => setFormData({...formData, last_working_day: e.target.value})} className="form-control" />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn btn-light">Cancel</button>
-            <button type="submit" disabled={starting} className="btn btn-danger">{starting ? "Starting..." : "Start Offboarding"}</button>
-          </div>
-        </form>
+  if (authLoading || !user) return <div className="min-h-screen grid place-items-center">Loading AfriHR…</div>;
+
+  return <NativeHrShell title="Offboarding" subtitle="Clearance, exit records and final handover"
+    action={isHr ? <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-bold"><Plus size={16}/> Start offboarding</button> : undefined}>
+    <main className="p-5 md:p-8">
+      <div className="flex flex-wrap gap-2">
+        {["active","all","initiated","in_progress","ready_to_complete","completed","cancelled"].map(v => <button key={v} onClick={() => setFilter(v)}
+          className={`px-3 py-2 rounded-xl text-xs font-bold capitalize ${filter === v ? "bg-blue-600 text-white" : "bg-white dark:bg-slate-900 border"}`}>{v.replaceAll("_"," ")}</button>)}
       </div>
-    </div>
-  );
-};
 
-export default OffboardingPage;
+      {loading ? <p className="py-16 text-center text-slate-500">Loading offboarding records…</p> :
+        <div className="space-y-5 mt-6">
+          {filtered.map(record => <OffboardingCard key={record.id} record={record} isHr={isHr} busy={busy}
+            onTask={updateTask} onSave={saveDetails} onDownload={download} onCancel={cancel} onComplete={complete}/>)}
+          {!filtered.length && <div className="py-16 text-center border-2 border-dashed rounded-2xl text-slate-400">No offboarding records found.</div>}
+        </div>}
+    </main>
+
+    {showForm && <div className="fixed inset-0 z-40 grid place-items-center bg-slate-950/60 p-4">
+      <form onSubmit={initiate} className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl p-6">
+        <div className="flex justify-between"><h2 className="text-xl font-black">Start Offboarding</h2><button type="button" onClick={() => setShowForm(false)}><X/></button></div>
+        <div className="space-y-4 mt-6">
+          <label className="block text-sm font-bold">Employee<select required value={form.employee_id} onChange={e => setForm({...form,employee_id:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent"><option value="">Select employee</option>{employees.map(e => <option key={e.id} value={e.id}>{e.full_name} · {e.employee_number || e.email}</option>)}</select></label>
+          <label className="block text-sm font-bold">Departure type<select value={form.offboarding_type} onChange={e => setForm({...form,offboarding_type:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent">{["resignation","termination","retirement","contract_end","other"].map(v => <option key={v} value={v}>{v.replaceAll("_"," ")}</option>)}</select></label>
+          <label className="block text-sm font-bold">Last working date<input required type="date" value={form.last_working_date} onChange={e => setForm({...form,last_working_date:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent"/></label>
+          <label className="block text-sm font-bold">Reason<textarea required value={form.reason} onChange={e => setForm({...form,reason:e.target.value})} className="block w-full h-24 mt-1 p-3 border rounded-xl bg-transparent"/></label>
+        </div>
+        <button disabled={busy === "initiate"} className="w-full mt-6 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl font-bold">{busy === "initiate" ? "Starting…" : "Start controlled offboarding"}</button>
+      </form>
+    </div>}
+  </NativeHrShell>;
+}
+
+function OffboardingCard({ record, isHr, busy, onTask, onSave, onDownload, onCancel, onComplete }: any) {
+  const [notes, setNotes] = useState(record.exit_interview_notes || "");
+  const [file, setFile] = useState<File | undefined>();
+  const required = (record.tasks || []).filter((t: any) => t.required);
+  const done = required.filter((t: any) => t.completed).length;
+  const progress = required.length ? Math.round(done / required.length * 100) : 0;
+
+  return <article className="bg-white dark:bg-slate-900 border rounded-2xl p-5 md:p-6">
+    <div className="flex flex-wrap justify-between gap-3">
+      <div><h2 className="text-lg font-black">{record.employee?.full_name || "Employee"}</h2><p className="text-sm text-slate-500 capitalize">{record.offboarding_type?.replaceAll("_"," ")} · Last day {record.last_working_date}</p></div>
+      <span className="h-fit px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold capitalize">{record.status?.replaceAll("_"," ")}</span>
+    </div>
+    {record.reason && <p className="mt-3 text-sm">{record.reason}</p>}
+    <div className="mt-5"><div className="flex justify-between text-xs font-bold"><span>Required clearance</span><span>{done}/{required.length}</span></div><div className="h-2 mt-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-emerald-500" style={{width:`${progress}%`}}/></div></div>
+    <div className="grid md:grid-cols-2 gap-2 mt-5">
+      {(record.tasks || []).map((task: any) => <button key={task.id} disabled={!record.can_manage || busy === task.id} onClick={() => void onTask(record.id, task)}
+        className={`flex items-center gap-3 text-left p-3 rounded-xl border disabled:cursor-default ${task.completed ? "bg-emerald-50 border-emerald-200 text-emerald-800" : ""}`}>
+        <CheckCircle2 size={18} className={task.completed ? "text-emerald-600" : "text-slate-300"}/><span className="text-sm font-semibold">{task.label}{!task.required && " (optional)"}</span>
+      </button>)}
+    </div>
+    {isHr && record.can_manage && <div className="grid md:grid-cols-2 gap-4 mt-5 pt-5 border-t">
+      <label className="text-sm font-bold">Exit interview notes<textarea value={notes} onChange={e => setNotes(e.target.value)} className="block w-full h-24 mt-1 p-3 border rounded-xl bg-transparent"/></label>
+      <label className="text-sm font-bold">Final document<input type="file" accept=".pdf,.doc,.docx" onChange={e => setFile(e.target.files?.[0])} className="block w-full mt-1 p-3 border rounded-xl"/><span className="block mt-2 text-xs text-slate-500">Private file, maximum 10 MB.</span></label>
+      <button disabled={busy === `details-${record.id}`} onClick={() => void onSave(record, notes, file)} className="md:col-span-2 flex justify-center items-center gap-2 py-2 rounded-xl border font-bold"><Upload size={16}/> Save details</button>
+    </div>}
+    <div className="flex flex-wrap gap-2 mt-5">
+      {record.can_download && <button onClick={() => void onDownload(record.id)} className="flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold"><Download size={15}/> Final document</button>}
+      {record.can_manage && <button disabled={busy === `cancel-${record.id}`} onClick={() => void onCancel(record)} className="px-4 py-2 rounded-xl border text-sm font-bold">Cancel</button>}
+      {record.can_complete && <button disabled={busy === `complete-${record.id}`} onClick={() => void onComplete(record)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold"><ShieldAlert size={16}/> Complete permanently</button>}
+    </div>
+  </article>;
+}

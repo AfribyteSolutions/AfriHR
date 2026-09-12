@@ -1,0 +1,86 @@
+{
+  "name": "AttendanceRecord",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "employee_id": {
+      "type": "string"
+    },
+    "work_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "clock_in": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "clock_out": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "worked_minutes": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "clocked_in",
+        "completed",
+        "corrected"
+      ],
+      "default": "clocked_in"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "web",
+        "mobile",
+        "manual",
+        "biometric"
+      ],
+      "default": "web"
+    },
+    "note": {
+      "type": "string"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "corrected_by": {
+      "type": "string"
+    },
+    "corrected_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "employee_id",
+    "work_date",
+    "clock_in",
+    "status",
+    "source",
+    "idempotency_key"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}

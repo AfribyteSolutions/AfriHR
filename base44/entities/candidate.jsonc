@@ -1,0 +1,84 @@
+{
+  "name": "Candidate",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "job_opening_id": {
+      "type": "string"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "position": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "applied",
+        "screening",
+        "interview",
+        "assessment",
+        "offer",
+        "hired",
+        "rejected",
+        "withdrawn"
+      ],
+      "default": "applied"
+    },
+    "resume_file_uri": {
+      "type": "string"
+    },
+    "photo_file_uri": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "assigned_to": {
+      "type": "string"
+    },
+    "hired_employee_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "full_name",
+    "email",
+    "stage"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}

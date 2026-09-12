@@ -1,0 +1,129 @@
+{
+  "name": "Employee",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "employee_number": {
+      "type": "string"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "date_of_birth": {
+      "type": "string",
+      "format": "date"
+    },
+    "gender": {
+      "type": "string"
+    },
+    "nationality": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "emergency_contact_name": {
+      "type": "string"
+    },
+    "emergency_contact_phone": {
+      "type": "string"
+    },
+    "emergency_contact_relationship": {
+      "type": "string"
+    },
+    "employment_type": {
+      "type": "string",
+      "enum": [
+        "permanent",
+        "fixed_term",
+        "part_time",
+        "contractor",
+        "intern",
+        "casual"
+      ]
+    },
+    "department": {
+      "type": "string"
+    },
+    "job_title": {
+      "type": "string"
+    },
+    "manager_id": {
+      "type": "string"
+    },
+    "hire_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "contract_file_uri": {
+      "type": "string"
+    },
+    "lifecycle_stage": {
+      "type": "string",
+      "enum": [
+        "preboarding",
+        "active",
+        "leave",
+        "offboarding",
+        "offboarded"
+      ],
+      "default": "preboarding"
+    },
+    "employment_status": {
+      "type": "string",
+      "enum": [
+        "invited",
+        "active",
+        "suspended",
+        "terminated",
+        "resigned"
+      ],
+      "default": "invited"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "full_name",
+    "email",
+    "lifecycle_stage"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}

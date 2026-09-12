@@ -1,150 +1,68 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import MetaData from "@/hooks/useMetaData";
-import { useAuth } from "@/context/AuthContext";
-import { base44 } from "@/lib/base44";
-
-import type { EmployeeRecord, EmploymentStatus } from "@/types/base44-entities";
-import { LoadingState, EmptyState, ErrorState, StatusBadge, PageHeader, Card } from "@/components/hr/SharedUI";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, Plus, Search, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useUserRole } from "@/hooks/useUserRole";
+import { base44 } from "@/lib/base44";
+import { useAuthUserContext } from "@/context/UserAuthContext";
+import NativeHrShell from "@/components/hrm/NativeHrShell";
 
-const EmployeeDirectoryPage: React.FC = () => {
-  const { user, tenantId } = useAuth();
-  const { canAccessAdminFeatures } = useUserRole();
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedEmp, setSelectedEmp] = useState<EmployeeRecord | null>(null);
-  const [showDetail, setShowDetail] = useState(false);
+const unwrap = (r: any) => r?.data?.success !== undefined ? r.data : r;
+export default function EmployeeDirectory() {
+  const { user, loading: authLoading } = useAuthUserContext();
+  const router = useRouter();
+  const [employees,setEmployees] = useState<any[]>([]);
+  const [loading,setLoading] = useState(true);
+  const [search,setSearch] = useState("");
+  const [showForm,setShowForm] = useState(false);
+  const [form,setForm] = useState({ full_name:"",email:"",phone:"",department:"",job_title:"",manager_id:"",hire_date:new Date().toISOString().slice(0,10) });
+  const [contract,setContract] = useState<File|null>(null);
+  const tenantId = user?.tenantId || "";
 
-  const tid = tenantId;
+  useEffect(() => { if (!authLoading && !user) router.replace("/auth/signin-basic?redirect=/hrm/employee"); }, [authLoading,user,router]);
+  const invoke = useCallback(async (payload:any) => {
+    const result=unwrap(await base44.functions.invoke("employee-ops",{tenant_id:tenantId,...payload}));
+    if(!result?.success) throw new Error(result?.error||"Operation failed");
+    return result;
+  },[tenantId]);
+  const load=useCallback(async()=>{ if(!tenantId){setLoading(false);return;} setLoading(true); try{setEmployees((await invoke({operation:"list_employees"})).data||[]);}catch(e:any){toast.error(e.message);}finally{setLoading(false);}},[tenantId,invoke]);
+  useEffect(()=>{void load();},[load]);
+  const filtered=useMemo(()=>employees.filter(e=>`${e.full_name} ${e.email} ${e.department} ${e.job_title}`.toLowerCase().includes(search.toLowerCase())),[employees,search]);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await base44.entities.Employee.filter({ tenant_id: tid }, "-created_date");
-      setEmployees(data as EmployeeRecord[]);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load employees");
-    } finally {
-      setLoading(false);
-    }
-  }, [tid]);
+  const submit=async(e:React.FormEvent)=>{e.preventDefault();try{
+    let contract_file_uri="";
+    if(contract){ if(contract.size>10*1024*1024) throw new Error("Contract must be smaller than 10 MB"); contract_file_uri=(await base44.integrations.Core.UploadPrivateFile({file:contract})).file_uri; }
+    const result=await invoke({operation:"create_employee",...form,contract_file_uri});
+    toast.success(result.duplicate?"Employee already exists.":"Employee and onboarding checklist created.");
+    setShowForm(false); await load();
+  }catch(err:any){toast.error(err.message||"Could not create employee.");}};
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  const filtered = employees.filter(e => {
-    const matchesSearch = !search ||
-      e.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      e.email?.toLowerCase().includes(search.toLowerCase()) ||
-      e.job_title?.toLowerCase().includes(search.toLowerCase()) ||
-      e.department?.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || e.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  return (
-    <MetaData pageTitle="Employees">
-      <Wrapper>
-        <div className="p-4">
-          <PageHeader title="Employee Directory" subtitle="View and manage all employees" />
-
-          <div className="flex flex-wrap gap-3 mb-4">
-            <input
-              type="text"
-              placeholder="Search by name, email, title..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="form-control max-w-sm"
-            />
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="form-control max-w-xs">
-              <option value="all">All Statuses</option>
-              <option value="preboarding">Pre-boarding</option>
-              <option value="active">Active</option>
-              <option value="on_leave">On Leave</option>
-              <option value="suspended">Suspended</option>
-              <option value="offboarding">Offboarding</option>
-              <option value="terminated">Terminated</option>
-            </select>
+  if(authLoading||!user) return <div className="min-h-screen grid place-items-center">Loading AfriHR…</div>;
+  return <NativeHrShell title="Employee Directory" subtitle="Base44-native employee records"
+    action={<button onClick={()=>setShowForm(true)} className="flex gap-2 items-center px-4 py-2 rounded-xl bg-blue-600 text-white font-bold"><Plus size={16}/> Add employee</button>}>
+    <main className="p-5 md:p-8">
+      <label className="max-w-lg flex items-center gap-3 bg-white dark:bg-slate-900 border rounded-xl px-4 py-3"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search employees" className="w-full bg-transparent outline-none"/></label>
+      {loading?<p className="py-16 text-center text-slate-500">Loading employees…</p>:<div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-6">
+        {filtered.map(emp=><article key={emp.id} className="p-5 bg-white dark:bg-slate-900 border rounded-2xl">
+          <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 grid place-items-center font-black">{String(emp.full_name||"?").split(" ").map((n:string)=>n[0]).slice(0,2).join("")}</div>
+          <h2 className="mt-4 font-black">{emp.full_name}</h2><p className="text-sm text-blue-600">{emp.job_title||"No job title"}</p>
+          <p className="text-xs text-slate-500 mt-2">{emp.department||"Unassigned"} · {emp.employee_number||"Pending number"}</p>
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs capitalize">{emp.lifecycle_stage}</span>
+            <Link href={`/hrm/employee-profile/${emp.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700">View profile <ArrowRight size={14}/></Link>
           </div>
-
-          {loading && <LoadingState />}
-          {error && <ErrorState message={error} onRetry={fetchData} />}
-          {!loading && !error && filtered.length === 0 && (
-            <EmptyState title="No employees found" message="Employees will appear here once candidates are hired." />
-          )}
-          {!loading && !error && filtered.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map(emp => (
-                <Card key={emp.id} className="p-5 hover:shadow-md transition cursor-pointer" >
-                  <div onClick={() => { setSelectedEmp(emp); setShowDetail(true); }}>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg">
-                        {emp.full_name?.charAt(0).toUpperCase() || "?"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-800 truncate">{emp.full_name}</h3>
-                        <p className="text-sm text-gray-500 truncate">{emp.job_title || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p className="truncate"><i className="fa-regular fa-envelope text-gray-400 w-4"></i> {emp.email}</p>
-                      <p><i className="fa-regular fa-building text-gray-400 w-4"></i> {emp.department || "—"}</p>
-                      <p><i className="fa-regular fa-calendar text-gray-400 w-4"></i> {emp.start_date ? new Date(emp.start_date).toLocaleDateString() : "—"}</p>
-                    </div>
-                    <div className="mt-3"><StatusBadge status={emp.status} /></div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Employee Detail Modal */}
-        {showDetail && selectedEmp && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b">
-                <h3 className="text-lg font-semibold">{selectedEmp.full_name}</h3>
-                <button onClick={() => setShowDetail(false)} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark text-xl"></i></button>
-              </div>
-              <div className="p-5 space-y-3">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-2xl">
-                    {selectedEmp.full_name?.charAt(0).toUpperCase() || "?"}
-                  </div>
-                  <div>
-                    <StatusBadge status={selectedEmp.status} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><strong className="text-gray-600">Email:</strong><br />{selectedEmp.email}</div>
-                  <div><strong className="text-gray-600">Phone:</strong><br />{selectedEmp.phone || "—"}</div>
-                  <div><strong className="text-gray-600">Department:</strong><br />{selectedEmp.department || "—"}</div>
-                  <div><strong className="text-gray-600">Job Title:</strong><br />{selectedEmp.job_title || "—"}</div>
-                  <div><strong className="text-gray-600">Start Date:</strong><br />{selectedEmp.start_date ? new Date(selectedEmp.start_date).toLocaleDateString() : "—"}</div>
-                  <div><strong className="text-gray-600">Manager ID:</strong><br />{selectedEmp.manager_id || "—"}</div>
-                  {selectedEmp.address && <div className="col-span-2"><strong className="text-gray-600">Address:</strong><br />{selectedEmp.address}</div>}
-                  {selectedEmp.gender && <div><strong className="text-gray-600">Gender:</strong><br />{selectedEmp.gender}</div>}
-                  {selectedEmp.birthday && <div><strong className="text-gray-600">Birthday:</strong><br />{selectedEmp.birthday}</div>}
-                </div>
-                {canAccessAdminFeatures && (selectedEmp.status === "active" || selectedEmp.status === "on_leave" || selectedEmp.status === "suspended") && (
-                  <div className="pt-3 border-t">
-                    <a href="/hrm/offboarding" className="btn btn-light btn-sm">Start Offboarding</a>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </Wrapper>
-    </MetaData>
-  );
-};
-
-export default EmployeeDirectoryPage;
+        </article>)}
+        {!filtered.length&&<div className="col-span-full py-16 text-center border-2 border-dashed rounded-2xl text-slate-400">No employees found.</div>}
+      </div>}
+    </main>
+    {showForm&&<div className="fixed inset-0 z-40 grid place-items-center bg-slate-950/60 p-4"><form onSubmit={submit} className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl p-6 max-h-[90vh] overflow-auto">
+      <div className="flex justify-between"><h2 className="text-xl font-black">Add Employee</h2><button type="button" onClick={()=>setShowForm(false)}><X/></button></div>
+      <div className="grid sm:grid-cols-2 gap-4 mt-6">
+        {Object.entries({full_name:"Full name",email:"Email",phone:"Phone",department:"Department",job_title:"Job title",manager_id:"Manager employee ID",hire_date:"Hire date"}).map(([key,label])=><label key={key} className="text-sm font-bold">{label}<input required={["full_name","email","job_title","hire_date"].includes(key)} type={key==="email"?"email":key==="hire_date"?"date":"text"} value={(form as any)[key]} onChange={e=>setForm({...form,[key]:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent"/></label>)}
+      </div>
+      <label className="block mt-4 p-4 border-2 border-dashed rounded-xl cursor-pointer"><input type="file" className="sr-only" accept=".pdf,.doc,.docx" onChange={e=>setContract(e.target.files?.[0]||null)}/>{contract?.name||"Upload private employment contract (optional)"}</label>
+      <button className="w-full mt-6 py-3 bg-blue-600 text-white rounded-xl font-bold">Create employee</button>
+    </form></div>}
+  </NativeHrShell>;
+}

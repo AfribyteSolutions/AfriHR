@@ -7,9 +7,10 @@ import {
 import Link from "next/link";
 import { IPaylist } from "@/interface/table.interface";
 import EditSalaryModal from "./EditSalaryModal";
+import { db, auth } from "@/lib/firebase";
+import { collection, doc, getDocs, query, where, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
-import { useAuthUserContext } from "@/context/UserAuthContext";
-import { base44 } from "@/lib/base44";
+import { useAuthState } from "react-firebase-hooks/auth";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 const MONTHS = [
@@ -29,7 +30,7 @@ interface PayrollTableProps {
 }
 
 const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
-  const { user, loading: authLoading } = useAuthUserContext();
+  const [user, authLoading] = useAuthState(auth);
   const [payrollData, setPayrollData] = useState<IPaylist[]>([]);
   const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -44,12 +45,15 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
   const fetchPayroll = useCallback(async (cId: string) => {
     try {
       setLoading(true);
-      const results = await (base44.entities as any).Payroll.filter({ tenant_id: cId }, "-created_date");
-      const data = (results || []).map((r: any) => ({
-        id: r.id,
-        ...r,
-        salaryMonth: r.salary_month || (MONTHS.indexOf(r.month) + 1),
-        salaryYear: Number(r.salary_year || r.year)
+      const response = await fetch(`/api/payroll?companyId=${encodeURIComponent(cId)}`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || "Failed to load payroll");
+      const snapshot = { docs: (result.data || []).map((item: any) => ({ id: item.id, data: () => item })) };
+      const data = snapshot.docs.map((d: { id: string; data: () => any }) => ({
+        id: d.id,
+        ...d.data(),
+        salaryMonth: d.data().salaryMonth || (MONTHS.indexOf(d.data().month) + 1),
+        salaryYear: Number(d.data().salaryYear || d.data().year)
       })) as IPaylist[];
       setPayrollData(data);
     } catch (err) {
@@ -71,6 +75,7 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
       toast.error("Confirmed payments cannot be reversed.");
       return;
     }
+    const nextStatus = row.status === "Approved" ? "Paid" : "Approved";
     const confirmPay = window.confirm(
       `Confirm payment for ${row.employeeName}?\nOnce marked as Paid, a payslip will be generated and emailed. This action cannot be undone.`
     );
@@ -78,7 +83,7 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
 
     const original = [...payrollData];
     setPayrollData(prev =>
-      prev.map(item => item.id === row.id ? { ...item, status: "Paid" } : item)
+      prev.map(item => item.id === row.id ? { ...item, status: nextStatus } : item)
     );
 
     try {
@@ -86,7 +91,8 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status: "Paid",
+          status: nextStatus,
+          companyId,
           emailStatus: "Pending",
           paidAt: new Date().toISOString()
         })
@@ -225,9 +231,14 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
   }, [payrollData, statusFilter, searchQuery]);
 
   useEffect(() => {
-    if (user?.companyId && !authLoading) {
-      setCompanyId(user.companyId);
-      fetchPayroll(user.companyId);
+    if (user && !authLoading) {
+      getDoc(doc(db, "users", user.uid)).then(snap => {
+        if (snap.exists()) {
+          const cId = snap.data().companyId;
+          setCompanyId(cId);
+          fetchPayroll(cId);
+        }
+      });
     }
   }, [user, authLoading, fetchPayroll]);
 

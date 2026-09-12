@@ -1,219 +1,130 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from "next/server";
 import { admin, db } from "@/lib/firebase-admin";
+import {
+  assertRecordTenant,
+  canManageHr,
+  isAuthError,
+  requireTenant,
+  tenantIdFor,
+  writeAudit,
+} from "@/lib/auth-helper";
+
+const DECISIONS = ["approved", "rejected", "completed"];
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const companyId = searchParams.get("companyId");
-    const id = searchParams.get("id");
+    const actor = await requireTenant(request);
+    if (isAuthError(actor)) return actor;
+    const companyId = tenantIdFor(actor, request.nextUrl.searchParams.get("companyId"));
+    if (!companyId) return NextResponse.json({ success: false, error: "Invalid tenant scope" }, { status: 403 });
+    const id = request.nextUrl.searchParams.get("id");
 
-    if (!companyId) {
-      return NextResponse.json(
-        { success: false, error: "Company ID is required" },
-        { status: 400 }
-      );
-    }
-
-    // Get single resignation by ID
     if (id) {
-      const resignationDoc = await db
-        .collection("resignations")
-        .doc(id)
-        .get();
-
-      if (!resignationDoc.exists) {
-        return NextResponse.json(
-          { success: false, error: "Resignation not found" },
-          { status: 404 }
-        );
-      }
-
-      const resignation = { id: resignationDoc.id, ...resignationDoc.data() };
-      return NextResponse.json({ success: true, resignation });
+      const doc = await assertRecordTenant("resignations", id, companyId);
+      if (!doc) return NextResponse.json({ success: false, error: "Resignation not found" }, { status: 404 });
+      const data = doc.data() || {};
+      if (actor.role === "employee" && data.employeeId !== actor.uid) return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ success: true, resignation: { id: doc.id, ...data } });
     }
 
-    // Get all resignations for company
-    const resignationsSnapshot = await db
-      .collection("resignations")
-      .where("companyId", "==", companyId)
-      .orderBy("createdAt", "desc")
-      .get();
-
-    const resignations = resignationsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    return NextResponse.json({
-      success: true,
-      resignations,
-      total: resignations.length,
-    });
-  } catch (error: any) {
-    console.error("Error fetching resignations:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch resignations" },
-      { status: 500 }
-    );
+    let query: FirebaseFirestore.Query = db.collection("resignations").where("companyId", "==", companyId);
+    if (actor.role === "employee") query = query.where("employeeId", "==", actor.uid);
+    const snapshot = await query.get();
+    return NextResponse.json({ success: true, resignations: snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })), total: snapshot.size });
+  } catch (error) {
+    console.error("Resignation GET failed:", error);
+    return NextResponse.json({ success: false, error: "Failed to load resignations" }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const actor = await requireTenant(request);
+    if (isAuthError(actor)) return actor;
     const body = await request.json();
-    const {
-      employeeId,
-      employeeName,
-      resignationDate,
-      lastWorkingDay,
-      reason,
-      description,
-      companyId,
-      submittedBy,
-    } = body;
-
-    // Validate required fields
-    if (!employeeId || !employeeName || !resignationDate || !lastWorkingDay || !companyId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Missing required fields: employeeId, employeeName, resignationDate, lastWorkingDay, companyId",
-        },
-        { status: 400 }
-      );
+    const companyId = tenantIdFor(actor, body.companyId);
+    if (!companyId) return NextResponse.json({ success: false, error: "Invalid tenant scope" }, { status: 403 });
+    const employeeId = actor.role === "employee" ? actor.uid : body.employeeId;
+    if (!employeeId || !body.resignationDate || !body.lastWorkingDay) {
+      return NextResponse.json({ success: false, error: "Employee and resignation dates are required" }, { status: 400 });
     }
+    const employee = await assertRecordTenant("employees", employeeId, companyId);
+    if (!employee) return NextResponse.json({ success: false, error: "Employee not found" }, { status: 404 });
 
-    const resignationData = {
-      employeeId,
-      employeeName,
-      resignationDate,
-      lastWorkingDay,
-      reason: reason || "",
-      description: description || "",
+    const active = await db.collection("resignations")
+      .where("companyId", "==", companyId).where("employeeId", "==", employeeId).where("status", "==", "pending").limit(1).get();
+    if (!active.empty) return NextResponse.json({ success: false, error: "A pending resignation already exists" }, { status: 409 });
+
+    const ref = await db.collection("resignations").add({
       companyId,
-      submittedBy: submittedBy || employeeId,
-      status: "pending", // pending, approved, rejected, completed
+      employeeId,
+      employeeName: employee.data()?.fullName || "",
+      resignationDate: body.resignationDate,
+      lastWorkingDay: body.lastWorkingDay,
+      reason: String(body.reason || "").slice(0, 1000),
+      description: String(body.description || "").slice(0, 5000),
+      submittedBy: actor.uid,
+      status: "pending",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-
-    const docRef = await db.collection("resignations").add(resignationData);
-
-    // Update employee status
-    if (employeeId) {
-      try {
-        await db
-          .collection("employees")
-          .doc(employeeId)
-          .update({
-            status: "resignation_pending",
-            resignationDate,
-            lastWorkingDay,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-      } catch (error) {
-        console.error("Failed to update employee status:", error);
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Resignation submitted successfully",
-      resignationId: docRef.id,
     });
-  } catch (error: any) {
-    console.error("Error creating resignation:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to submit resignation" },
-      { status: 500 }
-    );
+    await employee.ref.update({ lifecycleStage: "resignation_pending", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    await writeAudit({ companyId, actor, action: "resignation.submitted", resourceType: "resignation", resourceId: ref.id });
+    return NextResponse.json({ success: true, resignationId: ref.id }, { status: 201 });
+  } catch (error) {
+    console.error("Resignation POST failed:", error);
+    return NextResponse.json({ success: false, error: "Failed to submit resignation" }, { status: 500 });
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Resignation ID is required" },
-        { status: 400 }
-      );
-    }
-
+    const actor = await requireTenant(request, ["super-admin", "admin", "manager"]);
+    if (isAuthError(actor)) return actor;
+    if (!canManageHr(actor)) return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    const id = request.nextUrl.searchParams.get("id");
     const body = await request.json();
-    const updateData: any = {};
-
-    // Only update fields that are provided
-    if (body.resignationDate) updateData.resignationDate = body.resignationDate;
-    if (body.lastWorkingDay) updateData.lastWorkingDay = body.lastWorkingDay;
-    if (body.reason !== undefined) updateData.reason = body.reason;
-    if (body.description !== undefined) updateData.description = body.description;
-    if (body.status) updateData.status = body.status;
-
-    updateData.updatedAt = admin.firestore.FieldValue.serverTimestamp();
-
-    await db.collection("resignations").doc(id).update(updateData);
-
-    // If status is approved/rejected, update employee status
-    if (body.status) {
-      const resignationDoc = await db.collection("resignations").doc(id).get();
-      const resignationData = resignationDoc.data();
-
-      if (resignationData?.employeeId) {
-        let employeeStatus = "active";
-        if (body.status === "approved") employeeStatus = "resignation_approved";
-        else if (body.status === "rejected") employeeStatus = "active";
-        else if (body.status === "completed") employeeStatus = "inactive";
-
-        await db
-          .collection("employees")
-          .doc(resignationData.employeeId)
-          .update({
-            status: employeeStatus,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-      }
+    const companyId = tenantIdFor(actor, body.companyId);
+    if (!id || !companyId || !DECISIONS.includes(body.status)) {
+      return NextResponse.json({ success: false, error: "Resignation ID, company and valid status are required" }, { status: 400 });
+    }
+    const resignation = await assertRecordTenant("resignations", id, companyId);
+    if (!resignation) return NextResponse.json({ success: false, error: "Resignation not found" }, { status: 404 });
+    const current = resignation.data() || {};
+    if (current.status !== "pending" && !(current.status === "approved" && body.status === "completed")) {
+      return NextResponse.json({ success: false, error: "Invalid resignation transition" }, { status: 409 });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "Resignation updated successfully",
-    });
-  } catch (error: any) {
-    console.error("Error updating resignation:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update resignation" },
-      { status: 500 }
-    );
+    const employee = await assertRecordTenant("employees", current.employeeId, companyId);
+    if (!employee) return NextResponse.json({ success: false, error: "Employee not found" }, { status: 404 });
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const batch = db.batch();
+    batch.update(resignation.ref, { status: body.status, decidedBy: actor.uid, decisionReason: String(body.decisionReason || "").slice(0, 2000), updatedAt: now });
+    if (body.status === "approved") {
+      batch.update(employee.ref, { lifecycleStage: "offboarding", employmentStatus: "notice_period", lastWorkingDay: current.lastWorkingDay, updatedAt: now });
+      batch.set(db.collection("offboardingCases").doc(`resignation_${id}`), {
+        companyId, employeeId: current.employeeId, sourceType: "resignation", sourceId: id,
+        status: "open", lastWorkingDay: current.lastWorkingDay,
+        checklist: { handover: "pending", assets: "pending", finance: "pending", access: "pending", exitInterview: "pending" },
+        createdBy: actor.uid, createdAt: now, updatedAt: now,
+      }, { merge: true });
+    } else if (body.status === "rejected") {
+      batch.update(employee.ref, { lifecycleStage: "active", employmentStatus: "active", updatedAt: now });
+    } else {
+      batch.update(employee.ref, { lifecycleStage: "offboarded", employmentStatus: "inactive", status: "inactive", accessStatus: "revocation_pending", updatedAt: now });
+      batch.set(db.collection("users").doc(current.employeeId), { status: "inactive", accessStatus: "revocation_pending", updatedAt: now }, { merge: true });
+      batch.set(db.collection("offboardingCases").doc(`resignation_${id}`), { status: "completed", completedBy: actor.uid, completedAt: now, updatedAt: now }, { merge: true });
+    }
+    await batch.commit();
+    await writeAudit({ companyId, actor, action: `resignation.${body.status}`, resourceType: "resignation", resourceId: id });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Resignation PUT failed:", error);
+    return NextResponse.json({ success: false, error: "Failed to update resignation" }, { status: 500 });
   }
 }
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Resignation ID is required" },
-        { status: 400 }
-      );
-    }
-
-    await db.collection("resignations").doc(id).delete();
-
-    return NextResponse.json({
-      success: true,
-      message: "Resignation deleted successfully",
-    });
-  } catch (error: any) {
-    console.error("Error deleting resignation:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete resignation" },
-      { status: 500 }
-    );
-  }
+export async function DELETE() {
+  return NextResponse.json({ success: false, error: "Resignation records are retained for audit" }, { status: 405 });
 }

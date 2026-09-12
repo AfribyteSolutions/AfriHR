@@ -1,0 +1,38 @@
+"use client";
+import {useCallback,useEffect,useState} from "react";
+import {BriefcaseBusiness,CalendarDays,Clock3,Download,GraduationCap,RefreshCw,Users} from "lucide-react";
+import {useRouter} from "next/navigation";
+import {toast} from "sonner";
+import {base44} from "@/lib/base44";
+import {useAuthUserContext} from "@/context/UserAuthContext";
+import NativeHrShell from "@/components/hrm/NativeHrShell";
+const unwrap=(r:any)=>r?.data?.success!==undefined?r.data:r;
+const num=(v:any)=>new Intl.NumberFormat().format(Number(v||0));
+export default function NativeHrAnalyticsPage(){
+ const {user,loading:auth}=useAuthUserContext(),router=useRouter(),[loading,setLoading]=useState(true),[data,setData]=useState<any>(null);
+ const [from,setFrom]=useState(new Date(Date.now()-90*86400000).toISOString().slice(0,10)),[to,setTo]=useState(new Date().toISOString().slice(0,10));
+ const tenantId=user?.tenantId||"";
+ useEffect(()=>{if(!auth&&!user)router.replace("/auth/signin-basic?redirect=/hrm/reports")},[auth,user,router]);
+ const load=useCallback(async()=>{if(!tenantId)return;setLoading(true);try{const r=unwrap(await base44.functions.invoke("hr-analytics",{tenant_id:tenantId,from,to}));if(!r?.success)throw new Error(r?.error||"Report failed");setData(r.data)}catch(e:any){toast.error(e.message)}finally{setLoading(false)}},[tenantId,from,to]);
+ useEffect(()=>{if(tenantId)void load()},[tenantId]);
+ const exportCsv=()=>{if(!data)return;const rows:any[]=[["Section","Metric","Value"]];Object.entries(data).forEach(([section,value]:any)=>{if(["period","trend"].includes(section))return;Object.entries(value||{}).forEach(([metric,v]:any)=>{if(v&&typeof v==="object")Object.entries(v).forEach(([k,n])=>rows.push([section,metric+" — "+k,JSON.stringify(n)]));else rows.push([section,metric,String(v)])})});const csv=rows.map(r=>r.map((x:any)=>'"'+String(x).replaceAll('"','""')+'"').join(",")).join("\n"),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="afrihr-report-"+from+"-"+to+".csv";a.click();URL.revokeObjectURL(a.href)};
+ if(auth||!user)return <div className="min-h-screen grid place-items-center">Loading AfriHR…</div>;
+ const w=data?.workforce||{},r=data?.recruitment||{},l=data?.leave||{},t=data?.time||{},learn=data?.learning||{};
+ const cards=[[Users,"Active workforce",w.active,"of "+num(w.total)+" employees","bg-blue-50 text-blue-700"],[BriefcaseBusiness,"Applications",r.period_applications,"in selected period","bg-violet-50 text-violet-700"],[CalendarDays,"Approved leave",l.days,"days","bg-amber-50 text-amber-700"],[Clock3,"Worked time",t.worked_hours,"hours recorded","bg-emerald-50 text-emerald-700"],[GraduationCap,"Training completions",learn.completed_enrollments,(learn.completion_rate||0)+"% completion rate","bg-cyan-50 text-cyan-700"]];
+ return <NativeHrShell title="HR Analytics" subtitle="Operational reporting from live Base44 records" action={<button onClick={exportCsv} disabled={!data} className="flex gap-2 items-center px-4 py-2 border rounded-xl font-bold"><Download size={16}/>Export CSV</button>}>
+  <main className="p-5 md:p-8 max-w-7xl mx-auto">
+   <section className="bg-white dark:bg-slate-900 border rounded-2xl p-4 flex flex-wrap items-end gap-4"><Field label="From" value={from} set={setFrom}/><Field label="To" value={to} set={setTo}/><button onClick={()=>void load()} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-bold"><RefreshCw size={16}/>Refresh</button>{data&&<p className="text-xs text-slate-500 ml-auto">Generated {new Date(data.period.generated_at).toLocaleString()}</p>}</section>
+   {loading?<p className="py-20 text-center text-slate-500">Calculating workforce metrics…</p>:!data?<p className="py-20 text-center">No report available.</p>:<>
+    <section className="grid sm:grid-cols-2 xl:grid-cols-5 gap-4 mt-6">{cards.map(([Icon,label,value,note,tone]:any)=><article key={label} className="bg-white dark:bg-slate-900 border rounded-2xl p-5"><span className={"inline-grid p-2 rounded-xl "+tone}><Icon size={18}/></span><p className="mt-4 text-3xl font-black">{num(value)}</p><h2 className="font-bold text-sm">{label}</h2><p className="text-xs text-slate-500 mt-1">{note}</p></article>)}</section>
+    <section className="grid lg:grid-cols-2 gap-6 mt-6"><Breakdown title="Active employees by department" data={w.by_department}/><Breakdown title="Candidates by stage" data={r.by_stage}/><Breakdown title="Leave by type" data={l.by_type}/><Breakdown title="Employee actions" data={data.relations.by_type}/></section>
+    <section className="grid md:grid-cols-3 gap-4 mt-6"><Metric title="Turnover rate" value={(w.turnover_rate||0)+"%"} note={num(w.completed_exits)+" completed exits"}/><Metric title="Approved overtime" value={num(t.approved_overtime_hours)+"h"} note={num(t.pending_overtime)+" pending requests"}/><Metric title="Open jobs" value={num(r.open_jobs)} note={num(r.hired)+" candidates hired"}/></section>
+    {data.payroll.visible&&<section className="mt-6 bg-white dark:bg-slate-900 border rounded-2xl p-5"><h2 className="font-black">Payroll summary</h2><div className="grid md:grid-cols-3 gap-4 mt-4">{Object.entries(data.payroll.by_currency).map(([currency,v]:any)=><div key={currency} className="border rounded-xl p-4"><p className="font-black">{currency}</p><p className="text-sm mt-2">Gross: {money(v.gross_minor,currency)}</p><p className="text-sm">Net: {money(v.net_minor,currency)}</p><p className="text-xs text-slate-500">{v.runs} payroll runs</p></div>)}{!Object.keys(data.payroll.by_currency).length&&<p className="text-sm text-slate-500">No payroll runs in this period.</p>}</div></section>}
+    <section className="mt-6 bg-white dark:bg-slate-900 border rounded-2xl p-5 overflow-x-auto"><h2 className="font-black mb-4">Workforce trend</h2><table className="w-full text-sm"><thead><tr className="text-left text-slate-500"><th className="py-2">Month</th><th>Hires</th><th>Exits</th><th>Applications</th><th>Net workforce</th></tr></thead><tbody>{data.trend.map((x:any)=><tr key={x.month} className="border-t"><td className="py-3 font-bold">{x.month}</td><td>{x.hires}</td><td>{x.exits}</td><td>{x.applications}</td><td className={x.hires-x.exits>=0?"text-emerald-600":"text-red-600"}>{x.hires-x.exits>=0?"+":""}{x.hires-x.exits}</td></tr>)}</tbody></table></section>
+   </>}
+  </main>
+ </NativeHrShell>
+}
+function Field({label,value,set}:any){return <label className="text-sm font-bold">{label}<input type="date" value={value} onChange={e=>set(e.target.value)} className="block mt-1 p-3 border rounded-xl bg-transparent"/></label>}
+function Metric({title,value,note}:any){return <article className="bg-white dark:bg-slate-900 border rounded-2xl p-5"><p className="text-sm text-slate-500">{title}</p><p className="text-2xl font-black mt-1">{value}</p><p className="text-xs text-slate-500 mt-2">{note}</p></article>}
+function Breakdown({title,data}:any){const entries=Object.entries(data||{}).sort((a:any,b:any)=>b[1]-a[1]),max=Math.max(1,...entries.map((x:any)=>x[1]));return <article className="bg-white dark:bg-slate-900 border rounded-2xl p-5"><h2 className="font-black">{title}</h2><div className="space-y-3 mt-4">{entries.map(([k,v]:any)=><div key={k}><div className="flex justify-between text-xs"><span className="capitalize">{k.replaceAll("_"," ")}</span><b>{v}</b></div><div className="h-2 bg-slate-100 rounded-full mt-1"><div className="h-2 bg-blue-600 rounded-full" style={{width:Math.max(4,v/max*100)+"%"}}/></div></div>)}{!entries.length&&<p className="text-sm text-slate-500">No data in this period.</p>}</div></article>}
+function money(n:number,c:string){return new Intl.NumberFormat(undefined,{style:"currency",currency:c}).format((n||0)/100)}

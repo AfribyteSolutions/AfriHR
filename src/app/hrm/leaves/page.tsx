@@ -1,154 +1,171 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import MetaData from "@/hooks/useMetaData";
-import { useAuth } from "@/context/AuthContext";
-import { base44 } from "@/lib/base44";
 
-import type { LeaveRequestRecord, EmployeeRecord, LeaveStatus, LeaveType } from "@/types/base44-entities";
-import { LoadingState, EmptyState, ErrorState, StatusBadge, PageHeader, Card, ConfirmDialog } from "@/components/hr/SharedUI";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { CalendarDays, Plus, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useUserRole } from "@/hooks/useUserRole";
+import { base44 } from "@/lib/base44";
+import { useAuthUserContext } from "@/context/UserAuthContext";
+import NativeHrShell from "@/components/hrm/NativeHrShell";
 
-const AdminLeavesPage: React.FC = () => {
-  const { user, tenantId } = useAuth();
-  const { canAccessManagerFeatures } = useUserRole();
-  const [requests, setRequests] = useState<LeaveRequestRecord[]>([]);
+const unwrap = (r: any) => r?.data?.success !== undefined ? r.data : r;
+const HR_ROLES = ["platform_admin", "tenant_admin", "hr_manager"];
+const REVIEW_ROLES = [...HR_ROLES, "manager"];
+
+export default function LeavePage() {
+  const { user, loading: authLoading } = useAuthUserContext();
+  const router = useRouter();
+  const [records, setRecords] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<LeaveStatus | "all">("all");
-  const [reviewing, setReviewing] = useState<{ rec: LeaveRequestRecord; action: "approved" | "rejected" } | null>(null);
-  const [reviewNotes, setReviewNotes] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [form, setForm] = useState({
+    employee_id: "", leave_type: "annual", start_date: "", end_date: "", reason: ""
+  });
+  const tenantId = user?.tenantId || "";
+  const canReview = !!user && REVIEW_ROLES.includes(user.appRole);
+  const canChooseEmployee = !!user && HR_ROLES.includes(user.appRole);
 
-  const tid = tenantId;
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/auth/signin-basic?redirect=/hrm/leaves");
+  }, [authLoading, user, router]);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const invoke = useCallback(async (payload: any) => {
     try {
-      const data = await base44.entities.LeaveRequest.filter({ tenant_id: tid }, "-created_date");
-      setRequests(data as LeaveRequestRecord[]);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load leave requests");
+      const result = unwrap(await base44.functions.invoke("leave-ops", { tenant_id: tenantId, ...payload }));
+      if (!result?.success) throw new Error(result?.error || "Leave operation failed");
+      return result;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.error || error?.message || "Leave operation failed");
+    }
+  }, [tenantId]);
+
+  const load = useCallback(async () => {
+    if (!tenantId) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const [leaveResult, employeeResultRaw] = await Promise.all([
+        invoke({ operation: "list" }),
+        canChooseEmployee
+          ? base44.functions.invoke("employee-ops", { operation: "list_employees", tenant_id: tenantId })
+          : Promise.resolve(null)
+      ]);
+      setRecords(leaveResult.data || []);
+      if (employeeResultRaw) {
+        const employeeResult = unwrap(employeeResultRaw);
+        setEmployees(employeeResult?.success ? employeeResult.data || [] : []);
+      }
+    } catch (error: any) {
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
-  }, [tid]);
+  }, [tenantId, invoke, canChooseEmployee]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { void load(); }, [load]);
 
-  const filtered = filter === "all" ? requests : requests.filter(r => r.status === filter);
+  const filtered = useMemo(
+    () => statusFilter === "all" ? records : records.filter(r => r.status === statusFilter),
+    [records, statusFilter]
+  );
 
-  const handleReview = async () => {
-    if (!reviewing) return;
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
     try {
-      await base44.entities.LeaveRequest.update(reviewing.rec.id, {
-        status: reviewing.action,
-        reviewed_by: user?.id || "",
-        reviewed_by_name: user?.full_name || "",
-        reviewed_date: new Date().toISOString(),
-        review_notes: reviewNotes,
-      });
-      // Audit log
-      await base44.entities.AuditLog.create({
-        tenant_id: tid,
-        user_id: user?.id || "",
-        user_name: user?.full_name || "",
-        action: `leave_${reviewing.action}`,
-        entity_type: "LeaveRequest",
-        entity_id: reviewing.rec.id,
-        details: `Leave request ${reviewing.action} for ${reviewing.rec.employee_name}`,
-      } as any);
-      toast.success(`Leave request ${reviewing.action}`);
-      setReviewing(null);
-      setReviewNotes("");
-      fetchData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to review request");
+      await invoke({ operation: "submit", ...form });
+      toast.success("Leave request submitted.");
+      setShowForm(false);
+      setForm({ employee_id: "", leave_type: "annual", start_date: "", end_date: "", reason: "" });
+      await load();
+    } catch (error: any) {
+      toast.error(error.message);
     }
   };
 
+  const decide = async (id: string, decision: "approved" | "rejected") => {
+    try {
+      await invoke({ operation: "decide", leave_request_id: id, decision });
+      toast.success(`Request ${decision}.`);
+      await load();
+    } catch (error: any) { toast.error(error.message); }
+  };
+
+  const cancel = async (id: string) => {
+    try {
+      await invoke({ operation: "cancel", leave_request_id: id });
+      toast.success("Request cancelled.");
+      await load();
+    } catch (error: any) { toast.error(error.message); }
+  };
+
+  if (authLoading || !user) return <div className="min-h-screen grid place-items-center">Loading AfriHR…</div>;
+
   return (
-    <MetaData pageTitle="Admin Leaves">
-      <Wrapper>
-        <div className="p-4">
-          <PageHeader title="Leave Approvals" subtitle="Review and manage employee leave requests" />
-
-          <div className="flex gap-2 mb-4">
-            {(["all", "pending", "approved", "rejected", "cancelled"] as const).map(s => (
-              <button
-                key={s}
-                onClick={() => setFilter(s)}
-                className={`btn btn-sm ${filter === s ? "btn-primary" : "btn-light"}`}
-              >
-                {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-                <span className="ml-1 text-xs">({s === "all" ? requests.length : requests.filter(r => r.status === s).length})</span>
-              </button>
-            ))}
-          </div>
-
-          {loading && <LoadingState />}
-          {error && <ErrorState message={error} onRetry={fetchData} />}
-          {!loading && !error && filtered.length === 0 && (
-            <EmptyState title="No leave requests" message="Leave requests will appear here for review." />
-          )}
-          {!loading && !error && filtered.length > 0 && (
-            <div className="grid gap-4">
-              {filtered.map(rec => (
-                <Card key={rec.id} className="p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold text-gray-800">{rec.employee_name}</h3>
-                      <p className="text-sm text-gray-500 capitalize">{rec.leave_type} leave · {rec.days} day(s)</p>
-                    </div>
-                    <StatusBadge status={rec.status} />
-                  </div>
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p><strong>Dates:</strong> {new Date(rec.start_date).toLocaleDateString()} - {new Date(rec.end_date).toLocaleDateString()}</p>
-                    {rec.reason && <p><strong>Reason:</strong> {rec.reason}</p>}
-                    {rec.reviewed_by_name && <p><strong>Reviewed by:</strong> {rec.reviewed_by_name}</p>}
-                    {rec.review_notes && <p><strong>Review notes:</strong> {rec.review_notes}</p>}
-                  </div>
-                  {canAccessManagerFeatures && rec.status === "pending" && (
-                    <div className="flex gap-2 mt-3">
-                      <button onClick={() => { setReviewing({ rec, action: "approved" }); setReviewNotes(""); }} className="btn btn-success btn-sm">
-                        <i className="fa-solid fa-check mr-1"></i> Approve
-                      </button>
-                      <button onClick={() => { setReviewing({ rec, action: "rejected" }); setReviewNotes(""); }} className="btn btn-danger btn-sm">
-                        <i className="fa-solid fa-xmark mr-1"></i> Reject
-                      </button>
-                    </div>
-                  )}
-                </Card>
-              ))}
-            </div>
-          )}
+    <NativeHrShell title="Leave Management" subtitle="Requests and approvals"
+      action={<button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-bold"><Plus size={16}/> Request leave</button>}>
+      <main className="p-5 md:p-8">
+        <div className="flex flex-wrap gap-2">
+          {["all","pending","approved","rejected","cancelled"].map(status => (
+            <button key={status} onClick={() => setStatusFilter(status)}
+              className={`px-3 py-2 rounded-xl text-xs font-bold capitalize ${statusFilter === status ? "bg-blue-600 text-white" : "bg-white dark:bg-slate-900 border"}`}>
+              {status}
+            </button>
+          ))}
         </div>
 
-        {reviewing && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-              <div className="flex items-center justify-between p-5 border-b">
-                <h3 className="text-lg font-semibold">{reviewing.action === "approved" ? "Approve" : "Reject"} Leave</h3>
-                <button onClick={() => setReviewing(null)} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark text-xl"></i></button>
-              </div>
-              <div className="p-5">
-                <p className="text-sm text-gray-600 mb-3">{reviewing.rec.employee_name} · {reviewing.rec.days} day(s) · {new Date(reviewing.rec.start_date).toLocaleDateString()} - {new Date(reviewing.rec.end_date).toLocaleDateString()}</p>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Review Notes</label>
-                <textarea rows={3} value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} className="form-control" placeholder="Add optional notes..." />
-                <div className="flex justify-end gap-3 mt-4">
-                  <button onClick={() => setReviewing(null)} className="btn btn-light">Cancel</button>
-                  <button onClick={handleReview} className={`btn ${reviewing.action === "approved" ? "btn-success" : "btn-danger"}`}>
-                    {reviewing.action === "approved" ? "Approve" : "Reject"}
-                  </button>
+        {loading ? <p className="py-16 text-center text-slate-500">Loading leave requests…</p> :
+          <div className="grid lg:grid-cols-2 gap-4 mt-6">
+            {filtered.map(record => (
+              <article key={record.id} className="bg-white dark:bg-slate-900 border rounded-2xl p-5">
+                <div className="flex justify-between gap-3">
+                  <div>
+                    <h2 className="font-black">{record.employee?.full_name || "Employee"}</h2>
+                    <p className="text-sm text-slate-500 capitalize">{record.leave_type} leave</p>
+                  </div>
+                  <span className={`h-fit px-2 py-1 rounded-lg text-xs font-bold capitalize ${
+                    record.status === "approved" ? "bg-emerald-50 text-emerald-700" :
+                    record.status === "rejected" ? "bg-red-50 text-red-700" :
+                    record.status === "pending" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"
+                  }`}>{record.status}</span>
                 </div>
-              </div>
-            </div>
+                <div className="flex items-center gap-2 mt-4 text-sm"><CalendarDays size={16}/>{record.start_date} → {record.end_date} · {record.days} day{record.days === 1 ? "" : "s"}</div>
+                {record.reason && <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{record.reason}</p>}
+                {record.status === "pending" && <div className="flex gap-2 mt-5">
+                  {canReview && <>
+                    <button onClick={() => void decide(record.id, "approved")} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold">Approve</button>
+                    <button onClick={() => void decide(record.id, "rejected")} className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold">Reject</button>
+                  </>}
+                  <button onClick={() => void cancel(record.id)} className="px-4 py-2 rounded-xl border text-sm font-bold">Cancel</button>
+                </div>}
+              </article>
+            ))}
+            {!filtered.length && <div className="lg:col-span-2 py-16 text-center border-2 border-dashed rounded-2xl text-slate-400">No leave requests found.</div>}
           </div>
-        )}
-      </Wrapper>
-    </MetaData>
-  );
-};
+        }
+      </main>
 
-export default AdminLeavesPage;
+      {showForm && <div className="fixed inset-0 z-40 grid place-items-center bg-slate-950/60 p-4">
+        <form onSubmit={submit} className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl p-6">
+          <div className="flex justify-between"><h2 className="text-xl font-black">Request Leave</h2><button type="button" onClick={() => setShowForm(false)}><X/></button></div>
+          <div className="grid sm:grid-cols-2 gap-4 mt-6">
+            {canChooseEmployee && <label className="sm:col-span-2 text-sm font-bold">Employee
+              <select required value={form.employee_id} onChange={e => setForm({...form,employee_id:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent">
+                <option value="">Select employee</option>{employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+              </select>
+            </label>}
+            <label className="sm:col-span-2 text-sm font-bold">Leave type
+              <select value={form.leave_type} onChange={e => setForm({...form,leave_type:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent">
+                {["annual","sick","maternity","paternity","bereavement","unpaid","other"].map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </label>
+            <label className="text-sm font-bold">Start date<input required type="date" value={form.start_date} onChange={e => setForm({...form,start_date:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent"/></label>
+            <label className="text-sm font-bold">End date<input required type="date" min={form.start_date} value={form.end_date} onChange={e => setForm({...form,end_date:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent"/></label>
+            <label className="sm:col-span-2 text-sm font-bold">Reason<textarea value={form.reason} onChange={e => setForm({...form,reason:e.target.value})} className="block w-full h-24 mt-1 p-3 border rounded-xl bg-transparent"/></label>
+          </div>
+          <button className="w-full mt-6 py-3 bg-blue-600 text-white rounded-xl font-bold">Submit request</button>
+        </form>
+      </div>}
+    </NativeHrShell>
+  );
+}

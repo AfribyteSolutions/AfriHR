@@ -1,128 +1,117 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from "next/server";
-import { admin, db, auth } from "@/lib/firebase-admin";
-
-function generateTempPassword(): string {
-  return Math.random().toString(36).slice(-10) + 
-         Math.random().toString(36).slice(-4).toUpperCase() + "!9";
-}
+import crypto from "crypto";
+import { admin, auth, db } from "@/lib/firebase-admin";
+import {
+  assertRecordTenant,
+  canManageHr,
+  isAuthError,
+  requireTenant,
+  tenantIdFor,
+  writeAudit,
+} from "@/lib/auth-helper";
 
 export async function POST(req: NextRequest) {
-  console.log("🔥 Hire endpoint hit");
-
   try {
+    const actor = await requireTenant(req, ["super-admin", "admin", "manager"]);
+    if (isAuthError(actor)) return actor;
+    if (!canManageHr(actor)) return NextResponse.json({ success: false, error: "HR management permission required" }, { status: 403 });
+
     const body = await req.json();
-    console.log("📦 Hire payload:", body);
-
-    const { applicantId, companyId, createdBy } = body;
-
-    if (!applicantId || !companyId) {
-      return NextResponse.json({ error: "Missing applicantId or companyId" }, { status: 400 });
+    const companyId = tenantIdFor(actor, body.companyId);
+    if (!body.applicantId || !companyId) {
+      return NextResponse.json({ success: false, error: "Applicant and valid company are required" }, { status: 400 });
     }
 
-    // 1. Fetch applicant
-    console.log("📄 Fetching applicant:", applicantId);
-    const applicantDoc = await db.collection("recruitment").doc(applicantId).get();
-    if (!applicantDoc.exists) {
-      return NextResponse.json({ error: "Applicant not found" }, { status: 404 });
-    }
-    const data = applicantDoc.data()!;
-    console.log("✅ Applicant found:", data.email);
+    const applicantDoc = await assertRecordTenant("recruitment", body.applicantId, companyId);
+    if (!applicantDoc) return NextResponse.json({ success: false, error: "Applicant not found" }, { status: 404 });
+    const applicant = applicantDoc.data() || {};
 
-    // 2. Create or fetch Firebase Auth account
+    if (applicant.stage === "hired" && applicant.employeeId) {
+      return NextResponse.json({ success: true, employeeId: applicant.employeeId, alreadyHired: true });
+    }
+    if (!applicant.email) return NextResponse.json({ success: false, error: "Applicant email is required" }, { status: 400 });
+
     let uid: string;
     try {
-      console.log("🔐 Checking if auth account exists for:", data.email);
-      const existing = await auth.getUserByEmail(data.email);
+      const existing = await auth.getUserByEmail(String(applicant.email).toLowerCase());
       uid = existing.uid;
-      console.log("✅ Auth account already exists, uid:", uid);
-    } catch (authErr: any) {
-      if (authErr.code === "auth/user-not-found") {
-        console.log("🆕 Creating new auth account for:", data.email);
-        const tempPassword = generateTempPassword();
-        const newUser = await auth.createUser({
-          email: data.email,
-          displayName: `${data.firstName} ${data.lastName}`.trim(),
-          password: tempPassword,
-          emailVerified: false,
-        });
-        uid = newUser.uid;
-        console.log("✅ Auth account created, uid:", uid);
-      } else {
-        console.error("❌ Auth error:", authErr);
-        throw authErr;
+      const existingUser = await db.collection("users").doc(uid).get();
+      if (existingUser.exists && existingUser.data()?.companyId !== companyId) {
+        return NextResponse.json({ success: false, error: "This email belongs to another organization" }, { status: 409 });
       }
+      await auth.updateUser(uid, { disabled: true });
+    } catch (error: any) {
+      if (error.code !== "auth/user-not-found") throw error;
+      const created = await auth.createUser({
+        email: String(applicant.email).toLowerCase(),
+        displayName: `${applicant.firstName || ""} ${applicant.lastName || ""}`.trim(),
+        password: crypto.randomBytes(32).toString("base64url"),
+        emailVerified: false,
+        disabled: true,
+      });
+      uid = created.uid;
     }
 
-    // 3. Generate password reset link
-    console.log("📧 Generating password reset link...");
-    const resetLink = await auth.generatePasswordResetLink(data.email);
-    console.log("✅ Reset link generated");
+    const fullName = `${applicant.firstName || ""} ${applicant.lastName || ""}`.trim();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const employeeData = {
+      uid,
+      authUid: uid,
+      fullName,
+      firstName: applicant.firstName || "",
+      lastName: applicant.lastName || "",
+      email: String(applicant.email).toLowerCase(),
+      phone: applicant.phone || "",
+      position: applicant.position || "",
+      department: applicant.department || "Unassigned",
+      companyId,
+      role: "employee",
+      status: "onboarding",
+      employmentStatus: "preboarding",
+      lifecycleStage: "preboarding",
+      accessStatus: "invitation_pending",
+      dateOfJoining: body.startDate || null,
+      bankAccount: applicant.bankAccount || {},
+      photoURL: applicant.photoURL || "",
+      applicantRef: body.applicantId,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: actor.uid,
+    };
 
-    // 4. Batch write: user doc + employee doc + update recruitment
-    console.log("💾 Writing to Firestore...");
     const batch = db.batch();
-
-    const userRef = db.collection("users").doc(uid);
-    batch.set(userRef, {
-      uid,
-      email: data.email,
-      fullName: `${data.firstName} ${data.lastName}`.trim(),
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phone: data.phone || "",
-      photoURL: data.photoURL || "",
-      companyId,
-      role: "employee",
-      status: "active",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      createdBy: createdBy || null,
-    }, { merge: true });
-
-    const employeeRef = db.collection("employees").doc();
-    batch.set(employeeRef, {
-      uid,
-      fullName: `${data.firstName} ${data.lastName}`.trim(),
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      phone: data.phone || "",
-      position: data.position || "",
-      department: data.department || "Unassigned",
-      companyId,
-      role: "employee",
-      status: "active",
-      dateOfJoining: new Date().toISOString(),
-      bankAccount: data.bankAccount || {},
-      photoURL: data.photoURL || "",
-      applicantRef: applicantId,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      createdBy: createdBy || null,
-    });
-
-    batch.update(db.collection("recruitment").doc(applicantId), {
+    batch.set(db.collection("users").doc(uid), employeeData, { merge: true });
+    batch.set(db.collection("employees").doc(uid), employeeData, { merge: true });
+    batch.update(applicantDoc.ref, {
       stage: "hired",
-      hiredAt: admin.firestore.FieldValue.serverTimestamp(),
-      employeeId: employeeRef.id,
+      hiredAt: now,
+      hiredBy: actor.uid,
+      employeeId: uid,
       uid,
+      updatedAt: now,
     });
-
     await batch.commit();
-    console.log("✅ Firestore batch committed");
+
+    await writeAudit({
+      companyId,
+      actor,
+      action: "recruitment.applicant_hired",
+      resourceType: "employee",
+      resourceId: uid,
+      metadata: { applicantId: body.applicantId, accessStatus: "invitation_pending" },
+    });
 
     return NextResponse.json({
       success: true,
       uid,
-      employeeId: employeeRef.id,
-      resetLink,
-      message: "Employee account created successfully",
+      employeeId: uid,
+      inviteSent: false,
+      accessStatus: "invitation_pending",
+      message: "Employee preboarding record created; account invitation is pending",
     });
-
   } catch (error: any) {
-    console.error("❌ Hire API Error:", error.code, error.message, error);
-    return NextResponse.json(
-      { success: false, error: error.message, code: error.code },
-      { status: 500 }
-    );
+    console.error("Hire failed:", error);
+    return NextResponse.json({ success: false, error: "Failed to hire applicant" }, { status: 500 });
   }
 }

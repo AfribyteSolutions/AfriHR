@@ -130,7 +130,7 @@ export async function POST(req: Request) {
     });
     const page = await browser.newPage();
     const htmlContent = generateProfessionalPayslipHTML(payroll, company);
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
     
     // Fix for the TypeScript warning: converting Uint8Array to Buffer
     const pdfUint8Array = await page.pdf({ format: 'A4', printBackground: true });

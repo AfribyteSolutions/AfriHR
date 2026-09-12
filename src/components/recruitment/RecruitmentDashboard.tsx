@@ -1,253 +1,160 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2, LayoutGrid, List } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Loader2, LogOut, Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import { base44 } from "@/lib/base44";
 import ApplicationForm from "./ApplicationForm";
-import ApplicantCard from "./ApplicantCard";
-import ApplicantDetailModal from "./ApplicantDetailModal";
 import type { Applicant, Stage } from "@/types/recruit";
 
-const STAGES: Stage[] = ['application', 'screening', 'interview', 'offer', 'hired', 'rejected'];
-
-const STAGE_COLORS: Record<string, string> = {
-  application: 'bg-slate-400',
-  screening:   'bg-yellow-400',
-  interview:   'bg-blue-400',
-  offer:       'bg-purple-400',
-  hired:       'bg-emerald-400',
-  rejected:    'bg-red-400',
+const STAGES: Stage[] = ["applied", "screening", "interview", "assessment", "offer", "hired", "rejected", "withdrawn"];
+const COLORS: Record<Stage, string> = {
+  application: "bg-slate-400",
+  applied: "bg-slate-400", screening: "bg-amber-400", interview: "bg-blue-400",
+  assessment: "bg-cyan-500", offer: "bg-purple-500", hired: "bg-emerald-500",
+  rejected: "bg-red-500", withdrawn: "bg-zinc-500"
+};
+const ALLOWED: Record<Stage, Stage[]> = {
+  application: ["screening", "rejected", "withdrawn"],
+  applied: ["screening", "rejected", "withdrawn"],
+  screening: ["interview", "rejected", "withdrawn"],
+  interview: ["assessment", "offer", "rejected", "withdrawn"],
+  assessment: ["interview", "offer", "rejected", "withdrawn"],
+  offer: ["hired", "rejected", "withdrawn"],
+  hired: [], rejected: [], withdrawn: []
 };
 
-const RecruitmentDashboard = ({ userData }: { userData: any }) => {
+const unwrap = (response: any) => response?.data?.success !== undefined ? response.data : response;
+const mapCandidate = (row: any): Applicant => {
+  const names = String(row.full_name || "").trim().split(/\s+/);
+  return {
+    id: row.id, fullName: row.full_name || "", firstName: names[0] || "",
+    lastName: names.slice(1).join(" "), email: row.email || "", phone: row.phone || "",
+    position: row.position || "", department: row.department || "", stage: row.stage || "applied",
+    appliedDate: row.created_date || new Date().toISOString(), resumeFileUri: row.resume_file_uri || "",
+    photoFileUri: row.photo_file_uri || "", notes: row.notes || "", source: row.source || "",
+    hiredEmployeeId: row.hired_employee_id || ""
+  };
+};
+
+export default function RecruitmentDashboard({ userData }: { userData: any }) {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [mobileStage, setMobileStage] = useState<Stage>('application');
+  const [showForm, setShowForm] = useState(false);
+  const [selected, setSelected] = useState<Applicant | null>(null);
+  const tenantId = userData?.tenantId || userData?.companyId || "";
 
-  const loadPipeline = useCallback(async () => {
-    if (!userData?.companyId) return;
+  const invoke = useCallback(async (payload: Record<string, unknown>) => {
+    const result = unwrap(await base44.functions.invoke("recruitment-ops", { tenant_id: tenantId, ...payload }));
+    if (!result?.success) throw new Error(result?.error || "Recruitment operation failed");
+    return result;
+  }, [tenantId]);
+
+  const load = useCallback(async () => {
+    if (!tenantId) { setLoading(false); return; }
+    setLoading(true);
     try {
-      const res = await fetch(`/api/recruitment?companyId=${userData.companyId}`);
-      const data = await res.json();
-      if (data.success) {
-        setApplicants(data.applicants);
-      } else {
-        toast.error(data.message || "Failed to load pipeline");
-      }
-    } catch (err) {
-      console.error("Pipeline Load Error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [userData?.companyId]);
-
-  useEffect(() => {
-    if (userData?.companyId) {
-      loadPipeline();
-    } else {
-      const timer = setTimeout(() => setLoading(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [userData, loadPipeline]);
-
-  const handleAddApplicant = async (payload: any) => {
-    try {
-      const res = await fetch("/api/recruitment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success("Applicant added to database");
-        loadPipeline();
-        setIsModalOpen(false);
-      }
-    } catch (err) {
-      toast.error("Network error saving applicant");
-    }
-  };
-
-  const handleUpdate = async (id: string, updates: Partial<Applicant>) => {
-    try {
-      const res = await fetch("/api/recruitment", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, ...updates }),
-      });
-      if (res.ok) {
-        setApplicants(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
-        if (selectedApplicant?.id === id) {
-          setSelectedApplicant(prev => prev ? { ...prev, ...updates } : null);
-        }
-      }
-    } catch (err) {
-      toast.error("Failed to sync status");
-    }
-  };
-
-  const handleFinalizeHire = async (applicant: Applicant) => {
-    const toastId = toast.loading(`Creating account for ${applicant.firstName}...`);
-    try {
-      const res = await fetch("/api/recruitment/hire", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          applicantId: applicant.id,
-          companyId: userData.companyId,
-          createdBy: userData.uid,
-        }),
-      });
-  
-      const data = await res.json();
-  
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Hire failed");
-      }
-  
-      // Optimistically update local state
-      setApplicants(prev =>
-        prev.map(a => a.id === applicant.id ? { ...a, stage: 'hired' as Stage } : a)
-      );
-      if (selectedApplicant?.id === applicant.id) {
-        setSelectedApplicant(prev => prev ? { ...prev, stage: 'hired' as Stage } : null);
-      }
-  
-      toast.success(
-        `${applicant.firstName} is now an employee! A password reset email has been sent.`,
-        { id: toastId, duration: 5000 }
-      );
-      setIsDetailOpen(false);
+      const result = await invoke({ operation: "list_candidates" });
+      setApplicants((result.data || []).map(mapCandidate));
     } catch (error: any) {
-      toast.error(error.message || "Failed to create employee account", { id: toastId });
-    }
+      toast.error(error?.response?.data?.error || error?.message || "Could not load candidates.");
+    } finally { setLoading(false); }
+  }, [invoke, tenantId]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const createCandidate = async (data: any) => {
+    const result = await invoke({ operation: "create_candidate", ...data });
+    toast.success(result.duplicate ? "Candidate already exists." : "Candidate added.");
+    setShowForm(false);
+    await load();
   };
 
-  if (loading) {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-[#0f172a]">
-        <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Initialising Pipeline</p>
-      </div>
-    );
-  }
+  const move = async (candidate: Applicant, stage: Stage) => {
+    if (stage === "hired") {
+      const result = await invoke({ operation: "hire_candidate", candidate_id: candidate.id });
+      toast.success(result.duplicate ? "Employee already exists; no duplicate created." : "Candidate hired and onboarding created.");
+    } else {
+      await invoke({ operation: "change_stage", candidate_id: candidate.id, stage });
+      toast.success(`Moved to ${stage}.`);
+    }
+    setSelected(null);
+    await load();
+  };
+
+  const saveNotes = async () => {
+    if (!selected) return;
+    await invoke({ operation: "update_candidate", candidate_id: selected.id, notes: selected.notes });
+    toast.success("Notes saved.");
+    await load();
+  };
+
+  const columns = useMemo(() => STAGES.map(stage => ({
+    stage, people: applicants.filter(a => a.stage === stage)
+  })), [applicants]);
+
+  if (loading) return <div className="min-h-screen grid place-items-center bg-slate-50"><Loader2 className="animate-spin text-blue-600" /></div>;
 
   return (
-    <div className="h-screen bg-slate-50 dark:bg-[#0f172a] flex flex-col overflow-hidden">
-
-      <header className="px-4 py-4 md:px-8 md:py-6 bg-white dark:bg-[#1a222c] border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
-        <div>
-          <h1 className="text-lg md:text-2xl font-black dark:text-white">Talent Pipeline</h1>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest hidden sm:block">Recruitment Management</p>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white">
+      <header className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-5 md:px-8 py-4 flex items-center justify-between">
+        <div><h1 className="text-2xl font-black">AfriHR Recruitment</h1><p className="text-xs text-slate-500">Base44-native talent pipeline</p></div>
+        <div className="flex gap-2">
+          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-bold"><Plus size={16}/> Candidate</button>
+          <button onClick={() => base44.auth.logout("/auth/signin-basic")} className="p-2 rounded-xl border border-slate-200" title="Sign out"><LogOut size={18}/></button>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all text-sm"
-        >
-          <Plus size={16} />
-          <span className="hidden sm:inline">Add Applicant</span>
-          <span className="sm:hidden">Add</span>
-        </button>
       </header>
 
-      <div className="md:hidden flex gap-2 px-4 py-3 overflow-x-auto shrink-0 bg-white dark:bg-[#1a222c] border-b border-slate-200 dark:border-slate-800">
-        {STAGES.map(stage => {
-          const count = applicants.filter(a => a.stage === stage).length;
-          return (
-            <button
-              key={stage}
-              onClick={() => setMobileStage(stage)}
-              className={`flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-                mobileStage === stage
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${STAGE_COLORS[stage]}`} />
-              {stage}
-              <span className={`px-1 rounded text-[9px] font-bold ${mobileStage === stage ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <main className="flex-1 overflow-hidden">
-        <div className="hidden md:flex h-full p-6 gap-5 overflow-x-auto custom-scrollbar items-start">
-          {STAGES.map((stage) => {
-            const stageApplicants = applicants.filter(a => a.stage === stage);
-            return (
-              <div key={stage} className="w-72 lg:w-80 shrink-0 flex flex-col max-h-full">
-                <div className="flex justify-between items-center mb-4 px-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${STAGE_COLORS[stage]}`} />
-                    <h3 className="uppercase text-[11px] font-black text-slate-400 tracking-widest">{stage}</h3>
-                  </div>
-                  <span className="text-[10px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-lg text-slate-500 shadow-sm">
-                    {stageApplicants.length}
-                  </span>
-                </div>
-                <div className="space-y-3 overflow-y-auto flex-1 pb-10 pr-1 custom-scrollbar">
-                  {stageApplicants.map((applicant) => (
-                    <ApplicantCard
-                      key={applicant.id}
-                      applicant={applicant}
-                      onClick={() => { setSelectedApplicant(applicant); setIsDetailOpen(true); }}
-                    />
-                  ))}
-                  {stageApplicants.length === 0 && (
-                    <div className="h-24 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center opacity-50">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">No Active {stage}</p>
-                    </div>
-                  )}
-                </div>
+      {!tenantId && <div className="m-6 p-4 rounded-xl bg-amber-50 text-amber-800 border border-amber-200">Your Base44 user has no tenant assigned. Set tenant_id before using recruitment.</div>}
+      <main className="p-5 md:p-8 overflow-x-auto">
+        <div className="flex gap-4 min-w-max">
+          {columns.map(({ stage, people }) => (
+            <section key={stage} className="w-72">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs font-black uppercase tracking-wider flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${COLORS[stage]}`}/>{stage}</h2>
+                <span className="text-xs bg-white dark:bg-slate-800 px-2 py-1 rounded-lg">{people.length}</span>
               </div>
-            );
-          })}
-        </div>
-
-        <div className="md:hidden h-full overflow-y-auto p-4 space-y-3 custom-scrollbar">
-          {applicants.filter(a => a.stage === mobileStage).map((applicant) => (
-            <ApplicantCard
-              key={applicant.id}
-              applicant={applicant}
-              onClick={() => { setSelectedApplicant(applicant); setIsDetailOpen(true); }}
-            />
+              <div className="space-y-3">
+                {people.map(person => (
+                  <button key={person.id} onClick={() => setSelected(person)}
+                    className="block text-left w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-blue-400">
+                    <strong className="block truncate">{person.fullName}</strong>
+                    <span className="block text-xs text-blue-600 truncate">{person.position || "Position not set"}</span>
+                    <span className="block text-xs text-slate-500 mt-2 truncate">{person.email}</span>
+                  </button>
+                ))}
+                {!people.length && <div className="p-6 text-center text-xs text-slate-400 border-2 border-dashed rounded-2xl">No candidates</div>}
+              </div>
+            </section>
           ))}
         </div>
       </main>
 
-      <ApplicantDetailModal
-        applicant={selectedApplicant}
-        isOpen={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
-        onMoveStage={(id, stage) => handleUpdate(id, { stage })}
-        onUpdateNotes={(id, notes) => handleUpdate(id, { notes })}
-        onHire={handleFinalizeHire} // 🔹 Passed new handler
-      />
-
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setIsModalOpen(false)} />
-          <div className="relative w-full sm:max-w-xl bg-white dark:bg-[#1a222c] rounded-t-[40px] sm:rounded-[40px] shadow-2xl overflow-hidden border border-white/20 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 sm:p-8">
-              <div className="flex justify-between items-center mb-6 sm:mb-8">
-                <h2 className="text-xl font-black dark:text-white uppercase tracking-tighter">New Application</h2>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
-                  <Plus className="rotate-45" />
-                </button>
-              </div>
-              <ApplicationForm onAddApplicant={handleAddApplicant} />
-            </div>
-          </div>
+      {showForm && <div className="fixed inset-0 z-40 grid place-items-center p-4 bg-slate-950/60">
+        <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl p-6 max-h-[90vh] overflow-auto">
+          <div className="flex justify-between mb-5"><h2 className="text-xl font-black">New Candidate</h2><button onClick={() => setShowForm(false)}><X/></button></div>
+          <ApplicationForm onAddApplicant={createCandidate}/>
         </div>
-      )}
+      </div>}
+
+      {selected && <div className="fixed inset-0 z-40 flex justify-end bg-slate-950/50">
+        <aside className="w-full max-w-md h-full bg-white dark:bg-slate-900 p-6 overflow-auto">
+          <div className="flex justify-between"><div><h2 className="text-xl font-black">{selected.fullName}</h2><p className="text-sm text-slate-500">{selected.position}</p></div><button onClick={() => setSelected(null)}><X/></button></div>
+          <dl className="mt-6 space-y-3 text-sm"><div><dt className="text-slate-400">Email</dt><dd>{selected.email}</dd></div><div><dt className="text-slate-400">Department</dt><dd>{selected.department || "—"}</dd></div><div><dt className="text-slate-400">Stage</dt><dd className="capitalize">{selected.stage}</dd></div></dl>
+          {selected.resumeFileUri && <button onClick={async () => {
+            const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: selected.resumeFileUri!, expires_in: 300 });
+            window.open(signed_url, "_blank", "noopener,noreferrer");
+          }} className="mt-5 text-blue-600 font-bold">Open private CV</button>}
+          <label className="block mt-6 text-xs font-bold uppercase text-slate-500">Internal notes</label>
+          <textarea value={selected.notes} onChange={e => setSelected({ ...selected, notes: e.target.value })}
+            className="w-full h-28 mt-2 p-3 rounded-xl border border-slate-200 bg-transparent"/>
+          <button onClick={() => void saveNotes()} className="mt-2 w-full py-2 rounded-xl border font-bold">Save notes</button>
+          <div className="mt-6 grid grid-cols-2 gap-2">
+            {ALLOWED[selected.stage].map(stage => <button key={stage} onClick={() => void move(selected, stage)}
+              className={`py-3 px-2 rounded-xl text-xs font-bold uppercase text-white ${stage === "hired" ? "bg-emerald-600" : "bg-blue-600"}`}>{stage === "hired" ? "Complete hire" : `Move to ${stage}`}</button>)}
+          </div>
+        </aside>
+      </div>}
     </div>
   );
-};
-
-export default RecruitmentDashboard;
+}

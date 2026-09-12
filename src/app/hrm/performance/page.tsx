@@ -1,220 +1,118 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import MetaData from "@/hooks/useMetaData";
-import { useAuth } from "@/context/AuthContext";
-import { base44 } from "@/lib/base44";
 
-import type { PerformanceReviewRecord, EmployeeRecord } from "@/types/base44-entities";
-import { LoadingState, EmptyState, ErrorState, StatusBadge, PageHeader, Card } from "@/components/hr/SharedUI";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, Star, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useUserRole } from "@/hooks/useUserRole";
+import { base44 } from "@/lib/base44";
+import { useAuthUserContext } from "@/context/UserAuthContext";
+import NativeHrShell from "@/components/hrm/NativeHrShell";
 
-const PerformancePage: React.FC = () => {
-  const { user, tenantId, appRole } = useAuth();
-  const { canAccessManagerFeatures, isEmployee } = useUserRole();
-  const [reviews, setReviews] = useState<PerformanceReviewRecord[]>([]);
-  const [employees, setEmployees] = useState<Record<string, EmployeeRecord>>({});
+const unwrap = (r: any) => r?.data?.success !== undefined ? r.data : r;
+const REVIEW_ROLES = ["platform_admin", "tenant_admin", "hr_manager", "manager"];
+const HR_ROLES = ["platform_admin", "tenant_admin", "hr_manager"];
+
+export default function PerformancePage() {
+  const { user, loading: authLoading } = useAuthUserContext();
+  const router = useRouter();
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [status, setStatus] = useState("all");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ employee_id: "", period_start: "", period_end: "", goals: "", rating: "3", feedback: "" });
+  const tenantId = user?.tenantId || "";
+  const canCreate = !!user && REVIEW_ROLES.includes(user.appRole);
+  const isHr = !!user && HR_ROLES.includes(user.appRole);
 
-  const tid = tenantId;
+  useEffect(() => { if (!authLoading && !user) router.replace("/auth/signin-basic?redirect=/hrm/performance"); }, [authLoading, user, router]);
 
-  const fetchData = useCallback(async () => {
+  const invoke = useCallback(async (payload: any) => {
+    const result = unwrap(await base44.functions.invoke("performance-ops", { tenant_id: tenantId, ...payload }));
+    if (!result?.success) throw new Error(result?.error || "Performance operation failed");
+    return result;
+  }, [tenantId]);
+
+  const load = useCallback(async () => {
+    if (!tenantId) { setLoading(false); return; }
     setLoading(true);
-    setError(null);
     try {
-      let data: PerformanceReviewRecord[];
-      if (isEmployee && !canAccessManagerFeatures) {
-        // Employees see only their own reviews
-        data = await base44.entities.PerformanceReview.filter({ tenant_id: tid, employee_id: user?.employee_id || user?.id || "" }, "-created_date") as PerformanceReviewRecord[];
-      } else {
-        data = await base44.entities.PerformanceReview.filter({ tenant_id: tid }, "-created_date") as PerformanceReviewRecord[];
+      const [reviewResult, employeeRaw] = await Promise.all([
+        invoke({ operation: "list" }),
+        canCreate ? base44.functions.invoke("employee-ops", { operation: "list_employees", tenant_id: tenantId }) : Promise.resolve(null)
+      ]);
+      setReviews(reviewResult.data || []);
+      if (employeeRaw) {
+        const result = unwrap(employeeRaw);
+        setEmployees(result?.success ? result.data || [] : []);
       }
-      setReviews(data);
+    } catch (error: any) { toast.error(error.message); }
+    finally { setLoading(false); }
+  }, [tenantId, canCreate, invoke]);
 
-      const emps = await base44.entities.Employee.filter({ tenant_id: tid });
-      const empMap: Record<string, EmployeeRecord> = {};
-      (emps as EmployeeRecord[]).forEach(e => { empMap[e.id] = e; });
-      setEmployees(empMap);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load performance reviews");
-    } finally {
-      setLoading(false);
-    }
-  }, [tid, isEmployee, canAccessManagerFeatures, user]);
+  useEffect(() => { void load(); }, [load]);
+  const filtered = useMemo(() => status === "all" ? reviews : reviews.filter(r => r.status === status), [reviews, status]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  const handleCreate = async (formData: Partial<PerformanceReviewRecord>) => {
-    setCreating(true);
+  const create = async (event: React.FormEvent) => {
+    event.preventDefault();
     try {
-      await base44.entities.PerformanceReview.create({
-        ...formData,
-        tenant_id: tid,
-        status: "draft",
-        reviewer_id: user?.id || "",
-        reviewer_name: user?.full_name || "",
-      } as any);
-      toast.success("Performance review created");
-      setShowCreateModal(false);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to create review");
-    } finally {
-      setCreating(false);
-    }
+      await invoke({ operation: "create", ...form, goals: form.goals.split("\n").map(v => v.trim()).filter(Boolean), rating: Number(form.rating) });
+      toast.success("Review draft created.");
+      setShowForm(false);
+      setForm({ employee_id: "", period_start: "", period_end: "", goals: "", rating: "3", feedback: "" });
+      await load();
+    } catch (error: any) { toast.error(error.message); }
   };
 
-  const updateReviewStatus = async (id: string, status: string) => {
+  const transition = async (review_id: string, operation: string) => {
     try {
-      const updates: any = { status };
-      if (status === "submitted") updates.submitted_date = new Date().toISOString();
-      if (status === "acknowledged") updates.acknowledged_date = new Date().toISOString();
-      if (status === "closed") updates.closed_date = new Date().toISOString();
-      await base44.entities.PerformanceReview.update(id, updates);
-      toast.success("Review updated");
-      fetchData();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to update review");
-    }
+      await invoke({ operation, review_id });
+      toast.success(operation === "submit" ? "Review submitted." : operation === "acknowledge" ? "Review acknowledged." : "Review closed.");
+      await load();
+    } catch (error: any) { toast.error(error.message); }
   };
 
-  return (
-    <MetaData pageTitle="Performance">
-      <Wrapper>
-        <div className="p-4">
-          <PageHeader
-            title="Performance Reviews"
-            subtitle="Manage employee performance review cycles"
-            action={canAccessManagerFeatures ? (
-              <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
-                <i className="fa-solid fa-plus mr-1"></i> New Review
-              </button>
-            ) : undefined}
-          />
+  if (authLoading || !user) return <div className="min-h-screen grid place-items-center">Loading AfriHR…</div>;
 
-          {loading && <LoadingState />}
-          {error && <ErrorState message={error} onRetry={fetchData} />}
-          {!loading && !error && reviews.length === 0 && (
-            <EmptyState title="No performance reviews" message="Performance reviews will appear here once created." />
-          )}
-          {!loading && !error && reviews.length > 0 && (
-            <div className="grid gap-4">
-              {reviews.map((rev) => {
-                const emp = employees[rev.employee_id];
-                return (
-                  <Card key={rev.id} className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-800">{emp?.full_name || rev.employee_name}</h3>
-                        <p className="text-sm text-gray-500">{emp?.job_title || ""} · Period: {rev.period}</p>
-                      </div>
-                      <StatusBadge status={rev.status} />
-                    </div>
-                    {rev.goals && <p className="text-sm text-gray-600 mb-2"><strong>Goals:</strong> {rev.goals}</p>}
-                    {rev.feedback && <p className="text-sm text-gray-600 mb-2"><strong>Feedback:</strong> {rev.feedback}</p>}
-                    {rev.rating != null && (
-                      <p className="text-sm text-gray-600 mb-2"><strong>Rating:</strong> {"⭐".repeat(rev.rating)} ({rev.rating}/5)</p>
-                    )}
-                    <div className="flex gap-2 mt-3">
-                      {canAccessManagerFeatures && rev.status === "draft" && (
-                        <button onClick={() => updateReviewStatus(rev.id, "submitted")} className="btn btn-primary btn-sm">Submit</button>
-                      )}
-                      {isEmployee && rev.status === "submitted" && (
-                        <button onClick={() => updateReviewStatus(rev.id, "acknowledged")} className="btn btn-light btn-sm">Acknowledge</button>
-                      )}
-                      {canAccessManagerFeatures && rev.status === "acknowledged" && (
-                        <button onClick={() => updateReviewStatus(rev.id, "closed")} className="btn btn-light btn-sm">Close</button>
-                      )}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {showCreateModal && (
-          <CreateReviewModal
-            employees={Object.values(employees)}
-            onClose={() => setShowCreateModal(false)}
-            onCreate={handleCreate}
-            creating={creating}
-          />
-        )}
-      </Wrapper>
-    </MetaData>
-  );
-};
-
-const CreateReviewModal: React.FC<{
-  employees: EmployeeRecord[];
-  onClose: () => void;
-  onCreate: (data: Partial<PerformanceReviewRecord>) => void;
-  creating: boolean;
-}> = ({ employees, onClose, onCreate, creating }) => {
-  const [formData, setFormData] = useState({
-    employee_id: "",
-    period: "",
-    goals: "",
-    feedback: "",
-    rating: 3,
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const emp = employees.find(e => e.id === formData.employee_id);
-    onCreate({
-      ...formData,
-      employee_name: emp?.full_name || "",
-      rating: Number(formData.rating),
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b">
-          <h3 className="text-lg font-semibold">New Performance Review</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark text-xl"></i></button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Employee *</label>
-            <select required value={formData.employee_id} onChange={e => setFormData({...formData, employee_id: e.target.value})} className="form-control">
-              <option value="">Select employee...</option>
-              {employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Review Period *</label>
-            <input required type="text" placeholder="e.g. 2026-Q1" value={formData.period} onChange={e => setFormData({...formData, period: e.target.value})} className="form-control" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Goals</label>
-            <textarea rows={3} value={formData.goals} onChange={e => setFormData({...formData, goals: e.target.value})} className="form-control" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Feedback</label>
-            <textarea rows={3} value={formData.feedback} onChange={e => setFormData({...formData, feedback: e.target.value})} className="form-control" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Rating (1-5)</label>
-            <select value={formData.rating} onChange={e => setFormData({...formData, rating: Number(e.target.value)})} className="form-control">
-              {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} - {"⭐".repeat(n)}</option>)}
-            </select>
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn btn-light">Cancel</button>
-            <button type="submit" disabled={creating} className="btn btn-primary">{creating ? "Creating..." : "Create Review"}</button>
-          </div>
-        </form>
+  return <NativeHrShell title="Performance Reviews" subtitle="Goals, feedback and review cycles"
+    action={canCreate ? <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-bold"><Plus size={16}/> New review</button> : undefined}>
+    <main className="p-5 md:p-8">
+      <div className="flex flex-wrap gap-2">
+        {["all","draft","submitted","acknowledged","closed"].map(v => <button key={v} onClick={() => setStatus(v)}
+          className={`px-3 py-2 rounded-xl text-xs font-bold capitalize ${status === v ? "bg-blue-600 text-white" : "bg-white dark:bg-slate-900 border"}`}>{v}</button>)}
       </div>
-    </div>
-  );
-};
-
-export default PerformancePage;
+      {loading ? <p className="py-16 text-center text-slate-500">Loading reviews…</p> :
+        <div className="grid lg:grid-cols-2 gap-4 mt-6">
+          {filtered.map(review => <article key={review.id} className="bg-white dark:bg-slate-900 border rounded-2xl p-5">
+            <div className="flex justify-between gap-3">
+              <div><h2 className="font-black">{review.employee?.full_name || "Employee"}</h2><p className="text-sm text-slate-500">{review.period_start} → {review.period_end}</p></div>
+              <span className="h-fit px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold capitalize">{review.status}</span>
+            </div>
+            <div className="flex items-center gap-1 mt-4 text-amber-500">{[1,2,3,4,5].map(n => <Star key={n} size={17} fill={n <= Number(review.rating) ? "currentColor" : "none"}/>)}</div>
+            {review.feedback && <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{review.feedback}</p>}
+            {!!review.goals?.length && <ul className="mt-3 list-disc pl-5 text-sm text-slate-500">{review.goals.map((goal: string, i: number) => <li key={i}>{goal}</li>)}</ul>}
+            <div className="flex gap-2 mt-5">
+              {review.can_submit && <button onClick={() => void transition(review.id, "submit")} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold">Submit</button>}
+              {review.can_acknowledge && <button onClick={() => void transition(review.id, "acknowledge")} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold">Acknowledge</button>}
+              {review.can_close && <button onClick={() => void transition(review.id, "close")} className="px-4 py-2 rounded-xl border text-sm font-bold">Close</button>}
+            </div>
+          </article>)}
+          {!filtered.length && <div className="lg:col-span-2 py-16 text-center border-2 border-dashed rounded-2xl text-slate-400">No performance reviews found.</div>}
+        </div>}
+    </main>
+    {showForm && <div className="fixed inset-0 z-40 grid place-items-center bg-slate-950/60 p-4">
+      <form onSubmit={create} className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-3xl p-6">
+        <div className="flex justify-between"><h2 className="text-xl font-black">New Review</h2><button type="button" onClick={() => setShowForm(false)}><X/></button></div>
+        <div className="grid sm:grid-cols-2 gap-4 mt-6">
+          <label className="sm:col-span-2 text-sm font-bold">Employee<select required value={form.employee_id} onChange={e => setForm({...form,employee_id:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent"><option value="">Select employee</option>{employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}</select></label>
+          <label className="text-sm font-bold">Period start<input required type="date" value={form.period_start} onChange={e => setForm({...form,period_start:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent"/></label>
+          <label className="text-sm font-bold">Period end<input required type="date" min={form.period_start} value={form.period_end} onChange={e => setForm({...form,period_end:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent"/></label>
+          <label className="text-sm font-bold">Rating<select value={form.rating} onChange={e => setForm({...form,rating:e.target.value})} className="block w-full mt-1 p-3 border rounded-xl bg-transparent">{[1,2,3,4,5].map(v => <option key={v}>{v}</option>)}</select></label>
+          <label className="sm:col-span-2 text-sm font-bold">Goals (one per line)<textarea value={form.goals} onChange={e => setForm({...form,goals:e.target.value})} className="block w-full h-24 mt-1 p-3 border rounded-xl bg-transparent"/></label>
+          <label className="sm:col-span-2 text-sm font-bold">Feedback<textarea required value={form.feedback} onChange={e => setForm({...form,feedback:e.target.value})} className="block w-full h-28 mt-1 p-3 border rounded-xl bg-transparent"/></label>
+        </div>
+        <button className="w-full mt-6 py-3 bg-blue-600 text-white rounded-xl font-bold">Create draft</button>
+      </form>
+    </div>}
+  </NativeHrShell>;
+}

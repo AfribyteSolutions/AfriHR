@@ -5,4 +5,7 @@ export const DEFAULT_TENANT_ID = "6aa2eda8b1df8b8d6312c262";
 
 export const base44 = createClient({
   appId: BASE44_APP_ID,
+  options: {
+    onError: (error) => console.error("Base44 request failed", error),
+  },
 });

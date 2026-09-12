@@ -1,183 +1,156 @@
-// @ts-nocheck
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from "@/lib/firebase-admin";
+import { NextRequest, NextResponse } from "next/server";
+import { admin, db } from "@/lib/firebase-admin";
+import {
+  assertRecordTenant,
+  canManageHr,
+  isAuthError,
+  requireTenant,
+  tenantIdFor,
+  writeAudit,
+} from "@/lib/auth-helper";
 
 export const dynamic = "force-dynamic";
+const roundMoney = (value: unknown) => Math.round((Number(value) || 0) * 100) / 100;
+const sumAmounts = (items: unknown) => Array.isArray(items)
+  ? items.reduce((sum, item) => sum + roundMoney(item?.amount), 0)
+  : 0;
 
-const getMonthNumber = (monthName: string): number => {
-  const months = [
-    "january", "february", "march", "april", "may", "june",
-    "july", "august", "september", "october", "november", "december"
-  ];
-  const index = months.indexOf(monthName.toLowerCase());
-  return index !== -1 ? index + 1 : 0;
-};
-
-// Strip undefined values recursively — Firestore rejects undefined fields
-const stripUndefined = (obj: any): any => {
-  return Object.fromEntries(
-    Object.entries(obj)
-      .filter(([, v]) => v !== undefined)
-      .map(([k, v]) => [
-        k,
-        v && typeof v === "object" && !Array.isArray(v) && !(v instanceof Date)
-          ? stripUndefined(v)
-          : v
-      ])
-  );
-};
-
-// GET - Fetch payroll(s)
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    const companyId = searchParams.get("companyId");
-    const employeeUid = searchParams.get("employeeUid");
+    const actor = await requireTenant(request);
+    if (isAuthError(actor)) return actor;
+    const companyId = tenantIdFor(actor, request.nextUrl.searchParams.get("companyId"));
+    if (!companyId) return NextResponse.json({ success: false, error: "Invalid tenant scope" }, { status: 403 });
 
+    const id = request.nextUrl.searchParams.get("id");
     if (id) {
-      const docSnap = await db.collection("payrolls").doc(id).get();
-      if (!docSnap.exists) {
-        return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
+      const doc = await assertRecordTenant("payrolls", id, companyId);
+      if (!doc) return NextResponse.json({ success: false, error: "Payroll not found" }, { status: 404 });
+      const data = doc.data() || {};
+      if (actor.role === "employee" && data.employeeUid !== actor.uid) {
+        return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
       }
-      return NextResponse.json({ success: true, data: { id: docSnap.id, ...docSnap.data() } });
+      return NextResponse.json({ success: true, data: { id: doc.id, ...data } });
     }
 
-    if (companyId) {
-      let q = db.collection("payrolls").where("companyId", "==", companyId) as FirebaseFirestore.Query;
-      if (employeeUid) q = q.where("employeeUid", "==", employeeUid);
-
-      const snapshot = await q.get();
-      const payrolls = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      return NextResponse.json({ success: true, data: payrolls, count: payrolls.length });
-    }
-
-    return NextResponse.json({ success: false, message: "Missing params: provide id or companyId" }, { status: 400 });
-  } catch (error: any) {
-    console.error("GET payroll error:", error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    const employeeUid = actor.role === "employee" ? actor.uid : request.nextUrl.searchParams.get("employeeUid");
+    let query: FirebaseFirestore.Query = db.collection("payrolls").where("companyId", "==", companyId);
+    if (employeeUid) query = query.where("employeeUid", "==", employeeUid);
+    const snapshot = await query.get();
+    return NextResponse.json({ success: true, data: snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })), count: snapshot.size });
+  } catch (error) {
+    console.error("Payroll GET failed:", error);
+    return NextResponse.json({ success: false, error: "Failed to load payroll" }, { status: 500 });
   }
 }
 
-// POST - Create new payroll record
 export async function POST(request: NextRequest) {
   try {
+    const actor = await requireTenant(request, ["super-admin", "admin", "manager"]);
+    if (isAuthError(actor)) return actor;
+    if (!canManageHr(actor)) return NextResponse.json({ success: false, error: "Payroll permission required" }, { status: 403 });
     const body = await request.json();
+    const companyId = tenantIdFor(actor, body.companyId);
+    if (!companyId || !body.employeeUid || !body.month || !body.year) {
+      return NextResponse.json({ success: false, error: "Employee, company, month and year are required" }, { status: 400 });
+    }
+    const employee = await assertRecordTenant("employees", body.employeeUid, companyId);
+    if (!employee) return NextResponse.json({ success: false, error: "Employee not found" }, { status: 404 });
 
-    if (!body.companyId || !body.employeeUid || !body.month || !body.year) {
-      return NextResponse.json({
-        success: false,
-        message: "companyId, employeeUid, month, and year are required"
-      }, { status: 400 });
+    const month = Number(body.monthNumber || body.salaryMonth || new Date(`${body.month} 1, 2000`).getMonth() + 1);
+    const year = Number(body.year);
+    if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year)) {
+      return NextResponse.json({ success: false, error: "Invalid payroll period" }, { status: 400 });
     }
 
-    const salaryMonth = getMonthNumber(body.month);
-    const salaryYear = Number(body.year);
+    const recordId = Buffer.from(`${companyId}:${body.employeeUid}:${year}:${month}`).toString("base64url");
+    const ref = db.collection("payrolls").doc(recordId);
+    const salary = roundMoney(body.salaryMonthly);
+    const additions = Array.isArray(body.additions) ? body.additions : [];
+    const deductions = Array.isArray(body.deductions) ? body.deductions : [];
+    const totalEarnings = roundMoney(salary + sumAmounts(additions));
+    const totalDeductions = roundMoney(sumAmounts(deductions));
+    const netPay = roundMoney(totalEarnings - totalDeductions);
 
-    // Prevent duplicate for same employee + month + year
-    const existing = await db.collection("payrolls")
-      .where("employeeUid", "==", body.employeeUid)
-      .where("companyId", "==", body.companyId)
-      .where("salaryMonth", "==", salaryMonth)
-      .where("salaryYear", "==", salaryYear)
-      .get();
+    await db.runTransaction(async (tx) => {
+      if ((await tx.get(ref)).exists) throw new Error("PAYROLL_EXISTS");
+      tx.set(ref, {
+        companyId,
+        employeeUid: body.employeeUid,
+        employeeName: employee.data()?.fullName || "",
+        month: body.month,
+        year,
+        salaryMonth: month,
+        salaryYear: year,
+        currency: body.currency || "XAF",
+        salaryMonthly: salary,
+        additions,
+        deductions,
+        totalEarnings,
+        totalDeductions,
+        netPay,
+        status: "Draft",
+        emailStatus: "NotSent",
+        createdBy: actor.uid,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
 
-    if (!existing.empty) {
-      return NextResponse.json({
-        success: false,
-        message: `Payroll already exists for ${body.month} ${body.year}.`
-      }, { status: 409 });
-    }
-
-    // Build clean data object first, then strip any undefined values
-    const rawData = {
-      ...body,
-      id: undefined,          // always strip id
-      salaryMonth,
-      salaryYear,
-      salaryMonthly: Number(body.salaryMonthly) || 0,
-      totalEarnings: Number(body.totalEarnings) || 0,
-      totalDeductions: Number(body.totalDeductions) || 0,
-      netPay: Number(body.netPay) || 0,
-      additions: Array.isArray(body.additions) ? body.additions : [],
-      deductions: Array.isArray(body.deductions) ? body.deductions : [],
-      status: "Unpaid",
-      emailStatus: "Pending",
-      createdAt: new Date(),
-    };
-
-    const finalData = stripUndefined(rawData);
-
-    const docRef = await db.collection("payrolls").add(finalData);
-    return NextResponse.json({ success: true, id: docRef.id }, { status: 201 });
+    await writeAudit({ companyId, actor, action: "payroll.created", resourceType: "payroll", resourceId: recordId, metadata: { year, month, netPay } });
+    return NextResponse.json({ success: true, id: recordId }, { status: 201 });
   } catch (error: any) {
-    console.error("POST payroll error:", error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    const conflict = error.message === "PAYROLL_EXISTS";
+    console.error("Payroll POST failed:", error);
+    return NextResponse.json({ success: false, error: conflict ? "Payroll already exists for this period" : "Failed to create payroll" }, { status: conflict ? 409 : 500 });
   }
 }
 
-// PATCH - Partial update (status, emailStatus, etc.)
 export async function PATCH(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
-
+    const actor = await requireTenant(request, ["super-admin", "admin", "manager"]);
+    if (isAuthError(actor)) return actor;
+    if (!canManageHr(actor)) return NextResponse.json({ success: false, error: "Payroll permission required" }, { status: 403 });
+    const id = request.nextUrl.searchParams.get("id");
     const body = await request.json();
-    const docRef = db.collection("payrolls").doc(id);
-
-    const docSnap = await docRef.get();
-    if (!docSnap.exists) {
-      return NextResponse.json({ error: "Payroll record not found" }, { status: 404 });
+    const companyId = tenantIdFor(actor, body.companyId);
+    if (!id || !companyId) return NextResponse.json({ success: false, error: "Payroll ID and valid company are required" }, { status: 400 });
+    const payroll = await assertRecordTenant("payrolls", id, companyId);
+    if (!payroll) return NextResponse.json({ success: false, error: "Payroll not found" }, { status: 404 });
+    const current = payroll.data() || {};
+    if (current.status === "Paid" || current.status === "Voided") {
+      return NextResponse.json({ success: false, error: "Paid or voided payrolls are immutable" }, { status: 409 });
     }
 
-    const existing = docSnap.data();
-
-    // Block reverting a Paid record
-    if (existing?.status === "Paid" && body.status && body.status !== "Paid") {
-      return NextResponse.json({ error: "Confirmed payments cannot be reversed." }, { status: 403 });
+    const nextStatus = body.status || current.status;
+    if (!["Draft", "Approved", "Paid", "Voided"].includes(nextStatus)) {
+      return NextResponse.json({ success: false, error: "Invalid payroll status" }, { status: 400 });
+    }
+    if (nextStatus === "Paid" && current.status !== "Approved") {
+      return NextResponse.json({ success: false, error: "Payroll must be approved before payment" }, { status: 409 });
     }
 
-    const updateData: any = {
-      ...body,
-      updatedAt: new Date(),
+    const updates: Record<string, unknown> = {
+      status: nextStatus,
+      updatedBy: actor.uid,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
+    if (nextStatus === "Approved") updates.approvedAt = admin.firestore.FieldValue.serverTimestamp();
+    if (nextStatus === "Paid") updates.paidAt = admin.firestore.FieldValue.serverTimestamp();
+    if (nextStatus === "Voided") {
+      updates.voidedAt = admin.firestore.FieldValue.serverTimestamp();
+      updates.voidReason = String(body.voidReason || "").slice(0, 1000);
+    }
 
-    if (body.month) updateData.salaryMonth = getMonthNumber(body.month);
-    if (body.year) updateData.salaryYear = Number(body.year);
-    if (body.salaryMonthly) updateData.salaryMonthly = Number(body.salaryMonthly);
-    if (body.netPay) updateData.netPay = Number(body.netPay);
-    if (body.status === "Paid") updateData.emailStatus = "Pending";
-
-    delete updateData.id;
-    delete updateData.createdAt;
-
-    await docRef.update(stripUndefined(updateData));
+    await payroll.ref.update(updates);
+    await writeAudit({ companyId, actor, action: `payroll.${String(nextStatus).toLowerCase()}`, resourceType: "payroll", resourceId: id });
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("PATCH payroll error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error("Payroll PATCH failed:", error);
+    return NextResponse.json({ success: false, error: "Failed to update payroll" }, { status: 500 });
   }
 }
 
-// DELETE - Remove payroll record from Firestore
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
-
-    const docRef = db.collection("payrolls").doc(id);
-    const docSnap = await docRef.get();
-
-    if (!docSnap.exists) {
-      return NextResponse.json({ error: "Payroll record not found" }, { status: 404 });
-    }
-
-    await docRef.delete();
-    return NextResponse.json({ success: true, message: "Payroll record deleted" });
-  } catch (error: any) {
-    console.error("DELETE payroll error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+export async function DELETE() {
+  return NextResponse.json({ success: false, error: "Payroll records cannot be deleted; void a draft or approved record instead" }, { status: 405 });
 }

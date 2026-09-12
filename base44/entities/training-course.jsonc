@@ -1,0 +1,91 @@
+{
+  "name": "TrainingCourse",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "delivery_mode": {
+      "type": "string",
+      "enum": [
+        "in_person",
+        "virtual",
+        "self_paced",
+        "hybrid"
+      ]
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "capacity": {
+      "type": "number"
+    },
+    "cost_minor": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "skill_name": {
+      "type": "string"
+    },
+    "certification_name": {
+      "type": "string"
+    },
+    "certificate_valid_months": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "open",
+        "in_progress",
+        "completed",
+        "cancelled"
+      ],
+      "default": "draft"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "title",
+    "delivery_mode",
+    "start_date",
+    "end_date",
+    "currency",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}
