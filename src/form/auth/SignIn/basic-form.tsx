@@ -22,11 +22,17 @@ const SignInBasicForm = () => {
     setIsLoading(true);
     try {
       const result = await base44.auth.loginViaEmailPassword(data.email.trim().toLowerCase(), data.password);
-      const user = result.user;
+      let user = result.user;
       if (["suspended", "offboarded"].includes(user?.employment_status)) {
         await base44.auth.logout("/auth/signin-basic?reason=account-disabled");
         toast.error("This account has been disabled. Contact your HR administrator.");
         return;
+      }
+      if (!user?.tenant_id) {
+        const provisionResult: any = await base44.functions.invoke("tenant-provision", {});
+        const provisionPayload = provisionResult?.data?.success !== undefined ? provisionResult.data : provisionResult;
+        if (!provisionPayload?.success) throw new Error(provisionPayload?.error || "Workspace access could not be restored.");
+        user = await base44.auth.me();
       }
       await refreshUser();
       toast.success(`Welcome back, ${user.full_name || "User"}!`);
