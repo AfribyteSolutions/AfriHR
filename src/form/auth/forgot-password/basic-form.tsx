@@ -14,8 +14,9 @@ export default function ForgotBasicForm() {
   const onSubmit=async(data:IForgotForm)=>{
     setLoading(true);
     try {
-      await base44.auth.resetPasswordRequest(data.email.trim().toLowerCase());
-      toast.success("If the account exists, a reset link has been sent.");
+      const email = data.email.trim().toLowerCase();
+      await base44.auth.resetPasswordRequest(email);
+      toast.success("If the account exists, a reset link has been sent. Check your inbox and spam folder.");
     } catch(error:any) {
       toast.error(error?.status===429?"Too many requests. Please wait and try again.":"Unable to request a reset right now.");
     } finally { setLoading(false); }
