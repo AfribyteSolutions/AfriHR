@@ -13,8 +13,8 @@ const links: Array<[string, string, string?]> = [
   ["/hrm/leaves", "Leave"],
   ["/hrm/attendance", "Time"],
   ["/hrm/workforce-operations", "Workforce Ops"],
-  ["/payroll/payroll", "Payroll"],
-  ["/payroll/statutory", "Statutory"],
+  ["/payroll/payroll", "Payroll", "payroll.view"],
+  ["/payroll/statutory", "Statutory", "payroll.view"],
   ["/hrm/performance", "Performance"],
   ["/hrm/training", "Learning"],
   ["/hrm/employee-relations", "Employee Relations"],
@@ -29,7 +29,10 @@ export default function NativeHrShell({ title, subtitle, children, action }: {
 }) {
   const pathname = usePathname();
   const { user } = useAuthUserContext();
-  const visibleLinks = links.filter(([, , permission]) => !permission || user?.appRole === "platform_admin" || user?.appRole === "tenant_admin" || user?.permissions.includes(permission));
+  const visibleLinks = links.filter(([, , permission]) => {
+    if (!permission || user?.appRole === "platform_admin" || user?.appRole === "tenant_admin" || user?.permissions.includes(permission)) return true;
+    return permission === "payroll.view" && ["payroll_manager", "finance_manager"].includes(user?.appRole || "");
+  });
   return <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white">
     <header className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
       <div className="px-5 md:px-8 py-4 flex items-center justify-between gap-4">
