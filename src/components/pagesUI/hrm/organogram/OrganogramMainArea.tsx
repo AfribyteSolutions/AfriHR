@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import toast from "react-hot-toast";
 
 interface Employee {
@@ -17,7 +16,7 @@ interface Employee {
 }
 
 export default function OrganogramPage() {
-  const [user] = useAuthState(auth);
+  const { user } = useAuthUserContext();
   const [treeData, setTreeData] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
 

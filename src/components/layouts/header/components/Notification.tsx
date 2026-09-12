@@ -6,8 +6,7 @@ import Link from "next/link";
 import React, { useMemo } from "react";
 import { useAuthUserContext } from "@/context/UserAuthContext";
 import { useNotifications } from "@/hooks/useNotifications";
-import { markNotificationAsRead, db } from "@/lib/firebase"; 
-import { collection, query, where, getDocs, writeBatch } from "firebase/firestore";
+import { markNotificationAsRead } from "@/lib/firebase";
 import { formatDistanceToNow } from "date-fns";
 
 type TNotificationProps = {
@@ -27,13 +26,8 @@ const Notification = ({ handleShowNotification, isOpenNotification }: TNotificat
   const handleMarkAllRead = async () => {
     if (!user?.uid || unreadOnly.length === 0) return;
     try {
-      const batch = writeBatch(db);
-      const q = query(collection(db, "notifications"), 
-                where("userId", "==", user.uid), 
-                where("isRead", "==", false));
-      const snapshot = await getDocs(q);
-      snapshot.forEach((doc) => batch.update(doc.ref, { isRead: true }));
-      await batch.commit();
+      // Mark each notification as read via Base44
+      await Promise.all(unreadOnly.map((n) => markNotificationAsRead(n.id)));
     } catch (err) {
       console.error("Batch update failed:", err);
     }

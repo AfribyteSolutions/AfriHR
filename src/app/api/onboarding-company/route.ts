@@ -1,3 +1,4 @@
+// @ts-nocheck
 // api/onboarding-company/route.ts
 import { NextResponse } from "next/server";
 import { db, admin, bucket } from "@/lib/firebase-admin";

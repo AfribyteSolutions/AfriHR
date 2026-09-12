@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, X, Save, Building2, Mail, Phone, MapPin, User } from "lucide-react";
 import Image from "next/image";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "@/lib/storage-compat";
 import { storage } from "@/lib/firebase"; // Make sure you have this import
 
 // Utility to detect subdomain from host

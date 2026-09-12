@@ -1,34 +1,20 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc,
-  doc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-  Timestamp
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { createNotification } from '../notification';
-import { 
-  Announcement, 
-  CreateAnnouncementData, 
-  UpdateAnnouncementData,
-  AnnouncementTarget 
-} from '@/types/announcement';
+// lib/firebase/announcements.ts
+// Base44-native announcements (no Firebase).
 
-const ANNOUNCEMENTS_COLLECTION = 'announcements';
-const USERS_COLLECTION = 'users';
+import { base44 } from "@/lib/base44";
+import { createNotification } from "../notification";
+import {
+  Announcement,
+  CreateAnnouncementData,
+  UpdateAnnouncementData,
+  AnnouncementTarget,
+} from "@/types/announcement";
 
 function convertTimestampToDate(timestamp: any): Date {
-  if (timestamp instanceof Timestamp) {
-    return timestamp.toDate();
-  }
-  return timestamp ? new Date(timestamp) : new Date();
+  if (!timestamp) return new Date();
+  if (timestamp instanceof Date) return timestamp;
+  if (typeof timestamp === "string") return new Date(timestamp);
+  return new Date();
 }
 
 async function getTargetUserIds(
@@ -36,60 +22,62 @@ async function getTargetUserIds(
   target: AnnouncementTarget,
   specificUserIds?: string[]
 ): Promise<string[]> {
-  if (target === 'specific' && specificUserIds) {
+  if (target === "specific" && specificUserIds) {
     return specificUserIds;
   }
 
-  const usersRef = collection(db, USERS_COLLECTION);
-  let userQuery;
+  try {
+    const users = await (base44.entities as any).User.filter({ tenant_id: companyId });
 
-  if (target === 'all') {
-    userQuery = query(usersRef, where('companyId', '==', companyId));
-  } else if (target === 'managers') {
-    userQuery = query(usersRef, where('companyId', '==', companyId), where('role', '==', 'manager'));
-  } else if (target === 'employees') {
-    userQuery = query(usersRef, where('companyId', '==', companyId), where('role', '==', 'employee'));
-  } else {
-    return [];
+    if (target === "all") {
+      return (users || []).map((u: any) => u.id);
+    } else if (target === "managers") {
+      return (users || [])
+        .filter((u: any) => u.app_role === "manager" || u.role === "manager")
+        .map((u: any) => u.id);
+    } else if (target === "employees") {
+      return (users || [])
+        .filter((u: any) => u.app_role === "employee" || u.role === "employee")
+        .map((u: any) => u.id);
+    }
+  } catch (error) {
+    console.error("Error fetching target users:", error);
   }
 
-  const userSnap = await getDocs(userQuery);
-  return userSnap.docs.map(doc => doc.id);
+  return [];
 }
 
 export async function createAnnouncementAndNotify(
   data: CreateAnnouncementData & { companyId: string }
 ): Promise<string> {
   try {
-    const announcementRef = await addDoc(collection(db, ANNOUNCEMENTS_COLLECTION), {
+    const result = await (base44.entities as any).Announcement.create({
       title: data.title,
       description: data.description,
-      startDate: data.startDate,
-      endDate: data.endDate,
+      start_date: data.startDate instanceof Date ? data.startDate.toISOString() : data.startDate,
+      end_date: data.endDate instanceof Date ? data.endDate.toISOString() : data.endDate,
       target: data.target,
-      targetUserIds: data.targetUserIds || [],
-      createdBy: data.createdBy,
-      companyId: data.companyId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      target_user_ids: data.targetUserIds || [],
+      created_by: data.createdBy,
+      tenant_id: data.companyId,
     });
 
     const targetUserIds = await getTargetUserIds(data.companyId, data.target, data.targetUserIds);
 
-    const notificationPromises = targetUserIds.map(userId => 
+    const notificationPromises = targetUserIds.map((userId) =>
       createNotification({
         userId,
-        title: 'New Announcement',
+        title: "New Announcement",
         message: data.title,
-        category: 'system',
-        link: '/announcement',
+        category: "system",
+        link: "/announcement",
       })
     );
 
     await Promise.all(notificationPromises);
-    return announcementRef.id;
+    return result?.id || "";
   } catch (error) {
-    console.error('Error creating announcement:', error);
+    console.error("Error creating announcement:", error);
     throw error;
   }
 }
@@ -99,23 +87,28 @@ export async function updateAnnouncement(
   data: UpdateAnnouncementData
 ): Promise<void> {
   try {
-    const announcementRef = doc(db, ANNOUNCEMENTS_COLLECTION, announcementId);
-    await updateDoc(announcementRef, {
-      ...data,
-      updatedAt: serverTimestamp(),
-    });
+    const update: Record<string, any> = {};
+    if (data.title !== undefined) update.title = data.title;
+    if (data.description !== undefined) update.description = data.description;
+    if (data.startDate !== undefined)
+      update.start_date = data.startDate instanceof Date ? data.startDate.toISOString() : data.startDate;
+    if (data.endDate !== undefined)
+      update.end_date = data.endDate instanceof Date ? data.endDate.toISOString() : data.endDate;
+    if (data.target !== undefined) update.target = data.target;
+    if (data.targetUserIds !== undefined) update.target_user_ids = data.targetUserIds;
+
+    await (base44.entities as any).Announcement.update(announcementId, update);
   } catch (error) {
-    console.error('Error updating announcement:', error);
+    console.error("Error updating announcement:", error);
     throw error;
   }
 }
 
 export async function deleteAnnouncement(announcementId: string): Promise<void> {
   try {
-    const announcementRef = doc(db, ANNOUNCEMENTS_COLLECTION, announcementId);
-    await deleteDoc(announcementRef);
+    await (base44.entities as any).Announcement.delete(announcementId);
   } catch (error) {
-    console.error('Error deleting announcement:', error);
+    console.error("Error deleting announcement:", error);
     throw error;
   }
 }
@@ -125,35 +118,41 @@ export function subscribeToAnnouncements(
   onData: (announcements: Announcement[]) => void,
   onError: (error: any) => void
 ): () => void {
-  const q = query(
-    collection(db, ANNOUNCEMENTS_COLLECTION),
-    where('companyId', '==', companyId),
-    orderBy('createdAt', 'desc')
-  );
+  let cancelled = false;
 
-  return onSnapshot(q, 
-    (snapshot) => {
-      const announcements: Announcement[] = snapshot.docs.map(doc => {
-        const data = doc.data({ serverTimestamps: 'estimate' });
-        return {
-          id: doc.id,
-          title: data.title,
-          description: data.description,
-          startDate: convertTimestampToDate(data.startDate),
-          endDate: convertTimestampToDate(data.endDate),
-          target: data.target,
-          targetUserIds: data.targetUserIds || [],
-          createdBy: data.createdBy,
-          companyId: data.companyId,
-          createdAt: convertTimestampToDate(data.createdAt),
-          updatedAt: data.updatedAt ? convertTimestampToDate(data.updatedAt) : undefined,
-        };
-      });
+  const poll = async () => {
+    if (cancelled) return;
+    try {
+      const results = await (base44.entities as any).Announcement.filter(
+        { tenant_id: companyId },
+        "-created_date"
+      );
+      if (cancelled) return;
+
+      const announcements: Announcement[] = (results || []).map((r: any) => ({
+        id: r.id,
+        title: r.title || "",
+        description: r.description || "",
+        startDate: convertTimestampToDate(r.start_date),
+        endDate: convertTimestampToDate(r.end_date),
+        target: r.target || "all",
+        targetUserIds: r.target_user_ids || [],
+        createdBy: r.created_by || "",
+        createdAt: convertTimestampToDate(r.created_date),
+        updatedAt: r.updated_date ? convertTimestampToDate(r.updated_date) : undefined,
+      }));
       onData(announcements);
-    },
-    (error) => {
-      console.error("Subscription error:", error);
+    } catch (error) {
+      console.error("Error fetching announcements:", error);
       onError(error);
     }
-  );
+  };
+
+  poll();
+  const interval = setInterval(poll, 30000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
 }

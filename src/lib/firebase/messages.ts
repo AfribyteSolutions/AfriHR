@@ -1,20 +1,7 @@
-import {
-  collection,
-  addDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-  Timestamp,
-  getDocs,
-  writeBatch,
-  doc,
-  or,
-  and,
-  limit as firestoreLimit
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+// lib/firebase/messages.ts
+// Base44-native messaging (no Firebase).
+
+import { base44 } from "@/lib/base44";
 
 export interface Message {
   id: string;
@@ -50,13 +37,11 @@ export interface Conversation {
   unreadCount: number;
 }
 
-const MESSAGES_COLLECTION = 'messages';
-
 function convertTimestampToDate(timestamp: any): Date {
-  if (timestamp instanceof Timestamp) {
-    return timestamp.toDate();
-  }
-  return timestamp ? new Date(timestamp) : new Date();
+  if (!timestamp) return new Date();
+  if (timestamp instanceof Date) return timestamp;
+  if (typeof timestamp === "string") return new Date(timestamp);
+  return new Date();
 }
 
 /**
@@ -64,28 +49,26 @@ function convertTimestampToDate(timestamp: any): Date {
  */
 export async function createMessage(data: CreateMessageData): Promise<string> {
   try {
-    const messageRef = await addDoc(collection(db, MESSAGES_COLLECTION), {
-      senderId: data.senderId,
-      senderName: data.senderName,
-      senderPhoto: data.senderPhoto || null,
-      receiverId: data.receiverId,
-      receiverName: data.receiverName,
-      receiverPhoto: data.receiverPhoto || null,
+    const result = await (base44.entities as any).Message.create({
+      sender_id: data.senderId,
+      sender_name: data.senderName,
+      sender_photo: data.senderPhoto || null,
+      receiver_id: data.receiverId,
+      receiver_name: data.receiverName,
+      receiver_photo: data.receiverPhoto || null,
       message: data.message,
-      timestamp: serverTimestamp(),
-      companyId: data.companyId,
-      isRead: false,
+      tenant_id: data.companyId,
+      is_read: false,
     });
-
-    return messageRef.id;
+    return result?.id || "";
   } catch (error) {
-    console.error('Error creating message:', error);
+    console.error("Error creating message:", error);
     throw error;
   }
 }
 
 /**
- * Subscribe to messages between two users
+ * Subscribe to messages between two users (polling-based)
  */
 export function subscribeToMessages(
   userId1: string,
@@ -93,87 +76,93 @@ export function subscribeToMessages(
   companyId: string,
   callback: (messages: Message[]) => void
 ): () => void {
-  const q = query(
-    collection(db, MESSAGES_COLLECTION),
-    and(
-      where('companyId', '==', companyId),
-      or(
-        and(
-          where('senderId', '==', userId1),
-          where('receiverId', '==', userId2)
-        ),
-        and(
-          where('senderId', '==', userId2),
-          where('receiverId', '==', userId1)
-        )
-      )
-    ),
-    orderBy('timestamp', 'asc')
-  );
+  let cancelled = false;
 
-  const unsubscribe = onSnapshot(
-    q,
-    (snapshot) => {
-      const messages: Message[] = snapshot.docs.map((doc) => {
-        const data = doc.data({ serverTimestamps: 'estimate' });
-        return {
-          id: doc.id,
-          senderId: data.senderId,
-          senderName: data.senderName,
-          senderPhoto: data.senderPhoto,
-          receiverId: data.receiverId,
-          receiverName: data.receiverName,
-          receiverPhoto: data.receiverPhoto,
-          message: data.message,
-          timestamp: convertTimestampToDate(data.timestamp),
-          companyId: data.companyId,
-          isRead: data.isRead,
-        };
-      });
+  const poll = async () => {
+    if (cancelled) return;
+    try {
+      const results = await (base44.entities as any).Message.filter(
+        { tenant_id: companyId },
+        "-created_date"
+      );
+      if (cancelled) return;
+
+      const messages: Message[] = (results || [])
+        .filter(
+          (r: any) =>
+            (r.sender_id === userId1 && r.receiver_id === userId2) ||
+            (r.sender_id === userId2 && r.receiver_id === userId1)
+        )
+        .map((r: any) => ({
+          id: r.id,
+          senderId: r.sender_id,
+          senderName: r.sender_name,
+          senderPhoto: r.sender_photo,
+          receiverId: r.receiver_id,
+          receiverName: r.receiver_name,
+          receiverPhoto: r.receiver_photo,
+          message: r.message,
+          timestamp: convertTimestampToDate(r.created_date),
+          companyId: r.tenant_id,
+          isRead: r.is_read,
+        }))
+        .sort((a: Message, b: Message) => a.timestamp.getTime() - b.timestamp.getTime());
+
       callback(messages);
-    },
-    (error) => {
-      console.error('Error fetching messages:', error);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
       callback([]);
     }
-  );
+  };
 
-  return unsubscribe;
+  poll();
+  const interval = setInterval(poll, 5000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
 }
 
 /**
- * Subscribe to unread message counts grouped by sender (no orderBy = no composite index needed)
+ * Subscribe to unread message counts grouped by sender
  */
 export function subscribeToUnreadCounts(
   userId: string,
   companyId: string,
   callback: (unreadCounts: Record<string, number>) => void
 ): () => void {
-  const q = query(
-    collection(db, MESSAGES_COLLECTION),
-    where('companyId', '==', companyId),
-    where('receiverId', '==', userId),
-    where('isRead', '==', false)
-  );
+  let cancelled = false;
 
-  const unsubscribe = onSnapshot(
-    q,
-    (snapshot) => {
+  const poll = async () => {
+    if (cancelled) return;
+    try {
+      const results = await (base44.entities as any).Message.filter({
+        tenant_id: companyId,
+        receiver_id: userId,
+        is_read: false,
+      });
+      if (cancelled) return;
+
       const counts: Record<string, number> = {};
-      snapshot.docs.forEach((docSnap) => {
-        const data = docSnap.data();
-        const senderId = data.senderId as string;
+      (results || []).forEach((r: any) => {
+        const senderId = r.sender_id as string;
         counts[senderId] = (counts[senderId] || 0) + 1;
       });
       callback(counts);
-    },
-    (error) => {
-      console.error('Error subscribing to unread counts:', error);
+    } catch (error) {
+      console.error("Error subscribing to unread counts:", error);
       callback({});
     }
-  );
+  };
 
-  return unsubscribe;
+  poll();
+  const interval = setInterval(poll, 10000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
 }
 
 /**
@@ -185,65 +174,50 @@ export async function markMessagesAsRead(
   companyId: string
 ): Promise<void> {
   try {
-    const q = query(
-      collection(db, MESSAGES_COLLECTION),
-      where('companyId', '==', companyId),
-      where('receiverId', '==', currentUserId),
-      where('senderId', '==', otherUserId),
-      where('isRead', '==', false)
-    );
-
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) return;
-
-    const batch = writeBatch(db);
-    snapshot.docs.forEach((docSnap) => {
-      batch.update(doc(db, MESSAGES_COLLECTION, docSnap.id), { isRead: true });
+    const results = await (base44.entities as any).Message.filter({
+      tenant_id: companyId,
+      receiver_id: currentUserId,
+      sender_id: otherUserId,
+      is_read: false,
     });
-    await batch.commit();
+
+    if (!results || results.length === 0) return;
+
+    await Promise.all(
+      results.map((m: any) =>
+        (base44.entities as any).Message.update(m.id, { is_read: true })
+      )
+    );
   } catch (error) {
-    console.error('Error marking messages as read:', error);
+    console.error("Error marking messages as read:", error);
   }
 }
 
 /**
  * Fetch the most recent message timestamp per conversation partner.
- * Uses two equality-only queries (no orderBy) so no composite index is needed.
  */
 export async function fetchLastMessageTimes(
   userId: string,
   companyId: string
 ): Promise<Record<string, number>> {
-  const [sentSnap, receivedSnap] = await Promise.all([
-    getDocs(query(
-      collection(db, MESSAGES_COLLECTION),
-      where('companyId', '==', companyId),
-      where('senderId', '==', userId)
-    )),
-    getDocs(query(
-      collection(db, MESSAGES_COLLECTION),
-      where('companyId', '==', companyId),
-      where('receiverId', '==', userId)
-    )),
-  ]);
+  try {
+    const results = await (base44.entities as any).Message.filter({
+      tenant_id: companyId,
+    });
+    const times: Record<string, number> = {};
 
-  const times: Record<string, number> = {};
+    (results || []).forEach((r: any) => {
+      const otherId = r.sender_id === userId ? r.receiver_id : r.sender_id === userId ? r.receiver_id : null;
+      if (!otherId) return;
+      const ts = convertTimestampToDate(r.created_date).getTime();
+      if (!times[otherId] || ts > times[otherId]) times[otherId] = ts;
+    });
 
-  sentSnap.docs.forEach((docSnap) => {
-    const data = docSnap.data({ serverTimestamps: 'estimate' });
-    const otherId = data.receiverId as string;
-    const ts = data.timestamp instanceof Timestamp ? data.timestamp.toDate().getTime() : Date.now();
-    if (!times[otherId] || ts > times[otherId]) times[otherId] = ts;
-  });
-
-  receivedSnap.docs.forEach((docSnap) => {
-    const data = docSnap.data({ serverTimestamps: 'estimate' });
-    const otherId = data.senderId as string;
-    const ts = data.timestamp instanceof Timestamp ? data.timestamp.toDate().getTime() : Date.now();
-    if (!times[otherId] || ts > times[otherId]) times[otherId] = ts;
-  });
-
-  return times;
+    return times;
+  } catch (error) {
+    console.error("Error fetching last message times:", error);
+    return {};
+  }
 }
 
 /**
@@ -254,181 +228,38 @@ export async function getConversations(
   companyId: string
 ): Promise<Conversation[]> {
   try {
-    // Query messages where user is sender or receiver
-    const sentQuery = query(
-      collection(db, MESSAGES_COLLECTION),
-      where('companyId', '==', companyId),
-      where('senderId', '==', userId),
-      orderBy('timestamp', 'desc')
+    const results = await (base44.entities as any).Message.filter(
+      { tenant_id: companyId },
+      "-created_date"
     );
 
-    const receivedQuery = query(
-      collection(db, MESSAGES_COLLECTION),
-      where('companyId', '==', companyId),
-      where('receiverId', '==', userId),
-      orderBy('timestamp', 'desc')
-    );
-
-    const [sentSnapshot, receivedSnapshot] = await Promise.all([
-      getDocs(sentQuery),
-      getDocs(receivedQuery)
-    ]);
-
-    // Map to track unique conversations
     const conversationMap = new Map<string, Conversation>();
 
-    // Process sent messages
-    sentSnapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      const otherUserId = data.receiverId;
+    (results || []).forEach((r: any) => {
+      const isSender = r.sender_id === userId;
+      const otherUserId = isSender ? r.receiver_id : r.receiver_id === userId ? r.sender_id : null;
+      if (!otherUserId) return;
 
       if (!conversationMap.has(otherUserId)) {
         conversationMap.set(otherUserId, {
           userId: otherUserId,
-          userName: data.receiverName,
-          userPhoto: data.receiverPhoto,
-          lastMessage: data.message,
-          lastMessageTime: convertTimestampToDate(data.timestamp),
+          userName: isSender ? r.receiver_name : r.sender_name,
+          userPhoto: isSender ? r.receiver_photo : r.sender_photo,
+          lastMessage: r.message,
+          lastMessageTime: convertTimestampToDate(r.created_date),
           unreadCount: 0,
         });
       }
-    });
 
-    // Process received messages
-    receivedSnapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      const otherUserId = data.senderId;
-
-      if (!conversationMap.has(otherUserId)) {
-        conversationMap.set(otherUserId, {
-          userId: otherUserId,
-          userName: data.senderName,
-          userPhoto: data.senderPhoto,
-          lastMessage: data.message,
-          lastMessageTime: convertTimestampToDate(data.timestamp),
-          unreadCount: data.isRead ? 0 : 1,
-        });
-      } else {
-        const existing = conversationMap.get(otherUserId)!;
-        const msgTime = convertTimestampToDate(data.timestamp);
-
-        // Update if this message is more recent
-        if (msgTime > existing.lastMessageTime) {
-          existing.lastMessage = data.message;
-          existing.lastMessageTime = msgTime;
-        }
-
-        // Count unread messages
-        if (!data.isRead) {
-          existing.unreadCount++;
-        }
+      if (!isSender && !r.is_read) {
+        const conv = conversationMap.get(otherUserId)!;
+        conv.unreadCount++;
       }
     });
 
-    // Convert map to array and sort by last message time
-    return Array.from(conversationMap.values()).sort(
-      (a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime()
-    );
+    return Array.from(conversationMap.values());
   } catch (error) {
-    console.error('Error fetching conversations:', error);
+    console.error("Error fetching conversations:", error);
     return [];
   }
-}
-
-/**
- * Subscribe to conversation list (real-time updates)
- */
-export function subscribeToConversations(
-  userId: string,
-  companyId: string,
-  callback: (conversations: Conversation[]) => void
-): () => void {
-  // Subscribe to sent messages
-  const sentQuery = query(
-    collection(db, MESSAGES_COLLECTION),
-    where('companyId', '==', companyId),
-    where('senderId', '==', userId),
-    orderBy('timestamp', 'desc')
-  );
-
-  // Subscribe to received messages
-  const receivedQuery = query(
-    collection(db, MESSAGES_COLLECTION),
-    where('companyId', '==', companyId),
-    where('receiverId', '==', userId),
-    orderBy('timestamp', 'desc')
-  );
-
-  let sentMessages: any[] = [];
-  let receivedMessages: any[] = [];
-
-  const processConversations = () => {
-    const conversationMap = new Map<string, Conversation>();
-
-    // Process sent messages
-    sentMessages.forEach((data) => {
-      const otherUserId = data.receiverId;
-
-      if (!conversationMap.has(otherUserId)) {
-        conversationMap.set(otherUserId, {
-          userId: otherUserId,
-          userName: data.receiverName,
-          userPhoto: data.receiverPhoto,
-          lastMessage: data.message,
-          lastMessageTime: convertTimestampToDate(data.timestamp),
-          unreadCount: 0,
-        });
-      }
-    });
-
-    // Process received messages
-    receivedMessages.forEach((data) => {
-      const otherUserId = data.senderId;
-
-      if (!conversationMap.has(otherUserId)) {
-        conversationMap.set(otherUserId, {
-          userId: otherUserId,
-          userName: data.senderName,
-          userPhoto: data.senderPhoto,
-          lastMessage: data.message,
-          lastMessageTime: convertTimestampToDate(data.timestamp),
-          unreadCount: data.isRead ? 0 : 1,
-        });
-      } else {
-        const existing = conversationMap.get(otherUserId)!;
-        const msgTime = convertTimestampToDate(data.timestamp);
-
-        if (msgTime > existing.lastMessageTime) {
-          existing.lastMessage = data.message;
-          existing.lastMessageTime = msgTime;
-        }
-
-        if (!data.isRead) {
-          existing.unreadCount++;
-        }
-      }
-    });
-
-    const conversations = Array.from(conversationMap.values()).sort(
-      (a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime()
-    );
-
-    callback(conversations);
-  };
-
-  const unsubscribeSent = onSnapshot(sentQuery, (snapshot) => {
-    sentMessages = snapshot.docs.map(doc => doc.data({ serverTimestamps: 'estimate' }));
-    processConversations();
-  });
-
-  const unsubscribeReceived = onSnapshot(receivedQuery, (snapshot) => {
-    receivedMessages = snapshot.docs.map(doc => doc.data({ serverTimestamps: 'estimate' }));
-    processConversations();
-  });
-
-  // Return cleanup function that unsubscribes both listeners
-  return () => {
-    unsubscribeSent();
-    unsubscribeReceived();
-  };
 }

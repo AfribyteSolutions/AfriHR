@@ -1,6 +1,5 @@
 "use client";
-import { auth } from "@/lib/firebase"; // Adjust this path to where your firebase client config lives
-import { onAuthStateChanged } from "firebase/auth";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
 import Breadcrumb from "@/common/Breadcrumb/breadcrumb";
@@ -15,37 +14,20 @@ import { IEmployee } from "@/interface";
 
 const EmployeeProfileContent = () => {
   const searchParams = useSearchParams();
+  const { user: authUser, loading: authLoading } = useAuthUserContext();
   const [employeeData, setEmployeeData] = useState<IEmployee | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      let uid = searchParams.get('uid');
-  
-      // 1. If no UID in URL, get it from the logged-in user
-      if (!uid) {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-          if (user) {
-            executeFetch(user.uid);
-          } else {
-            setError("Please log in to view your profile.");
-            setLoading(false);
-          }
-        });
-        return () => unsubscribe();
-      } else {
-        executeFetch(uid);
-      }
-    };
-  
+    const uid = searchParams.get('uid');
+
     const executeFetch = async (targetUid: string) => {
       try {
         const res = await fetch(`/api/user-data?uid=${targetUid}`);
         const data = await res.json();
         
         if (data.success) {
-          // We set the data, but we must ensure the UI uses 'fullName'
           setEmployeeData(data.user);
         } else {
           setError(data.message || "User not found.");
@@ -56,9 +38,16 @@ const EmployeeProfileContent = () => {
         setLoading(false);
       }
     };
-  
-    fetchProfile();
-  }, [searchParams]);
+
+    if (uid) {
+      executeFetch(uid);
+    } else if (authUser?.uid) {
+      executeFetch(authUser.uid);
+    } else if (!authLoading) {
+      setError("Please log in to view your profile.");
+      setLoading(false);
+    }
+  }, [searchParams, authUser, authLoading]);
 
   if (loading) return <div className="p-10 text-center">Loading Profile Data...</div>;
   
@@ -79,17 +68,19 @@ const EmployeeProfileContent = () => {
         <EducationQualification data={employeeData!} />
         <ExperienceDetails data={employeeData!} />
         <BankAccount data={employeeData!} />
-        <Passport data={employeeData!} />
         <SocialProfile data={employeeData!} />
+        <Passport data={employeeData!} />
       </div>
     </div>
   );
 };
 
-const EmployeeProfileMainArea = () => (
-  <Suspense fallback={<div className="p-10 text-center">Loading...</div>}>
-    <EmployeeProfileContent />
-  </Suspense>
-);
+const EmployeeProfileMainArea: React.FC = () => {
+  return (
+    <Suspense fallback={<div className="p-10 text-center">Loading...</div>}>
+      <EmployeeProfileContent />
+    </Suspense>
+  );
+};
 
 export default EmployeeProfileMainArea;

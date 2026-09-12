@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot, orderBy } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 import { useAuthUserContext } from "@/context/UserAuthContext";
 import { IWarningData } from "@/interface/table.interface";

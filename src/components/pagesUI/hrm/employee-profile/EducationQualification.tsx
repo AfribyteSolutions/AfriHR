@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import UpdateEducationQualificationModal from "./UpdateEducationQualificationModal";
 import Link from "next/link";
 import { IEmployee, IEducation } from "@/interface"; // Import IEducation
-import { doc, onSnapshot } from "firebase/firestore"; // Import Firestore functions
+import { doc, onSnapshot } from "@/lib/firestore-compat"; // Import Firestore functions
 import { db } from "@/lib/firebase"; // Your Firebase instance
 
 interface propsType {

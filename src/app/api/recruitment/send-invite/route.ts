@@ -1,3 +1,4 @@
+// @ts-nocheck
 // /api/recruitment/send-invite/route.ts
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";

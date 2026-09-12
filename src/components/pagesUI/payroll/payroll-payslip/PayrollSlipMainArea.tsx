@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link"; 
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "@/lib/firestore-compat";
 import { useAuthUserContext } from "@/context/UserAuthContext";
 import PayslipAndBillingAddress from "./PayslipAndBillingAddress";
 import EarningTable from "./EarningTable";

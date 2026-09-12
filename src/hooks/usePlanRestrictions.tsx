@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from "react";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { base44 } from "@/lib/base44";
 import { Company, PlanType } from "@/types/company";
 import {
   PLANS,
@@ -44,39 +43,65 @@ export function usePlanRestrictions(companyId: string | null): UsePlanRestrictio
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch company data with real-time updates
+  // Fetch company data via Base44 SDK
   useEffect(() => {
     if (!companyId) {
       setIsLoading(false);
       return;
     }
 
-    const companyRef = doc(db, "companies", companyId);
+    let cancelled = false;
 
-    const unsubscribe = onSnapshot(
-      companyRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data();
+    const fetchCompany = async () => {
+      try {
+        const result = await (base44.entities as any).Tenant.get(companyId);
+        if (cancelled) return;
+
+        if (result) {
           setCompany({
-            id: snapshot.id,
-            ...data,
-            plan: data.plan || "starter",
+            id: result.id,
+            name: result.name || "",
+            subdomain: result.subdomain || "",
+            plan: result.plan || "starter",
+            employeeCount: result.employee_count || 0,
+            employeeLimit: result.employee_limit || undefined,
+            trialEndsAt: result.trial_ends_at || null,
+            subscription: result.subscription || undefined,
+            isActive: result.is_active ?? undefined,
+            onboardingStatus: result.onboarding_status || undefined,
+            createdAt: result.created_date || null,
+            updatedAt: result.updated_date || null,
+            industry: result.industry || undefined,
+            companySize: result.company_size || undefined,
+            country: result.country || undefined,
+            address: result.address || undefined,
+            website: result.website || undefined,
+            email: result.email || undefined,
+            phone: result.phone || undefined,
+            adminEmail: result.admin_email || undefined,
+            ownerId: result.owner_id || undefined,
+            logoUrl: result.logo_url || undefined,
+            branding: result.branding || undefined,
           } as Company);
         } else {
           setCompany(null);
           setError("Company not found");
         }
-        setIsLoading(false);
-      },
-      (err) => {
+      } catch (err: any) {
         console.error("Error fetching company:", err);
         setError(err.message);
-        setIsLoading(false);
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-    );
+    };
 
-    return () => unsubscribe();
+    fetchCompany();
+    const interval = setInterval(fetchCompany, 30000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [companyId]);
 
   const plan: PlanType = company?.plan || "starter";
@@ -88,7 +113,7 @@ export function usePlanRestrictions(companyId: string | null): UsePlanRestrictio
 
   // Check if subscription is active
   const isSubscriptionActive = (() => {
-    if (plan === "starter") return true; // Free plan is always active
+    if (plan === "starter") return true;
     if (!company?.subscription) return false;
     return company.subscription.status === "active" || company.subscription.status === "trialing";
   })();
@@ -127,7 +152,7 @@ export function usePlanRestrictions(companyId: string | null): UsePlanRestrictio
   // Get remaining employee slots
   const getRemainingEmployees = useCallback((): number => {
     const limit = getEmployeeLimit(plan);
-    if (limit === -1) return Infinity; // Unlimited
+    if (limit === -1) return Infinity;
     return Math.max(0, limit - employeeCount);
   }, [plan, employeeCount]);
 

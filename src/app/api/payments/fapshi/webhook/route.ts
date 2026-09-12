@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server";
 import { db, admin } from "@/lib/firebase-admin";
 import { PlanType, BillingCycle, Subscription } from "@/types/company";

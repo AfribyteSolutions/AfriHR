@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "@/lib/storage-compat";
 
 type SignatureKind = "logo" | "signature1" | "signature2";
 

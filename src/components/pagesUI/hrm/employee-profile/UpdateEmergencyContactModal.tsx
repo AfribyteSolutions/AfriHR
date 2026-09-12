@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { IEmergencyContact, IEmployee } from "@/interface";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import { toast } from "sonner";
-import { doc, updateDoc, getDoc, setDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc, setDoc } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase"; // Adjust import path as needed
 
 // Define the form data structure

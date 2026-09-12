@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { IPayrollLineItem } from "@/interface/table.interface";
 import { toast } from "sonner";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where } from "@/lib/firestore-compat";
 import { useAuthUserContext } from "@/context/UserAuthContext";
 
 const AddNewSalaryModal = ({ open, setOpen, onSuccess }: {

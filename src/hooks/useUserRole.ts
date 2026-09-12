@@ -1,134 +1,66 @@
-import { useState, useEffect } from "react";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
-import { UserRole } from "@/lib/utils/sidebarFilter";
+import { useAuth } from "@/context/AuthContext";
+import type { AppRole } from "@/types/base44-entities";
 
-// Firestore user document shape (extend as needed)
+export type UserRole = AppRole | "super-admin" | "admin" | "manager" | "employee";
+
 export interface UserData {
-  role: UserRole; // "super-admin" | "admin" | "manager" | "employee"
+  role: UserRole;
   name?: string;
   email?: string;
-  companyId?: string;
-
-  // NEW: capability flags instead of separate sidebars
-  permissions?: {
-    approveLeaves?: boolean;
-    confirmProfileChanges?: boolean;
-    [key: string]: boolean | undefined;
-  };
-
-  // NEW: manager scope (only relevant if role === "manager")
-  managerType?: "branch" | "department" | null;
-  branchName?: string | null;
-  departmentName?: string | null;
+  tenant_id?: string;
+  app_role?: AppRole;
 }
 
 export const useUserRole = () => {
-  const [user, loading, error] = useAuthState(auth);
+  const { user, loading, isAuthenticated, appRole, tenantId } = useAuth();
 
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [userData, setUserData] = useState<UserData | null>(null);
-
-  // NEW: expose permissions and scope directly
-  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
-  const [managerType, setManagerType] = useState<"branch" | "department" | null>(null);
-  const [branchName, setBranchName] = useState<string | null>(null);
-  const [departmentName, setDepartmentName] = useState<string | null>(null);
-
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      const isLocalhost =
-        typeof window !== "undefined" && window.location.hostname === "localhost";
-
-      if (user) {
-        try {
-          const userDocRef = doc(db, "users", user.uid);
-          const snap = await getDoc(userDocRef);
-          if (snap.exists()) {
-            const data = snap.data() as UserData;
-
-            setUserData(data);
-            setUserRole(data.role);
-
-            // NEW: hydrate permissions/scope safely
-            setPermissions({
-              approveLeaves: !!data.permissions?.approveLeaves,
-              confirmProfileChanges: !!data.permissions?.confirmProfileChanges,
-              // keep any other flags that might exist:
-              ...Object.fromEntries(
-                Object.entries(data.permissions || {}).map(([k, v]) => [k, !!v])
-              ),
-            });
-            setManagerType(data.managerType ?? null);
-            setBranchName(data.branchName ?? null);
-            setDepartmentName(data.departmentName ?? null);
-          } else {
-            console.error("User document not found");
-            setUserRole("employee");
-            setPermissions({});
-            setManagerType(null);
-            setBranchName(null);
-            setDepartmentName(null);
-          }
-        } catch (err) {
-          console.error("Error fetching user data:", err);
-          setUserRole("employee");
-          setPermissions({});
-          setManagerType(null);
-          setBranchName(null);
-          setDepartmentName(null);
-        }
-      } else if (!loading) {
-        // Not authenticated
-        if (isLocalhost && process.env.NODE_ENV === "development") {
-          // leave Wrapper to decide the sidebar in dev
-          setUserRole(null);
-        } else {
-          setUserRole(null);
-        }
-        setUserData(null);
-        setPermissions({});
-        setManagerType(null);
-        setBranchName(null);
-        setDepartmentName(null);
-      }
-
-      setIsLoading(false);
-    };
-
-    if (!loading) {
-      fetchUserData();
+  // Map Base44 app_role to legacy role names for sidebar filtering
+  const legacyRole: UserRole = (() => {
+    if (!appRole) return "employee";
+    switch (appRole) {
+      case "platform_admin": return "super-admin";
+      case "tenant_admin": return "admin";
+      case "hr_manager": return "admin";
+      case "recruiter": return "manager";
+      case "manager": return "manager";
+      case "employee": return "employee";
+      case "auditor": return "employee";
+      default: return "employee";
     }
-  }, [user, loading]);
+  })();
+
+  const userData: UserData | null = user
+    ? {
+        role: legacyRole,
+        name: user.full_name || undefined,
+        email: user.email,
+        tenant_id: tenantId || undefined,
+        app_role: appRole || undefined,
+      }
+    : null;
 
   return {
-    userRole,
+    userRole: legacyRole,
     userData,
-    permissions, // <- use this to conditionally show manager actions in the employee sidebar
-    managerType,
-    branchName,
-    departmentName,
+    appRole,
+    tenantId,
+    isLoading: loading,
+    isAuthenticated,
+    user,
 
-    isLoading: loading || isLoading,
-    error,
-    isAuthenticated: !!user,
+    isSuperAdmin: appRole === "platform_admin",
+    isAdmin: appRole === "tenant_admin" || appRole === "platform_admin",
+    isHRManager: appRole === "hr_manager" || appRole === "tenant_admin" || appRole === "platform_admin",
+    isRecruiter: appRole === "recruiter",
+    isManager: appRole === "manager",
+    isEmployee: appRole === "employee",
+    isAuditor: appRole === "auditor",
 
-    // helpers
-    isSuperAdmin: userRole === "super-admin",
-    isAdmin: userRole === "admin",
-    isManager: userRole === "manager",
-    isEmployee: userRole === "employee",
-
-    // capability helpers
-    canApproveLeaves: !!permissions.approveLeaves,
-    canConfirmProfileChanges: !!permissions.confirmProfileChanges,
-
-    // broader gates
-    canAccessAdminFeatures: userRole === "super-admin" || userRole === "admin",
+    canAccessAdminFeatures:
+      appRole === "platform_admin" || appRole === "tenant_admin" || appRole === "hr_manager",
     canAccessManagerFeatures:
-      userRole === "super-admin" || userRole === "admin" || userRole === "manager",
+      appRole === "platform_admin" || appRole === "tenant_admin" || appRole === "hr_manager" || appRole === "manager",
+    canManageRecruitment:
+      appRole === "platform_admin" || appRole === "tenant_admin" || appRole === "hr_manager" || appRole === "recruiter",
   };
 };

@@ -5,9 +5,8 @@ import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { useForm } from "react-hook-form";
 import DatePicker from "react-datepicker";
 import { toast } from "sonner";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
 import { useAuthUserContext } from "@/context/UserAuthContext";
+
 
 import InputField from "@/components/elements/SharedInputs/InputField";
 import FormLabel from "@/components/elements/SharedInputs/FormLabel";
@@ -15,7 +14,7 @@ import { IPromotion } from "@/interface/table.interface";
 import { statePropsType } from "@/interface/common.interface";
 
 const AddNewPromotionModal = ({ open, setOpen }: statePropsType) => {
-  const [adminUser] = useAuthState(auth);
+  const { user: adminUser } = useAuthUserContext();
   const { user: userData } = useAuthUserContext(); // Get current admin's companyId
   
   const [loading, setLoading] = useState(false);

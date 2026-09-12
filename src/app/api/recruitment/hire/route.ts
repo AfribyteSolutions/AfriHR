@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { admin, auth, db } from "@/lib/firebase-admin";

@@ -12,8 +12,7 @@ import FormLabel from "@/components/elements/SharedInputs/FormLabel";
 import DatePicker from "react-datepicker";
 import SelectBox from "@/components/elements/SharedInputs/SelectBox";
 import { toast } from "sonner";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 
 // 🔹 Enhanced Form Type to include Reporting Structure
 type FormEmployee = {
@@ -50,7 +49,7 @@ interface AddNewEmployeeModalProps extends statePropsType {
 }
 
 const AddNewEmployeeModal = ({ open, setOpen, onRefresh }: AddNewEmployeeModalProps) => {
-  const [user] = useAuthState(auth);
+  const { user } = useAuthUserContext();
   const [selectStartDate, setSelectStartDate] = useState<Date | null>(new Date());
   const [fetchingManagers, setFetchingManagers] = useState(false);
   const [groupedManagers, setGroupedManagers] = useState<GroupedManagers>({});

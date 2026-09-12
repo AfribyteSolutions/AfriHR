@@ -4,14 +4,11 @@ import { Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { useForm } from "react-hook-form";
 import InputField from "@/components/elements/SharedInputs/InputField";
 import { toast } from "sonner";
-import { auth, db } from "@/lib/firebase";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { collection, getDocs, query, where } from "firebase/firestore";
 import { useAuthUserContext } from "@/context/UserAuthContext";
+import { base44 } from "@/lib/base44";
 
 const AddWarningModal = ({ open, setOpen }: { open: boolean; setOpen: (o: boolean) => void }) => {
-  const [user] = useAuthState(auth);
-  const { user: userData } = useAuthUserContext(); // Pulls companyId/role from context
+  const { user } = useAuthUserContext();
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<{ uid: string; displayName: string }[]>([]);
   
@@ -19,46 +16,45 @@ const AddWarningModal = ({ open, setOpen }: { open: boolean; setOpen: (o: boolea
 
   useEffect(() => {
     const fetchEmployees = async () => {
-      // FIX: Only fetch employees that belong to the same company as the manager
-      if (!userData?.companyId) return;
+      if (!user?.companyId) return;
 
       try {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("companyId", "==", userData.companyId));
-        const snap = await getDocs(q);
-        
-        setEmployees(snap.docs.map(doc => ({
-          uid: doc.id,
-          displayName: doc.data().name || doc.data().fullName || "Unknown"
-        })));
+        const results = await (base44.entities as any).User.filter({
+          tenant_id: user.companyId,
+        });
+        setEmployees(
+          (results || []).map((u: any) => ({
+            uid: u.id,
+            displayName: u.full_name || u.name || "Unknown",
+          }))
+        );
       } catch (error) {
         console.error("Error fetching company employees:", error);
       }
     };
 
     if (open) fetchEmployees();
-  }, [open, userData?.companyId]);
+  }, [open, user?.companyId]);
 
   const onSubmit = async (data: any) => {
-    if (!user || !userData?.companyId) {
+    if (!user || !user?.companyId) {
       toast.error("User context not fully loaded. Try again.");
       return;
     }
     setLoading(true);
 
     try {
-      // Find the selected employee's name for the payload (optional but helpful for table display)
       const selectedEmp = employees.find(e => e.uid === data.employeeId);
 
       const payload = {
-        companyId: userData.companyId, 
+        companyId: user.companyId, 
         employeeId: data.employeeId,
-        employeeName: selectedEmp?.displayName || "Unknown", // Added to help the table display names
+        employeeName: selectedEmp?.displayName || "Unknown",
         managerId: user.uid,            
         subject: data.subject,
         description: data.description,
         warningDate: new Date().toISOString(),
-        createdAt: new Date().toISOString(), // Standardizing for the orderBy query
+        createdAt: new Date().toISOString(),
         status: "active"
       };
 

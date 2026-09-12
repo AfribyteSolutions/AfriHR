@@ -9,7 +9,7 @@ import { statePropsType } from "@/interface/common.interface";
 import { toast } from "sonner";
 import { createAnnouncementAndNotify, updateAnnouncement } from "@/lib/firebase/announcements";
 import { useAuthUserContext } from "@/context/UserAuthContext";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where } from "@/lib/firestore-compat";
 import { db } from "@/lib/firebase";
 import { Announcement, AnnouncementTarget } from "@/types/announcement";
 
