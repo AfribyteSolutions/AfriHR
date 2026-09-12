@@ -31,6 +31,25 @@ Deno.serve(async (req) => {
       return json({ success: true, data: employees });
     }
 
+    if (operation === "update_employee") {
+      const employeeId = clean(body.employee_id);
+      const employee = await base44.asServiceRole.entities.Employee.get(employeeId);
+      if (!employee || employee.tenant_id !== tenantId) return json({ success: false, error: "Employee not found" }, 404);
+      const fields = ["full_name", "email", "phone", "date_of_birth", "gender", "nationality", "address", "city", "country", "location", "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relationship", "employment_type", "department", "job_title", "manager_id", "hire_date"];
+      const patch: Record<string, string> = {};
+      for (const field of fields) {
+        if (Object.prototype.hasOwnProperty.call(body, field)) patch[field] = clean(body[field], field === "email" ? 254 : 500);
+      }
+      if (!Object.keys(patch).length) return json({ success: false, error: "No valid fields supplied" }, 400);
+      if (patch.email && !patch.email.includes("@")) return json({ success: false, error: "Valid email required" }, 400);
+      if (patch.employment_type && !["permanent", "fixed_term", "part_time", "contractor", "intern", "casual"].includes(patch.employment_type)) {
+        return json({ success: false, error: "Invalid employment type" }, 400);
+      }
+      const updated = await base44.asServiceRole.entities.Employee.update(employeeId, patch);
+      await audit("employee.updated", "Employee", employeeId, { fields: Object.keys(patch) });
+      return json({ success: true, data: updated });
+    }
+
     if (operation === "list_onboarding") {
       const records = await base44.asServiceRole.entities.Onboarding.filter({ tenant_id: tenantId }, "-created_date", 250);
       const employees = await base44.asServiceRole.entities.Employee.filter({ tenant_id: tenantId }, "-created_date", 250);
