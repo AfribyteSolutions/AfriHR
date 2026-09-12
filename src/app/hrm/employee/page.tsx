@@ -1,6 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, X } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Plus, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { base44 } from "@/lib/base44";
@@ -47,7 +48,10 @@ export default function EmployeeDirectory() {
           <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 grid place-items-center font-black">{String(emp.full_name||"?").split(" ").map((n:string)=>n[0]).slice(0,2).join("")}</div>
           <h2 className="mt-4 font-black">{emp.full_name}</h2><p className="text-sm text-blue-600">{emp.job_title||"No job title"}</p>
           <p className="text-xs text-slate-500 mt-2">{emp.department||"Unassigned"} · {emp.employee_number||"Pending number"}</p>
-          <span className="inline-block mt-4 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs capitalize">{emp.lifecycle_stage}</span>
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs capitalize">{emp.lifecycle_stage}</span>
+            <Link href={`/hrm/employee-profile/${emp.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700">View profile <ArrowRight size={14}/></Link>
+          </div>
         </article>)}
         {!filtered.length&&<div className="col-span-full py-16 text-center border-2 border-dashed rounded-2xl text-slate-400">No employees found.</div>}
       </div>}
