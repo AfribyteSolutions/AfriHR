@@ -63,7 +63,7 @@ const SignInBasicForm = () => {
       <div className="from__input-box">
         <div className="form__input-title flex justify-between">
           <label htmlFor="passwordInput">Password</label>
-          <Link href="/auth/forgot-password-basic"><small>Forgot Password?</small></Link>
+          <Link href="/auth/forgot-password"><small>Forgot Password?</small></Link>
         </div>
         <div className="form__input">
           <input className="form-control" type={isPasswordVisible ? "text" : "password"} id="passwordInput"
