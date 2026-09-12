@@ -1,18 +1,5 @@
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import EmployeeProfileMainArea from "@/components/pagesUI/hrm/employee-profile/EmployeeProfileMainArea";
-import MetaData from "@/hooks/useMetaData";
-import React from "react";
+import { redirect } from "next/navigation";
 
-const page = () => {
-  return (
-    <>
-      <MetaData pageTitle="Employee Profile">
-        <Wrapper>
-          <EmployeeProfileMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
-};
-
-export default page;
+export default function EmployeeProfilePage() {
+  redirect("/hrm/employee");
+}
