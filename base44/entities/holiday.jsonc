@@ -1,0 +1,62 @@
+{
+  "name": "Holiday",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "country_code": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "paid": {
+      "type": "boolean",
+      "default": true
+    },
+    "recurring": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "cancelled"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "name",
+    "date",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}
