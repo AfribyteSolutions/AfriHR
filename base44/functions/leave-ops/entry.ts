@@ -26,6 +26,10 @@ Deno.serve(async (req) => {
     if (!tenantId) return json({ success: false, error: "Tenant required" }, 400);
     if (!platformAdmin && body.tenant_id && body.tenant_id !== tenantId) return json({ success: false, error: "Cross-tenant access denied" }, 403);
     const appRole = clean(user.app_role, 50) || "employee";
+    const permissions = new Set(Array.isArray(user.permissions) ? user.permissions : []);
+    const canViewAll = platformAdmin || HR_ROLES.has(appRole) || permissions.has("leave.view") || permissions.has("leave.review");
+    const canReview = platformAdmin || MANAGER_ROLES.has(appRole) || permissions.has("leave.review");
+    const canAdminSubmit = platformAdmin || HR_ROLES.has(appRole) || permissions.has("leave.review");
     const employees = await base44.asServiceRole.entities.Employee.filter({ tenant_id: tenantId }, "-created_date", 250);
     const self = employees.find((e: any) => e.user_id === user.id) || employees.find((e: any) => String(e.email).toLowerCase() === String(user.email).toLowerCase());
     const operation = clean(body.operation, 50);
@@ -39,8 +43,8 @@ Deno.serve(async (req) => {
 
     if (operation === "list") {
       let records = await base44.asServiceRole.entities.LeaveRequest.filter({ tenant_id: tenantId }, "-created_date", 250);
-      if (appRole === "employee") records = self ? records.filter((r: any) => r.employee_id === self.id) : [];
-      if (appRole === "manager" && self) {
+      if (!canViewAll && appRole !== "manager") records = self ? records.filter((r: any) => r.employee_id === self.id) : [];
+      if (!canViewAll && appRole === "manager" && self) {
         const managed = new Set(employees.filter((e: any) => e.manager_id === self.id).map((e: any) => e.id));
         records = records.filter((r: any) => managed.has(r.employee_id) || r.employee_id === self.id);
       }
@@ -50,7 +54,7 @@ Deno.serve(async (req) => {
 
     if (operation === "submit") {
       const requestedEmployeeId = clean(body.employee_id, 100);
-      const employeeId = HR_ROLES.has(appRole) || platformAdmin ? requestedEmployeeId || self?.id : self?.id;
+      const employeeId = canAdminSubmit ? requestedEmployeeId || self?.id : self?.id;
       if (!employeeId) return json({ success: false, error: "No employee profile is linked to this user" }, 409);
       const employee = employees.find((e: any) => e.id === employeeId);
       if (!employee) return json({ success: false, error: "Employee not found" }, 404);
@@ -72,7 +76,7 @@ Deno.serve(async (req) => {
     }
 
     if (operation === "decide") {
-      if (!MANAGER_ROLES.has(appRole) && !platformAdmin) return json({ success: false, error: "Forbidden" }, 403);
+      if (!canReview) return json({ success: false, error: "Leave review permission required" }, 403);
       const id = clean(body.leave_request_id, 100);
       const decision = clean(body.decision, 20);
       if (!["approved", "rejected"].includes(decision)) return json({ success: false, error: "Decision must be approved or rejected" }, 400);
@@ -95,7 +99,7 @@ Deno.serve(async (req) => {
       const id = clean(body.leave_request_id, 100);
       const record = await base44.asServiceRole.entities.LeaveRequest.get(id);
       if (!record || record.tenant_id !== tenantId) return json({ success: false, error: "Leave request not found" }, 404);
-      const mayCancel = platformAdmin || HR_ROLES.has(appRole) || (self && record.employee_id === self.id);
+      const mayCancel = canAdminSubmit || (self && record.employee_id === self.id);
       if (!mayCancel) return json({ success: false, error: "Forbidden" }, 403);
       if (record.status !== "pending") return json({ success: false, error: "Only pending requests can be cancelled" }, 409);
       const updated = await base44.asServiceRole.entities.LeaveRequest.update(id, { status: "cancelled" });
