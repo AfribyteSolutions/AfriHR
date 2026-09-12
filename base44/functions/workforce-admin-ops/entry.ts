@@ -15,12 +15,14 @@ Deno.serve(async(req)=>{
   const tenantId=platform?clean(body.tenant_id,100)||clean(user.tenant_id,100):clean(user.tenant_id,100);
   if(!tenantId)return json({success:false,error:"Tenant required"},400);
   if(!platform&&body.tenant_id&&body.tenant_id!==tenantId)return json({success:false,error:"Cross-tenant access denied"},403);
-  const role=clean(user.app_role,50)||"employee",isHr=platform||HR.has(role),isFinance=platform||FINANCE.has(role);
+  const role=clean(user.app_role,50)||"employee",permissions=new Set(Array.isArray(user.permissions)?user.permissions:[]);
+  const canViewAll=platform||HR.has(role)||FINANCE.has(role)||permissions.has("workforce.view")||permissions.has("workforce.manage");
+  const canManage=platform||HR.has(role)||permissions.has("workforce.manage"),isFinance=platform||FINANCE.has(role)||permissions.has("workforce.manage");
   const employees=await base44.asServiceRole.entities.Employee.filter({tenant_id:tenantId},"full_name",500);
   const self=employees.find((e:any)=>e.user_id===user.id)||employees.find((e:any)=>String(e.email).toLowerCase()===String(user.email).toLowerCase());
   const byId=Object.fromEntries(employees.map((e:any)=>[e.id,e]));
   const managed=new Set(self?employees.filter((e:any)=>e.manager_id===self.id).map((e:any)=>e.id):[]);
-  const canReviewEmployee=(id:string)=>isHr||(role==="manager"&&managed.has(id));
+  const canReviewEmployee=(id:string)=>canManage||(role==="manager"&&managed.has(id));
   const operation=clean(body.operation,50);
   const audit=(action:string,type:string,id:string,metadata:Record<string,unknown>={})=>base44.asServiceRole.entities.AuditLog.create({tenant_id:tenantId,actor_user_id:user.id,actor_email:user.email,action,resource_type:type,resource_id:id,request_id:requestId,metadata,occurred_at:new Date().toISOString()});
 
@@ -31,13 +33,13 @@ Deno.serve(async(req)=>{
     base44.asServiceRole.entities.EmployeeLoan.filter({tenant_id:tenantId},"-requested_at",500),
     base44.asServiceRole.entities.Department.filter({tenant_id:tenantId},"name",500)
    ]);
-   const schedules=isHr?allSchedules:allSchedules.filter((s:any)=>!s.employee_id||s.employee_id===self?.id);
-   const overtime=allOvertime.filter((x:any)=>isHr||x.employee_id===self?.id||(role==="manager"&&managed.has(x.employee_id)));
+   const schedules=canViewAll?allSchedules:allSchedules.filter((s:any)=>!s.employee_id||s.employee_id===self?.id);
+   const overtime=allOvertime.filter((x:any)=>canViewAll||x.employee_id===self?.id||(role==="manager"&&managed.has(x.employee_id)));
    const loans=allLoans.filter((x:any)=>isFinance||x.employee_id===self?.id);
-   return json({success:true,data:{schedules,overtime:overtime.map((x:any)=>({...x,employee:byId[x.employee_id]||null})),loans:loans.map((x:any)=>({...x,employee:byId[x.employee_id]||null})),employees:employees.map((e:any)=>({id:e.id,full_name:e.full_name,manager_id:e.manager_id})),departments},permissions:{manage_schedules:isHr,review_overtime:isHr||role==="manager",review_loans:isFinance},self_employee_id:self?.id||""});
+   return json({success:true,data:{schedules,overtime:overtime.map((x:any)=>({...x,employee:byId[x.employee_id]||null})),loans:loans.map((x:any)=>({...x,employee:byId[x.employee_id]||null})),employees:canManage?employees.map((e:any)=>({id:e.id,full_name:e.full_name,manager_id:e.manager_id})):[],departments},permissions:{manage_schedules:canManage,review_overtime:canManage||role==="manager",review_loans:isFinance},self_employee_id:self?.id||""});
   }
   if(operation==="save_schedule"){
-   if(!isHr)return json({success:false,error:"HR access required"},403);
+   if(!canManage)return json({success:false,error:"Workforce management permission required"},403);
    const id=clean(body.id,100),name=clean(body.name,120),timezone=clean(body.timezone,80),start=clean(body.start_time,5),end=clean(body.end_time,5),from=clean(body.effective_from,10);
    const days=Array.isArray(body.days)?body.days.filter((x:any)=>["mon","tue","wed","thu","fri","sat","sun"].includes(x)):[],breakMinutes=Number(body.break_minutes||0);
    if(!name||!timezone||!timeOk(start)||!timeOk(end)||start>=end||!dateOk(from)||!days.length||!Number.isInteger(breakMinutes)||breakMinutes<0||breakMinutes>240)return json({success:false,error:"Complete schedule details are required"},400);
@@ -84,7 +86,7 @@ Deno.serve(async(req)=>{
    const updated=await base44.asServiceRole.entities.EmployeeLoan.update(id,values);await audit(`loan.${decision}`,"EmployeeLoan",id,{employee_id:record.employee_id,approved_amount_minor:values.approved_amount_minor||0});return json({success:true,data:updated});
   }
   if(operation==="set_schedule_status"){
-   if(!isHr)return json({success:false,error:"HR access required"},403);const id=clean(body.id,100),record=await base44.asServiceRole.entities.WorkSchedule.get(id).catch(()=>null);if(!record||record.tenant_id!==tenantId)return json({success:false,error:"Schedule not found"},404);const updated=await base44.asServiceRole.entities.WorkSchedule.update(id,{status:body.status==="active"?"active":"inactive"});await audit("schedule.status_changed","WorkSchedule",id,{status:updated.status});return json({success:true,data:updated});
+   if(!canManage)return json({success:false,error:"Workforce management permission required"},403);const id=clean(body.id,100),record=await base44.asServiceRole.entities.WorkSchedule.get(id).catch(()=>null);if(!record||record.tenant_id!==tenantId)return json({success:false,error:"Schedule not found"},404);const updated=await base44.asServiceRole.entities.WorkSchedule.update(id,{status:body.status==="active"?"active":"inactive"});await audit("schedule.status_changed","WorkSchedule",id,{status:updated.status});return json({success:true,data:updated});
   }
   return json({success:false,error:"Unsupported operation"},400);
  }catch(error){console.error("workforce-admin-ops",requestId,error);return json({success:false,error:"Internal server error",request_id:requestId},500)}
