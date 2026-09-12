@@ -7,6 +7,7 @@ import { base44 } from "@/lib/base44";
 const links = [
   ["/hrm/recruitment-flow", "Recruitment"],
   ["/hrm/employee", "Employees"],
+  ["/hrm/organization", "Organization"],
   ["/hrm/onboarding", "Onboarding"],
   ["/hrm/leaves", "Leave"],
   ["/hrm/attendance", "Time"],
