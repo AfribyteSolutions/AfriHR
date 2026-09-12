@@ -18,6 +18,7 @@ const links = [
   ["/hrm/training", "Learning"],
   ["/hrm/employee-relations", "Employee Relations"],
   ["/hrm/documents", "Documents"],
+  ["/hrm/reports", "Reports"],
   ["/hrm/offboarding", "Offboarding"]
 ];
 
