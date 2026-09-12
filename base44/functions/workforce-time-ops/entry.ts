@@ -115,7 +115,7 @@ Deno.serve(async(req)=>{
       return json({success:true,data:updated});
     }
     if(operation==="decide_timesheet"){
-      const permitted=isHr||(role==="manager"&&managed.has(entry.employee_id));
+      const permitted=canReview||(role==="manager"&&managed.has(entry.employee_id));
       if(!permitted)return json({success:false,error:"You can only review direct reports"},403);
       if(entry.status!=="submitted")return json({success:false,error:"Only submitted entries can be reviewed"},409);
       const decision=clean(body.decision,20);
