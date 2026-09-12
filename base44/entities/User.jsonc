@@ -29,10 +29,24 @@
         "tenant_admin",
         "hr_manager",
         "recruiter",
+        "payroll_manager",
+        "finance_manager",
         "manager",
         "employee"
       ],
       "default": "employee",
+      "rls": {
+        "read": true,
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "role_key": {
+      "type": "string",
+      "description": "Tenant-scoped AccessRole key",
       "rls": {
         "read": true,
         "write": {
