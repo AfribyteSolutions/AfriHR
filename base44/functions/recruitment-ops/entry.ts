@@ -26,12 +26,15 @@ Deno.serve(async (req) => {
     const userTenant = clean(user.tenant_id, 100);
     const appRole = clean(user.app_role, 50);
     const platformAdmin = user.role === "admin" || appRole === "platform_admin";
-    if (!platformAdmin && (!userTenant || !HR_ROLES.has(appRole))) {
-      return json({ success: false, error: "Insufficient permissions", request_id: requestId }, 403);
-    }
+    const permissions = new Set(Array.isArray(user.permissions) ? user.permissions : []);
+    const canView = platformAdmin || HR_ROLES.has(appRole) || permissions.has("recruitment.view") || permissions.has("recruitment.manage");
+    const canManage = platformAdmin || HR_ROLES.has(appRole) || permissions.has("recruitment.manage");
 
     const body = await req.json().catch(() => ({}));
     const operation = clean(body.operation, 50);
+    if (operation === "list_candidates" ? !canView : !canManage) {
+      return json({ success: false, error: "Recruitment permission required", request_id: requestId }, 403);
+    }
     const requestedTenant = clean(body.tenant_id, 100);
     const tenantId = platformAdmin ? requestedTenant || userTenant : userTenant;
     if (!tenantId) return json({ success: false, error: "A tenant is required", request_id: requestId }, 400);
