@@ -234,7 +234,7 @@ const sidebarData: SidebarCategory[] = [
             link: "#",
             label: "Forgot Password",
             subItems: [
-              { label: "Basic", link: "/auth/forgot-password-basic" },
+              { label: "Basic", link: "/auth/forgot-password" },
               { label: "Cover", link: "/auth/forgot-password-cover" },
             ],
           },
