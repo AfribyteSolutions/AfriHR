@@ -1,11 +1,15 @@
-import Image from 'next/image';
-import Link from 'next/link';
-import React from 'react';
-import logoSvg from '../../../../public/assets/images/logo/logo.svg';
-import logoWhite from '../../../../public/assets/images/logo/logo-white.svg';
-import ForgotBasicForm from '@/form/auth/forgot-password/basic-form';
+import { redirect } from "next/navigation";
 
-const ForgotPasswordBasicMain = () => {
+
+
+
+
+
+export default function LegacyForgotPasswordPage() {
+  redirect("/auth/forgot-password");
+}
+
+/*
     return (
         <>
             <div className="container-xxl">
@@ -36,4 +40,4 @@ const ForgotPasswordBasicMain = () => {
     );
 };
 
-export default ForgotPasswordBasicMain;
+*/
