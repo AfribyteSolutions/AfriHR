@@ -1,0 +1,118 @@
+{
+  "name": "EmployeeAction",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "employee_id": {
+      "type": "string"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "warning",
+        "promotion",
+        "transfer",
+        "resignation",
+        "termination"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "acknowledged",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "verbal",
+        "written",
+        "final"
+      ]
+    },
+    "from_department": {
+      "type": "string"
+    },
+    "to_department": {
+      "type": "string"
+    },
+    "from_job_title": {
+      "type": "string"
+    },
+    "to_job_title": {
+      "type": "string"
+    },
+    "requested_by": {
+      "type": "string"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "review_note": {
+      "type": "string"
+    },
+    "acknowledged_by": {
+      "type": "string"
+    },
+    "acknowledged_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "offboarding_id": {
+      "type": "string"
+    },
+    "idempotency_key": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "employee_id",
+    "action_type",
+    "title",
+    "reason",
+    "effective_date",
+    "status",
+    "requested_by",
+    "idempotency_key"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": false
+  }
+}
