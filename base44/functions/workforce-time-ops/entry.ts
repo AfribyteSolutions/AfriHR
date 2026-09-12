@@ -19,12 +19,14 @@ Deno.serve(async(req)=>{
     if(!tenantId)return json({success:false,error:"Tenant required"},400);
     if(!platformAdmin&&body.tenant_id&&body.tenant_id!==tenantId)return json({success:false,error:"Cross-tenant access denied"},403);
     const role=clean(user.app_role,50)||"employee";
-    const isHr=platformAdmin||HR.has(role);
+    const permissions=new Set(Array.isArray(user.permissions)?user.permissions:[]);
+    const canViewAll=platformAdmin||HR.has(role)||permissions.has("time.view")||permissions.has("time.review");
+    const canReview=platformAdmin||HR.has(role)||permissions.has("time.review");
     const employees=await base44.asServiceRole.entities.Employee.filter({tenant_id:tenantId},"-created_date",500);
     const self=employees.find((e:any)=>e.user_id===user.id)||employees.find((e:any)=>String(e.email).toLowerCase()===String(user.email).toLowerCase());
     const byId=Object.fromEntries(employees.map((e:any)=>[e.id,e]));
     const managed=new Set(self?employees.filter((e:any)=>e.manager_id===self.id).map((e:any)=>e.id):[]);
-    const canSee=(employeeId:string)=>isHr||!!self&&(employeeId===self.id||(role==="manager"&&managed.has(employeeId)));
+    const canSee=(employeeId:string)=>canViewAll||!!self&&(employeeId===self.id||(role==="manager"&&managed.has(employeeId)));
     const operation=clean(body.operation,50);
     const audit=(action:string,type:string,id:string,metadata:Record<string,unknown>={})=>base44.asServiceRole.entities.AuditLog.create({
       tenant_id:tenantId,actor_user_id:user.id,actor_email:user.email,action,resource_type:type,resource_id:id,
@@ -66,7 +68,7 @@ Deno.serve(async(req)=>{
       return json({success:true,data:updated});
     }
     if(operation==="correct_attendance"){
-      if(!isHr)return json({success:false,error:"HR access required"},403);
+      if(!canReview)return json({success:false,error:"Time review permission required"},403);
       const id=clean(body.attendance_id,100);
       const record=await base44.asServiceRole.entities.AttendanceRecord.get(id);
       if(!record||record.tenant_id!==tenantId)return json({success:false,error:"Attendance record not found"},404);
@@ -82,14 +84,14 @@ Deno.serve(async(req)=>{
       records=records.filter((r:any)=>canSee(r.employee_id));
       return json({success:true,data:records.map((r:any)=>({...r,employee:byId[r.employee_id]||null,
         can_submit:!!self&&r.employee_id===self.id&&["draft","rejected"].includes(r.status),
-        can_review:r.status==="submitted"&&(isHr||(role==="manager"&&managed.has(r.employee_id)))
+        can_review:r.status==="submitted"&&(canReview||(role==="manager"&&managed.has(r.employee_id)))
       }))});
     }
     if(operation==="save_timesheet"){
       const requested=clean(body.employee_id,100);
-      const employeeId=isHr?requested||self?.id:self?.id;
+      const employeeId=canReview?requested||self?.id:self?.id;
       if(!employeeId||!byId[employeeId])return json({success:false,error:"Employee not found"},404);
-      if(!isHr&&employeeId!==self?.id)return json({success:false,error:"Forbidden"},403);
+      if(!canReview&&employeeId!==self?.id)return json({success:false,error:"Forbidden"},403);
       const workDate=clean(body.work_date,10),minutes=Number(body.minutes),key=clean(body.idempotency_key,120);
       if(!dateOk(workDate)||!Number.isInteger(minutes)||minutes<1||minutes>1440||!key)return json({success:false,error:"Date, 1-1440 minutes and idempotency key required"},400);
       const duplicate=await base44.asServiceRole.entities.TimesheetEntry.filter({tenant_id:tenantId,idempotency_key:key},"-created_date",1);
