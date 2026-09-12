@@ -1,18 +1,2 @@
-import Wrapper from "@/components/layouts/DefaultWrapper";
-import TrainingMainArea from "@/components/pagesUI/training/TrainingMainArea";
-import MetaData from "@/hooks/useMetaData";
-import React from "react";
-
-const page = () => {
-  return (
-    <>
-      <MetaData pageTitle="Training">
-        <Wrapper>
-          <TrainingMainArea />
-        </Wrapper>
-      </MetaData>
-    </>
-  );
-};
-
-export default page;
+import NativeTrainingPage from "@/components/hrm/NativeTrainingPage";
+export default function Page(){return <NativeTrainingPage/>;}
