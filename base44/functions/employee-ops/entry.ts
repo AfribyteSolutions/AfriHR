@@ -12,12 +12,17 @@ Deno.serve(async (req) => {
     if (!user) return json({ success: false, error: "Unauthorized" }, 401);
     if (["suspended", "offboarded"].includes(user.employment_status)) return json({ success: false, error: "Account disabled" }, 403);
     const platformAdmin = user.role === "admin" || user.app_role === "platform_admin";
-    if (!platformAdmin && !ADMIN_ROLES.has(user.app_role)) return json({ success: false, error: "Forbidden" }, 403);
+    const permissions = new Set(Array.isArray(user.permissions) ? user.permissions : []);
+    const canView = platformAdmin || ADMIN_ROLES.has(user.app_role) || permissions.has("employees.view") || permissions.has("employees.manage");
+    const canManage = platformAdmin || ADMIN_ROLES.has(user.app_role) || permissions.has("employees.manage");
+    if (!canView) return json({ success: false, error: "Employee access required" }, 403);
     const body = await req.json().catch(() => ({}));
     const tenantId = platformAdmin ? clean(body.tenant_id) || clean(user.tenant_id) : clean(user.tenant_id);
     if (!tenantId) return json({ success: false, error: "Tenant required" }, 400);
     if (!platformAdmin && body.tenant_id && body.tenant_id !== tenantId) return json({ success: false, error: "Cross-tenant access denied" }, 403);
     const operation = clean(body.operation, 50);
+    const writeOperations = new Set(["create_employee", "update_employee", "update_onboarding_task"]);
+    if (writeOperations.has(operation) && !canManage) return json({ success: false, error: "Employee management permission required" }, 403);
 
     const audit = (action: string, type: string, id: string, metadata: Record<string, unknown> = {}) =>
       base44.asServiceRole.entities.AuditLog.create({
