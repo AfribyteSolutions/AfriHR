@@ -11,15 +11,16 @@ Deno.serve(async(req)=>{
  try{
   const user=await base44.auth.me();if(!user)return json({success:false,error:"Unauthorized"},401);
   if(["suspended","offboarded"].includes(user.employment_status))return json({success:false,error:"Account disabled"},403);
-  const body=await req.json().catch(()=>({})),platform=user.role==="admin"||user.app_role==="platform_admin",role=platform?"platform_admin":clean(user.app_role,50);
-  if(!REPORT_ROLES.has(role))return json({success:false,error:"Reporting access required"},403);
+  const body=await req.json().catch(()=>({})),platform=user.role==="admin"||user.app_role==="platform_admin",role=platform?"platform_admin":clean(user.app_role,50),permissions=new Set(Array.isArray(user.permissions)?user.permissions:[]);
+  const canReport=platform||REPORT_ROLES.has(role)||permissions.has("reports.view"),canSeePayroll=platform||PAYROLL_ROLES.has(role)||permissions.has("payroll.view")||permissions.has("payroll.manage");
+  if(!canReport)return json({success:false,error:"Reporting access required"},403);
   const tenantId=platform?clean(body.tenant_id)||clean(user.tenant_id):clean(user.tenant_id);if(!tenantId)return json({success:false,error:"Tenant required"},400);
   if(!platform&&body.tenant_id&&body.tenant_id!==tenantId)return json({success:false,error:"Cross-tenant access denied"},403);
   const today=new Date().toISOString().slice(0,10),defaultFrom=new Date(Date.now()-90*86400000).toISOString().slice(0,10),from=clean(body.from,10)||defaultFrom,to=clean(body.to,10)||today;
   if(!dateOk(from)||!dateOk(to)||from>to)return json({success:false,error:"Invalid reporting period"},400);
   const get=(name:string,sort:string,limit=1000)=>(base44.asServiceRole.entities as any)[name].filter({tenant_id:tenantId},sort,limit);
   const [employees,candidates,jobs,leaves,attendance,overtime,courses,enrollments,actions,offboarding,payrollRuns]=await Promise.all([
-   get("Employee","-created_date"),get("Candidate","-created_date"),get("JobOpening","-created_date"),get("LeaveRequest","-start_date"),get("AttendanceRecord","-work_date"),get("OvertimeRequest","-work_date"),get("TrainingCourse","-start_date"),get("TrainingEnrollment","-enrolled_at"),get("EmployeeAction","-effective_date"),get("Offboarding","-last_working_date"),PAYROLL_ROLES.has(role)?get("PayrollRun","-period_end",500):Promise.resolve([])
+   get("Employee","-created_date"),get("Candidate","-created_date"),get("JobOpening","-created_date"),get("LeaveRequest","-start_date"),get("AttendanceRecord","-work_date"),get("OvertimeRequest","-work_date"),get("TrainingCourse","-start_date"),get("TrainingEnrollment","-enrolled_at"),get("EmployeeAction","-effective_date"),get("Offboarding","-last_working_date"),canSeePayroll?get("PayrollRun","-period_end",500):Promise.resolve([])
   ]);
   const within=(v:string)=>v>=from&&v<=to,periodLeaves=leaves.filter((x:any)=>x.start_date<=to&&x.end_date>=from),periodAttendance=attendance.filter((x:any)=>within(x.work_date)),periodOvertime=overtime.filter((x:any)=>within(x.work_date)),periodTraining=enrollments.filter((x:any)=>x.completed_at&&within(x.completed_at.slice(0,10))),periodActions=actions.filter((x:any)=>within(x.effective_date)),periodExits=offboarding.filter((x:any)=>within(x.last_working_date)),periodPayroll=payrollRuns.filter((x:any)=>x.period_end>=from&&x.period_start<=to&&x.status!=="voided");
   const active=employees.filter((x:any)=>x.lifecycle_stage==="active"&&x.employment_status==="active"),hires=employees.filter((x:any)=>x.hire_date&&within(x.hire_date)),exitCompleted=periodExits.filter((x:any)=>x.status==="completed");
@@ -34,10 +35,10 @@ Deno.serve(async(req)=>{
    time:{attendance_records:periodAttendance.length,worked_hours:Math.round(sum(periodAttendance,"worked_minutes")/6)/10,approved_overtime_hours:Math.round(sum(periodOvertime.filter((x:any)=>x.status==="approved"),"minutes")/6)/10,pending_overtime:periodOvertime.filter((x:any)=>x.status==="pending").length},
    learning:{courses:courses.length,completed_enrollments:periodTraining.length,completion_rate:enrollments.length?Math.round(enrollments.filter((x:any)=>x.status==="completed").length/enrollments.length*1000)/10:0,planned_cost_by_currency:courses.filter((x:any)=>x.start_date<=to&&x.end_date>=from).reduce((a:any,x:any)=>{a[x.currency]=(a[x.currency]||0)+Number(x.cost_minor||0);return a},{})},
    relations:{actions:periodActions.length,by_type:countBy(periodActions,"action_type"),pending:periodActions.filter((x:any)=>x.status==="pending").length},
-   payroll:PAYROLL_ROLES.has(role)?{visible:true,by_currency:payrollByCurrency}:{visible:false},
+   payroll:canSeePayroll?{visible:true,by_currency:payrollByCurrency}:{visible:false},
    trend
   };
-  await base44.asServiceRole.entities.AuditLog.create({tenant_id:tenantId,actor_user_id:user.id,actor_email:user.email,action:"report.generated",resource_type:"Analytics",resource_id:requestId,request_id:requestId,metadata:{from,to,payroll_visible:PAYROLL_ROLES.has(role)},occurred_at:new Date().toISOString()});
+  await base44.asServiceRole.entities.AuditLog.create({tenant_id:tenantId,actor_user_id:user.id,actor_email:user.email,action:"report.generated",resource_type:"Analytics",resource_id:requestId,request_id:requestId,metadata:{from,to,payroll_visible:canSeePayroll},occurred_at:new Date().toISOString()});
   return json({success:true,data:result});
  }catch(error){console.error("hr-analytics",requestId,error);return json({success:false,error:"Internal server error",request_id:requestId},500)}
 });
