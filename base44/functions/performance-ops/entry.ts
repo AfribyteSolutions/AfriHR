@@ -18,6 +18,9 @@ Deno.serve(async (req) => {
     if (!tenantId) return json({ success: false, error: "Tenant required" }, 400);
     if (!platformAdmin && body.tenant_id && body.tenant_id !== tenantId) return json({ success: false, error: "Cross-tenant access denied" }, 403);
     const role = clean(user.app_role, 50) || "employee";
+    const permissions = new Set(Array.isArray(user.permissions) ? user.permissions : []);
+    const canViewAll = platformAdmin || HR.has(role) || permissions.has("performance.view") || permissions.has("performance.manage");
+    const canManage = platformAdmin || HR.has(role) || permissions.has("performance.manage");
     const employees = await base44.asServiceRole.entities.Employee.filter({ tenant_id: tenantId }, "-created_date", 500);
     const self = employees.find((e: any) => e.user_id === user.id) || employees.find((e: any) => String(e.email).toLowerCase() === String(user.email).toLowerCase());
     const byId = Object.fromEntries(employees.map((e: any) => [e.id, e]));
@@ -30,13 +33,13 @@ Deno.serve(async (req) => {
       });
 
     const canReviewEmployee = (employeeId: string) => {
-      if (platformAdmin || HR.has(role)) return true;
+      if (canManage) return true;
       return role === "manager" && !!self && byId[employeeId]?.manager_id === self.id;
     };
 
     if (operation === "list") {
       let records = await base44.asServiceRole.entities.PerformanceReview.filter({ tenant_id: tenantId }, "-created_date", 250);
-      if (!HR.has(role) && !platformAdmin) {
+      if (!canViewAll) {
         if (role === "manager" && self) {
           const managed = new Set(employees.filter((e: any) => e.manager_id === self.id).map((e: any) => e.id));
           records = records.filter((r: any) => managed.has(r.employee_id) || r.employee_id === self.id);
@@ -46,12 +49,12 @@ Deno.serve(async (req) => {
         ...r, employee: byId[r.employee_id] || null, reviewer: byId[r.reviewer_id] || null,
         can_submit: r.status === "draft" && canReviewEmployee(r.employee_id),
         can_acknowledge: r.status === "submitted" && !!self && r.employee_id === self.id,
-        can_close: r.status === "acknowledged" && (platformAdmin || HR.has(role))
+        can_close: r.status === "acknowledged" && canManage
       })) });
     }
 
     if (operation === "create") {
-      if (!REVIEWERS.has(role) && !platformAdmin) return json({ success: false, error: "Forbidden" }, 403);
+      if (!canManage && role !== "manager") return json({ success: false, error: "Performance management permission required" }, 403);
       const employeeId = clean(body.employee_id, 100);
       if (!byId[employeeId]) return json({ success: false, error: "Employee not found" }, 404);
       if (!canReviewEmployee(employeeId)) return json({ success: false, error: "You can only review direct reports" }, 403);
@@ -103,7 +106,7 @@ Deno.serve(async (req) => {
     }
 
     if (operation === "close") {
-      if (!HR.has(role) && !platformAdmin) return json({ success: false, error: "Forbidden" }, 403);
+      if (!canManage) return json({ success: false, error: "Performance management permission required" }, 403);
       if (record.status !== "acknowledged") return json({ success: false, error: "Only acknowledged reviews can be closed" }, 409);
       const updated = await base44.asServiceRole.entities.PerformanceReview.update(id, { status: "closed", closed_at: new Date().toISOString() });
       await audit("performance.closed", id);
