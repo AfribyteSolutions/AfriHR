@@ -420,17 +420,21 @@ const bucket = {
 
 // ── Admin-compatible object ──
 
+const firestoreCompat: any = () => ({
+  ...db,
+  FieldValue,
+  Timestamp,
+  collection: db.collection,
+  batch: db.batch,
+  runTransaction: db.runTransaction,
+  doc: db.doc,
+  settings: () => {},
+});
+firestoreCompat.FieldValue = FieldValue;
+firestoreCompat.Timestamp = Timestamp;
+
 const admin = {
-  firestore: () => ({
-    ...db,
-    FieldValue,
-    Timestamp,
-    collection: db.collection,
-    batch: db.batch,
-    runTransaction: db.runTransaction,
-    doc: db.doc,
-    settings: () => {},
-  }),
+  firestore: firestoreCompat,
   auth: () => auth,
   storage: () => ({
     bucket: (_name?: string) => bucket,
