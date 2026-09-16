@@ -3,6 +3,7 @@
 // Replaces firebase-admin with Base44 SDK entity operations.
 
 import { createClient } from "@base44/sdk";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { BASE44_APP_ID } from "@/lib/base44";
 
 /**
@@ -30,7 +31,8 @@ const COLLECTION_MAP: Record<string, string> = {
   promotions: "Promotion",
   expenses: "Expense",
   invoices: "Invoice",
-  attendance: "Attendance",
+  attendance: "AttendanceRecord",
+  offboardingCases: "Offboarding",
   feedback: "Feedback",
   reports: "Report",
   activities: "Activity",
@@ -47,13 +49,21 @@ function entityName(collection: string): string {
   return COLLECTION_MAP[collection] || collection;
 }
 
-// Lazy-init the server-side client (anonymous mode — no localStorage needed)
-let _client: ReturnType<typeof createClient> | null = null;
+// Request-scoped user client. Legacy Next.js API routes call setServerAuthToken()
+// after validating the Base44 access token. AsyncLocalStorage prevents one
+// request's token from leaking into another concurrent request.
+const authContext = new AsyncLocalStorage<{ token: string }>();
+let _anonymousClient: ReturnType<typeof createClient> | null = null;
+
+export function setServerAuthToken(token: string) {
+  authContext.enterWith({ token });
+}
+
 export function getServerClient() {
-  if (!_client) {
-    _client = createClient({ appId: BASE44_APP_ID });
-  }
-  return _client;
+  const token = authContext.getStore()?.token;
+  if (token) return createClient({ appId: BASE44_APP_ID, token });
+  if (!_anonymousClient) _anonymousClient = createClient({ appId: BASE44_APP_ID });
+  return _anonymousClient;
 }
 
 // ── Firestore-compatible wrapper types ──
