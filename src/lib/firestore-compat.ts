@@ -48,10 +48,11 @@ export interface CompatDocRef {
   _collection: string;
   _id: string;
   id: string;
+  path: string;
 }
 
 export function doc(_db: any, collection: string, id: string): CompatDocRef {
-  return { _collection: collection, _id: id, id };
+  return { _collection: collection, _id: id, id, path: `${collection}/${id}` };
 }
 
 // ── Collection ref ──
