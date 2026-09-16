@@ -1,0 +1,80 @@
+{
+  "name": "GovernanceSnapshotOutbox",
+  "type": "object",
+  "properties": {
+    "external_org_key": {
+      "type": "string"
+    },
+    "product_key": {
+      "type": "string"
+    },
+    "source_app_id": {
+      "type": "string"
+    },
+    "source_record_id": {
+      "type": "string"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "retry",
+        "configuration_missing",
+        "dead_letter"
+      ],
+      "default": "pending"
+    },
+    "attempts": {
+      "type": "number",
+      "default": 0
+    },
+    "last_error": {
+      "type": "string"
+    },
+    "next_retry_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "snapshot_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "external_org_key",
+    "product_key",
+    "source_app_id",
+    "payload",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "__never_match__"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "__never_match__"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "__never_match__"
+      }
+    }
+  }
+}
