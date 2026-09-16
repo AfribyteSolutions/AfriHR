@@ -55,6 +55,25 @@
     },
     "branding": {
       "type": "object"
+    },
+    "jurisdiction_code": {
+      "type": "string",
+      "description": "Primary regulatory jurisdiction; country packs remain versioned/configurable rather than hardcoded."
+    },
+    "external_org_key": {
+      "type": "string",
+      "description": "Optional stable organization key for explicit mapping to other Afribyte products."
+    },
+    "compliance_status": {
+      "type": "string",
+      "enum": [
+        "not_configured",
+        "in_review",
+        "configured",
+        "verified",
+        "attention_required"
+      ],
+      "default": "not_configured"
     }
   },
   "required": [
