@@ -351,7 +351,7 @@ class Timestamp {
 
 // ── Firestore-compatible db object ──
 
-const db = {
+const db: any = {
   collection(name: string): Base44CollectionRef {
     return new Base44CollectionRef(name);
   },
