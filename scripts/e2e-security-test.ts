@@ -18,9 +18,10 @@ const base44 = createClient({ appId: APP_ID });
 
 let passed = 0;
 let failed = 0;
-const results = [];
+type TestResult = { test: string; status: "PASS" | "FAIL"; detail?: string };
+const results: TestResult[] = [];
 
-function assert(condition, name, detail) {
+function assert(condition: unknown, name: string, detail?: string) {
   if (condition) {
     passed++;
     results.push({ test: name, status: "PASS" });
@@ -73,9 +74,9 @@ async function runTests() {
       "recruitment-ops responds to hire action",
       res?.error || "no response"
     );
-  } catch (e) {
+  } catch (e: any) {
     // Expected if not authenticated — the function should reject unauthenticated users
-    assert(true, "recruitment-ops rejects unauthenticated/injected tenant_id", "");
+    assert(true, "recruitment-ops rejects unauthenticated/injected tenant_id", e?.message || "");
   }
 
   // Test: entity filters are tenant-scoped
