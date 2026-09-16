@@ -103,7 +103,7 @@ export function where(field: string, op: string, value: any): QueryConstraint {
   if (op === ">=") return { _type: "where", _field: field, _value: { $gte: value } };
   if (op === "<") return { _type: "where", _field: field, _value: { $lt: value } };
   if (op === "<=") return { _type: "where", _field: field, _value: { $lte: value } };
-  return { _type: "where", _field: field, _value };
+  return { _type: "where", _field: field, _value: value };
 }
 
 export function orderBy(field: string, direction?: string): QueryConstraint {
