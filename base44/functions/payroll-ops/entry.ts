@@ -52,24 +52,36 @@ Deno.serve(async(req)=>{
   }
   if(operation==="save_statutory_rule"){
    const denied=requireHr();if(denied)return denied;
-   const country=clean(body.country_code,2).toUpperCase(),currency=clean(body.currency,3).toUpperCase(),name=clean(body.name,100),version=clean(body.version,40),effectiveFrom=clean(body.effective_from,10),sourceUrl=clean(body.source_url,500),verifiedOn=clean(body.verified_on,10);
+   const country=clean(body.country_code,2).toUpperCase(),currency=clean(body.currency,3).toUpperCase(),name=clean(body.name,100),version=clean(body.version,40),effectiveFrom=clean(body.effective_from,10),sourceUrl=clean(body.source_url,500),verifiedOn=clean(body.verified_on,10),sourceAuthority=clean(body.source_authority,160),sourceReference=clean(body.source_reference,200);
    const employeeRules=statutoryRules(body.employee_rules),employerRules=statutoryRules(body.employer_rules);
    if(!/^[A-Z]{2}$/.test(country)||!CURRENCIES.has(currency)||!name||!version||!dateOk(effectiveFrom)||!dateOk(verifiedOn)||!/^https:\/\//i.test(sourceUrl)||(employeeRules.length+employerRules.length===0))return json({success:false,error:"Country, currency, version, effective date, HTTPS source, verification date and at least one valid rule are required"},400);
    const duplicate=await base44.asServiceRole.entities.StatutoryRuleSet.filter({tenant_id:tenantId,country_code:country,currency,version},"-created_date",1);
    if(duplicate.length)return json({success:false,error:"This statutory rule version already exists"},409);
-   const record=await base44.asServiceRole.entities.StatutoryRuleSet.create({tenant_id:tenantId,country_code:country,currency,name,version,effective_from:effectiveFrom,status:"draft",employee_rules:employeeRules,employer_rules:employerRules,source_url:sourceUrl,source_note:clean(body.source_note),verified_on:verifiedOn,created_by:user.id});
+   const record=await base44.asServiceRole.entities.StatutoryRuleSet.create({tenant_id:tenantId,country_code:country,currency,name,version,effective_from:effectiveFrom,status:"draft",verification_status:"draft",employee_rules:employeeRules,employer_rules:employerRules,source_url:sourceUrl,source_authority:sourceAuthority,source_reference:sourceReference,source_note:clean(body.source_note),verified_on:verifiedOn,jurisdiction_scope:[country],created_by:user.id});
    await audit("statutory_rule.created","StatutoryRuleSet",record.id,{country,currency,version});return json({success:true,data:record},201);
+  }
+  if(operation==="verify_statutory_rule"){
+   const denied=requireHr();if(denied)return denied;
+   const id=clean(body.rule_set_id,100),record=await base44.asServiceRole.entities.StatutoryRuleSet.get(id).catch(()=>null);
+   if(!record||record.tenant_id!==tenantId)return json({success:false,error:"Statutory rule set not found"},404);
+   if(record.status!=="draft")return json({success:false,error:"Only draft rule sets can be verified"},409);
+   const authority=clean(body.source_authority,160)||clean(record.source_authority,160),reference=clean(body.source_reference,200)||clean(record.source_reference,200),note=clean(body.verification_note,1000);
+   if(!authority||!reference||!/^https:\/\//i.test(record.source_url||""))return json({success:false,error:"Source authority, source reference and HTTPS source URL are required before verification"},400);
+   if(clean(body.confirmation,200)!==`VERIFY:${record.country_code}:${record.version}`)return json({success:false,error:"Verification confirmation does not match country and version"},400);
+   const updated=await base44.asServiceRole.entities.StatutoryRuleSet.update(id,{verification_status:"verified",source_authority:authority,source_reference:reference,verified_by:user.id,verified_on:new Date().toISOString().slice(0,10),verification_note:note});
+   await audit("statutory_rule.verified","StatutoryRuleSet",id,{country:record.country_code,currency:record.currency,version:record.version,source_authority:authority,source_reference:reference});return json({success:true,data:updated});
   }
   if(operation==="activate_statutory_rule"){
    const denied=requireHr();if(denied)return denied;
    const id=clean(body.rule_set_id,100),record=await base44.asServiceRole.entities.StatutoryRuleSet.get(id).catch(()=>null);
    if(!record||record.tenant_id!==tenantId)return json({success:false,error:"Statutory rule set not found"},404);
    if(record.status!=="draft")return json({success:false,error:"Only draft rule sets can be activated"},409);
+   if(record.verification_status!=="verified"||!record.verified_by||!record.source_authority||!record.source_reference)return json({success:false,error:"Statutory rule set must be human-verified against a cited authority/reference before activation"},409);
    if(clean(body.confirmation,160)!==`${record.country_code}:${record.version}`)return json({success:false,error:"Confirmation does not match country and version"},400);
    const active=await base44.asServiceRole.entities.StatutoryRuleSet.filter({tenant_id:tenantId,country_code:record.country_code,currency:record.currency,status:"active"},"-effective_from",100);
    if(active.some((x:any)=>x.effective_from>=record.effective_from))return json({success:false,error:"New rule versions must start after the currently active version"},409);
    for(const oldRule of active)await base44.asServiceRole.entities.StatutoryRuleSet.update(oldRule.id,{status:"superseded",effective_to:previousDay(record.effective_from)});
-   const updated=await base44.asServiceRole.entities.StatutoryRuleSet.update(id,{status:"active",activated_by:user.id,activated_at:new Date().toISOString()});
+   const updated=await base44.asServiceRole.entities.StatutoryRuleSet.update(id,{status:"active",verification_status:"verified",activated_by:user.id,activated_at:new Date().toISOString()});
    await audit("statutory_rule.activated","StatutoryRuleSet",id,{country:record.country_code,currency:record.currency,version:record.version});return json({success:true,data:updated});
   }
   if(operation==="list_compensation"){
@@ -121,8 +133,8 @@ Deno.serve(async(req)=>{
    if(!["draft","calculated"].includes(run.status))return json({success:false,error:"Only draft or calculated runs can be calculated"},409);
    const compensation=await base44.asServiceRole.entities.CompensationRecord.filter({tenant_id:tenantId,currency:run.currency},"-effective_from",500);
    const ruleSets=await base44.asServiceRole.entities.StatutoryRuleSet.filter({tenant_id:tenantId,country_code:run.country_code,currency:run.currency,status:"active"},"-effective_from",100);
-   const ruleSet=ruleSets.find((x:any)=>x.effective_from<=run.period_end&&(!x.effective_to||x.effective_to>=run.period_start));
-   if(!ruleSet)return json({success:false,error:"No active statutory rule set covers this payroll period"},409);
+   const ruleSet=ruleSets.find((x:any)=>x.verification_status==="verified"&&x.verified_by&&x.source_authority&&x.source_reference&&x.effective_from<=run.period_end&&(!x.effective_to||x.effective_to>=run.period_start));
+   if(!ruleSet)return json({success:false,error:"No verified active statutory rule set covers this payroll period"},409);
    const employeeStatutory=statutoryRules(ruleSet.employee_rules),employerStatutory=statutoryRules(ruleSet.employer_rules);
    const eligible=employees.filter((e:any)=>!["offboarded","terminated","inactive"].includes(String(e.status||e.employment_status||"").toLowerCase()));
    for(const employee of eligible){
@@ -140,7 +152,8 @@ Deno.serve(async(req)=>{
    }
    const items=await base44.asServiceRole.entities.PayrollItem.filter({tenant_id:tenantId,payroll_run_id:run.id},"employee_name",500);
    const totals=items.reduce((a:any,x:any)=>({gross_minor:a.gross_minor+(money(x.gross_minor)||0),deductions_minor:a.deductions_minor+(money(x.deductions_total_minor)||0),statutory_deductions_minor:a.statutory_deductions_minor+(money(x.statutory_deductions_total_minor)||0),employer_contributions_minor:a.employer_contributions_minor+(money(x.employer_contributions_total_minor)||0),net_minor:a.net_minor+(money(x.net_minor)||0)}),{gross_minor:0,deductions_minor:0,statutory_deductions_minor:0,employer_contributions_minor:0,net_minor:0});
-   const updated=await base44.asServiceRole.entities.PayrollRun.update(run.id,{status:"calculated",...totals,statutory_rule_set_id:ruleSet.id,employee_count:items.length});
+   const complianceSnapshot={country_code:run.country_code,rule_set_id:ruleSet.id,rule_version:ruleSet.version,source_authority:ruleSet.source_authority,source_reference:ruleSet.source_reference,source_url:ruleSet.source_url,verified_on:ruleSet.verified_on,verified_by:ruleSet.verified_by,effective_from:ruleSet.effective_from,effective_to:ruleSet.effective_to||null};
+   const updated=await base44.asServiceRole.entities.PayrollRun.update(run.id,{status:"calculated",...totals,statutory_rule_set_id:ruleSet.id,statutory_rule_version:ruleSet.version,compliance_snapshot:complianceSnapshot,employee_count:items.length});
    await audit("payroll.calculated","PayrollRun",run.id,{employee_count:items.length,...totals});
    return json({success:true,data:updated,items});
   }
@@ -167,9 +180,10 @@ Deno.serve(async(req)=>{
   if(operation==="export_run"){
    const denied=requireHr();if(denied)return denied;
    if(!["finalized","exported"].includes(run.status))return json({success:false,error:"Finalize the run before export"},409);
-   const payload={schema_version:"1.0",target:"Africount-ready",source_system:"AfriHR",source_id:run.id,tenant_id:tenantId,idempotency_key:`afrihr-payroll-${run.id}`,currency:run.currency,period:{start:run.period_start,end:run.period_end,pay_date:run.pay_date},totals:{gross_minor:run.gross_minor,deductions_minor:run.deductions_minor,statutory_deductions_minor:run.statutory_deductions_minor,employer_contributions_minor:run.employer_contributions_minor,net_minor:run.net_minor},journal_lines:[{side:"debit",account_key:"payroll_expense",amount_minor:run.gross_minor},{side:"credit",account_key:"payroll_deductions_payable",amount_minor:run.deductions_minor},{side:"credit",account_key:"statutory_employee_payable",amount_minor:run.statutory_deductions_minor},{side:"credit",account_key:"payroll_payable",amount_minor:run.net_minor},{side:"debit",account_key:"employer_contributions_expense",amount_minor:run.employer_contributions_minor},{side:"credit",account_key:"statutory_employer_payable",amount_minor:run.employer_contributions_minor}]};
+   const tenant=await base44.asServiceRole.entities.Tenant.get(tenantId).catch(()=>null),externalEventId=run.external_event_id||`afrihr.payroll.finalized:${tenantId}:${run.id}`;
+   const payload={schema_version:"1.1",target:"Africount-ready",source_system:"AfriHR",source_id:run.id,tenant_id:tenantId,external_org_key:tenant?.external_org_key||"",external_event_id:externalEventId,jurisdiction_code:run.country_code||tenant?.jurisdiction_code||"",idempotency_key:`afrihr-payroll-${run.id}`,data_scope:["aggregate_payroll_financials"],compliance_rule_versions:run.statutory_rule_version?[`payroll:${run.country_code}:${run.statutory_rule_version}`]:[],currency:run.currency,period:{start:run.period_start,end:run.period_end,pay_date:run.pay_date},totals:{gross_minor:run.gross_minor,deductions_minor:run.deductions_minor,statutory_deductions_minor:run.statutory_deductions_minor,employer_contributions_minor:run.employer_contributions_minor,net_minor:run.net_minor},journal_lines:[{side:"debit",account_key:"payroll_expense",amount_minor:run.gross_minor},{side:"credit",account_key:"payroll_deductions_payable",amount_minor:run.deductions_minor},{side:"credit",account_key:"statutory_employee_payable",amount_minor:run.statutory_deductions_minor},{side:"credit",account_key:"payroll_payable",amount_minor:run.net_minor},{side:"debit",account_key:"employer_contributions_expense",amount_minor:run.employer_contributions_minor},{side:"credit",account_key:"statutory_employer_payable",amount_minor:run.employer_contributions_minor}]};
    if(run.status==="exported")return json({success:true,data:payload,reference:run.export_reference,idempotent:true});
-   const reference=`AFRIHR-${run.id}`,updated=await base44.asServiceRole.entities.PayrollRun.update(run.id,{status:"exported",export_reference:reference,exported_at:new Date().toISOString()});
+   const reference=`AFRIHR-${run.id}`,updated=await base44.asServiceRole.entities.PayrollRun.update(run.id,{status:"exported",external_event_id:externalEventId,africount_sync_status:"pending",export_reference:reference,exported_at:new Date().toISOString()});
    await audit("payroll.exported","PayrollRun",run.id,{reference,target:"Africount-ready"});return json({success:true,data:payload,run:updated,reference});
   }
   return json({success:false,error:"Unsupported operation"},400);
