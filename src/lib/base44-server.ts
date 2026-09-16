@@ -433,7 +433,7 @@ const admin = {
   }),
   auth: () => auth,
   storage: () => ({
-    bucket: () => bucket,
+    bucket: (_name?: string) => bucket,
   }),
   apps: { length: 1 } as any,
   credential: {
