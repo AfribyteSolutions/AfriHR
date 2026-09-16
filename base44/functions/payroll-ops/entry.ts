@@ -52,12 +52,12 @@ Deno.serve(async(req)=>{
   }
   if(operation==="save_statutory_rule"){
    const denied=requireHr();if(denied)return denied;
-   const country=clean(body.country_code,2).toUpperCase(),currency=clean(body.currency,3).toUpperCase(),name=clean(body.name,100),version=clean(body.version,40),effectiveFrom=clean(body.effective_from,10),sourceUrl=clean(body.source_url,500),verifiedOn=clean(body.verified_on,10),sourceAuthority=clean(body.source_authority,160),sourceReference=clean(body.source_reference,200);
+   const country=clean(body.country_code,2).toUpperCase(),currency=clean(body.currency,3).toUpperCase(),name=clean(body.name,100),version=clean(body.version,40),effectiveFrom=clean(body.effective_from,10),sourceUrl=clean(body.source_url,500),sourceAuthority=clean(body.source_authority,160),sourceReference=clean(body.source_reference,200);
    const employeeRules=statutoryRules(body.employee_rules),employerRules=statutoryRules(body.employer_rules);
-   if(!/^[A-Z]{2}$/.test(country)||!CURRENCIES.has(currency)||!name||!version||!dateOk(effectiveFrom)||!dateOk(verifiedOn)||!/^https:\/\//i.test(sourceUrl)||(employeeRules.length+employerRules.length===0))return json({success:false,error:"Country, currency, version, effective date, HTTPS source, verification date and at least one valid rule are required"},400);
+   if(!/^[A-Z]{2}$/.test(country)||!CURRENCIES.has(currency)||!name||!version||!dateOk(effectiveFrom)||!/^https:\/\//i.test(sourceUrl)||(employeeRules.length+employerRules.length===0))return json({success:false,error:"Country, currency, version, effective date, HTTPS source and at least one valid rule are required"},400);
    const duplicate=await base44.asServiceRole.entities.StatutoryRuleSet.filter({tenant_id:tenantId,country_code:country,currency,version},"-created_date",1);
    if(duplicate.length)return json({success:false,error:"This statutory rule version already exists"},409);
-   const record=await base44.asServiceRole.entities.StatutoryRuleSet.create({tenant_id:tenantId,country_code:country,currency,name,version,effective_from:effectiveFrom,status:"draft",verification_status:"draft",employee_rules:employeeRules,employer_rules:employerRules,source_url:sourceUrl,source_authority:sourceAuthority,source_reference:sourceReference,source_note:clean(body.source_note),verified_on:verifiedOn,jurisdiction_scope:[country],created_by:user.id});
+   const record=await base44.asServiceRole.entities.StatutoryRuleSet.create({tenant_id:tenantId,country_code:country,currency,name,version,effective_from:effectiveFrom,status:"draft",verification_status:"draft",employee_rules:employeeRules,employer_rules:employerRules,source_url:sourceUrl,source_authority:sourceAuthority,source_reference:sourceReference,source_note:clean(body.source_note),jurisdiction_scope:[country],created_by:user.id});
    await audit("statutory_rule.created","StatutoryRuleSet",record.id,{country,currency,version});return json({success:true,data:record},201);
   }
   if(operation==="verify_statutory_rule"){
