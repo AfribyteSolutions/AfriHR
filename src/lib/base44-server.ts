@@ -374,23 +374,29 @@ const db = {
 // ── Auth stubs (server-side Base44 auth is limited) ──
 
 const auth = {
-  async getUserByEmail(_email: string) {
+  async getUserByEmail(_email: string): Promise<any> {
     throw { code: "auth/user-not-found" };
   },
-  async getUser(_uid: string) {
+  async getUser(_uid: string): Promise<any> {
     throw { code: "auth/user-not-found" };
   },
-  async getUsers(_identifiers: any[]) {
+  async getUsers(_identifiers: any[]): Promise<{ users: any[]; notFound: any[] }> {
     return { users: [], notFound: [] };
   },
-  async createUser(_data: any) {
+  async createUser(_data: any): Promise<any> {
     throw new Error("Server-side user creation requires Base44 backend functions");
   },
-  async generatePasswordResetLink(_email: string) {
+  async updateUser(_uid: string, _data: any): Promise<any> {
+    throw new Error("Server-side user updates require Base44 backend functions");
+  },
+  async deleteUser(_uid: string): Promise<void> {
+    throw new Error("Server-side user deletion requires Base44 backend functions");
+  },
+  async generatePasswordResetLink(_email: string): Promise<string> {
     return "";
   },
-  async setCustomUserClaims(_uid: string, _claims: any) {},
-  async verifyIdToken(_token: string) {
+  async setCustomUserClaims(_uid: string, _claims: any): Promise<void> {},
+  async verifyIdToken(_token: string): Promise<any> {
     return null;
   },
 };
