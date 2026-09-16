@@ -112,7 +112,6 @@
     "employee_rules",
     "employer_rules",
     "source_url",
-    "verified_on",
     "created_by"
   ],
   "rls": {
