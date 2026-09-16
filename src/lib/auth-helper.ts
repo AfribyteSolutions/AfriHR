@@ -1,90 +1,129 @@
-// lib/auth-helper.ts
-// Base44-native auth helper — no Firebase.
-// Provides server-side auth verification for API routes that still need it.
+// Base44-native compatibility auth for legacy Next.js API routes.
+// Security rule: never trust role/tenant/user identity from cookies alone.
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@base44/sdk";
+import { BASE44_APP_ID } from "@/lib/base44";
+import { getServerClient, setServerAuthToken } from "@/lib/base44-server";
 
 export interface AuthenticatedUser {
   uid: string;
-  email: string | undefined;
+  email?: string;
   role: string;
+  appRole: string;
   companyId?: string;
   tenant_id?: string;
+  permissions: string[];
 }
 
-/**
- * Verifies the auth token from cookies and returns the authenticated user.
- * Uses the Base44 session cookie (token) to identify the user.
- * Falls back gracefully if no session is found.
- */
+const ROLE_ALIASES: Record<string, string> = {
+  "super-admin": "platform_admin",
+  admin: "tenant_admin",
+};
+
+function normalizedRole(user: any): string {
+  const appRole = String(user?.app_role || user?._app_role || "").trim();
+  if (appRole) return appRole;
+  const role = String(user?.role || "employee").trim();
+  return ROLE_ALIASES[role] || role;
+}
+
+export function isAuthError(value: unknown): value is NextResponse {
+  return value instanceof NextResponse;
+}
+
 export async function verifyAuthToken(request: NextRequest): Promise<AuthenticatedUser | null> {
   try {
-    const token = request.cookies.get('token')?.value || request.cookies.get('authToken')?.value;
-    const role = request.cookies.get('role')?.value;
+    const bearer = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
+    const token = bearer || request.cookies.get("authToken")?.value || request.cookies.get("token")?.value;
+    if (!token) return null;
 
-    if (!token) {
-      return null;
-    }
+    const client = createClient({ appId: BASE44_APP_ID, token });
+    const user = await client.auth.me();
+    if (!user?.id || user.disabled) return null;
 
-    // The Base44 SDK handles token verification server-side.
-    // For API routes, we trust the session cookie set by the auth flow.
-    // The role is stored in a separate cookie for quick access.
+    setServerAuthToken(token);
+    const tenantId = String(user.tenant_id || "").trim() || undefined;
+    const appRole = normalizedRole(user);
     return {
-      uid: request.cookies.get('userId')?.value || '',
-      email: undefined, // Not available from cookie; API routes that need it should use Base44 SDK
-      role: role || 'employee',
-      companyId: request.cookies.get('tenantId')?.value,
-      tenant_id: request.cookies.get('tenantId')?.value,
+      uid: user.id,
+      email: user.email || undefined,
+      role: appRole,
+      appRole,
+      companyId: tenantId,
+      tenant_id: tenantId,
+      permissions: Array.isArray(user.permissions) ? user.permissions.map(String) : [],
     };
   } catch (error) {
-    console.error('Error verifying auth token:', error);
+    console.warn("Base44 session validation failed", error);
     return null;
   }
 }
 
-/**
- * Middleware helper to protect API routes
- * Returns unauthorized response if user is not authenticated
- */
-export async function requireAuth(
-  request: NextRequest,
-  requiredRoles?: string[]
-): Promise<AuthenticatedUser | NextResponse> {
+export async function requireAuth(request: NextRequest, requiredRoles?: string[]): Promise<AuthenticatedUser | NextResponse> {
   const user = await verifyAuthToken(request);
-
-  if (!user) {
-    return NextResponse.json(
-      { error: 'Unauthorized - Invalid or missing auth token' },
-      { status: 401 }
-    );
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (requiredRoles?.length) {
+    const allowed = new Set(requiredRoles.map((r) => ROLE_ALIASES[r] || r));
+    if (!allowed.has(user.appRole)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-
-  // Check if user has required role
-  if (requiredRoles && !requiredRoles.includes(user.role)) {
-    return NextResponse.json(
-      { error: 'Forbidden - Insufficient permissions' },
-      { status: 403 }
-    );
-  }
-
   return user;
 }
 
-/**
- * Validates that the subdomain matches the user's company
- */
-export async function validateSubdomain(
-  request: NextRequest,
-  user: AuthenticatedUser
-): Promise<boolean> {
-  try {
-    const subdomain = request.cookies.get('subdomain')?.value;
-    if (!subdomain) return false;
-    // Without Firebase, we can't verify the subdomain against the company record.
-    // Return true if a subdomain cookie exists — the Base44 backend enforces tenant isolation.
-    return true;
-  } catch (error) {
-    console.error('Error validating subdomain:', error);
-    return false;
+export async function requireTenant(request: NextRequest, requiredRoles?: string[]): Promise<AuthenticatedUser | NextResponse> {
+  const actor = await requireAuth(request, requiredRoles);
+  if (isAuthError(actor)) return actor;
+  if (!actor.tenant_id && actor.appRole !== "platform_admin") {
+    return NextResponse.json({ error: "Tenant context required" }, { status: 403 });
   }
+  return actor;
+}
+
+export function tenantIdFor(actor: AuthenticatedUser, requestedTenantId?: string | null): string | null {
+  const requested = String(requestedTenantId || "").trim();
+  if (actor.appRole === "platform_admin") return requested || actor.tenant_id || null;
+  if (!actor.tenant_id) return null;
+  if (requested && requested !== actor.tenant_id) return null;
+  return actor.tenant_id;
+}
+
+export function canManageHr(actor: AuthenticatedUser): boolean {
+  return ["platform_admin", "tenant_admin", "hr_manager", "payroll_manager"].includes(actor.appRole)
+    || actor.permissions.includes("hr.manage")
+    || actor.permissions.includes("payroll.manage");
+}
+
+export async function assertRecordTenant(collection: string, id: string, tenantId: string): Promise<any | null> {
+  if (!id || !tenantId) return null;
+  const { db } = await import("@/lib/firebase-admin");
+  const doc = await db.collection(collection).doc(id).get();
+  if (!doc.exists) return null;
+  const data = doc.data() || {};
+  const recordTenant = String(data.tenant_id || data.companyId || "");
+  return recordTenant === tenantId ? doc : null;
+}
+
+export async function writeAudit(args: {
+  companyId: string;
+  actor: AuthenticatedUser;
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  const { companyId, action, resourceType, resourceId, metadata = {} } = args;
+  const result = await getServerClient().functions.invoke("legacy-audit", {
+    tenant_id: companyId,
+    action,
+    resource_type: resourceType,
+    resource_id: resourceId,
+    metadata,
+  });
+  const data: any = (result as any)?.data ?? result;
+  if (data?.success === false) throw new Error(data.error || "Audit write failed");
+}
+
+export async function validateSubdomain(request: NextRequest, user: AuthenticatedUser): Promise<boolean> {
+  const subdomain = request.cookies.get("subdomain")?.value;
+  return Boolean(subdomain && user.tenant_id);
 }
