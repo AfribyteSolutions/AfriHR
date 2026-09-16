@@ -176,6 +176,20 @@ export async function addDoc(ref: CompatCollectionRef, data: any): Promise<{ id:
 }
 
 // ── onSnapshot (polling-based) ──
+export interface CompatDocSnapshot {
+  exists: () => boolean;
+  id: string;
+  data: () => any;
+}
+
+export interface CompatQuerySnapshot {
+  docs: CompatDocSnapshot[];
+  empty: boolean;
+  size: number;
+}
+
+export function onSnapshot(ref: CompatDocRef, callback: (snap: CompatDocSnapshot) => void, onError?: (error: any) => void): () => void;
+export function onSnapshot(ref: CompatQuery, callback: (snap: CompatQuerySnapshot) => void, onError?: (error: any) => void): () => void;
 export function onSnapshot(
   ref: CompatDocRef | CompatQuery,
   callback: (snap: any) => void,
