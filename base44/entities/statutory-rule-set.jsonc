@@ -57,6 +57,31 @@
       "type": "string",
       "format": "date"
     },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "under_review",
+        "verified",
+        "superseded",
+        "rejected"
+      ],
+      "default": "draft",
+      "description": "Executable statutory rules must be verified; AI-generated or imported rules remain draft/under_review until human verification."
+    },
+    "source_authority": {
+      "type": "string"
+    },
+    "source_reference": {
+      "type": "string"
+    },
+    "jurisdiction_scope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Country/regional scopes supported by this versioned rule set."
+    },
     "created_by": {
       "type": "string"
     },
