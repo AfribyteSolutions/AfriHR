@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     const feedbackSnapshot = await query.orderBy("createdAt", "desc").get();
 
-    const feedbackList = feedbackSnapshot.docs.map((doc) => serializeFirestore(doc));
+    const feedbackList = feedbackSnapshot.docs.map((doc: any) => serializeFirestore(doc));
 
     return NextResponse.json({
       success: true,

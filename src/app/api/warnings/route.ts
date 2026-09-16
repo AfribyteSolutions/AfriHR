@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     // IMPORTANT: If you use orderBy, you MUST have an index in Firebase
     const snapshot = await query.orderBy("createdAt", "desc").get();
 
-    const warnings = snapshot.docs.map((doc) => {
+    const warnings = snapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,

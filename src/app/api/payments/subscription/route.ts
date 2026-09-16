@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       .limit(10)
       .get();
 
-    const payments = paymentsSnapshot.docs.map((doc) => ({
+    const payments = paymentsSnapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data(),
     }));

@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     let query: FirebaseFirestore.Query = db.collection("payrolls").where("companyId", "==", companyId);
     if (employeeUid) query = query.where("employeeUid", "==", employeeUid);
     const snapshot = await query.get();
-    return NextResponse.json({ success: true, data: snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })), count: snapshot.size });
+    return NextResponse.json({ success: true, data: snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })), count: snapshot.size });
   } catch (error) {
     console.error("Payroll GET failed:", error);
     return NextResponse.json({ success: false, error: "Failed to load payroll" }, { status: 500 });

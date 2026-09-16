@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       .where('role', 'in', ['admin', 'manager'])
       .get();
 
-    const notificationPromises = adminsSnapshot.docs.map((doc) =>
+    const notificationPromises = adminsSnapshot.docs.map((doc: any) =>
       db.collection('notifications').add({
         userId: doc.id,
         title: 'Feedback Reported',

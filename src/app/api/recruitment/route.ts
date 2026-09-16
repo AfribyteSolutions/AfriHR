@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       .where("companyId", "==", companyId)
       .get();
 
-    const applicants = snapshot.docs.map((doc) => {
+    const applicants = snapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,

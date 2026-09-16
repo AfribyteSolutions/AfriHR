@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     else if (startDate && endDate) query = query.where("date", ">=", startDate).where("date", "<=", endDate);
 
     const snapshot = await query.get();
-    const attendance = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const attendance = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
     return NextResponse.json({ success: true, attendance });
   } catch (error) {
     console.error("Attendance GET failed:", error);

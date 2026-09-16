@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     if (status) query = query.where("status", "==", status);
 
     const snapshot = await query.get();
-    const leaves = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const leaves = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
     return NextResponse.json({ success: true, leaves, total: leaves.length });
   } catch (error) {
     console.error("Leave GET failed:", error);

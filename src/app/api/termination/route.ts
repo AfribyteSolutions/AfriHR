@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, termination: { id: doc.id, ...doc.data() } });
     }
     const snapshot = await db.collection("terminations").where("companyId", "==", companyId).get();
-    return NextResponse.json({ success: true, terminations: snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })), total: snapshot.size });
+    return NextResponse.json({ success: true, terminations: snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })), total: snapshot.size });
   } catch (error) {
     console.error("Termination GET failed:", error);
     return NextResponse.json({ success: false, error: "Failed to load terminations" }, { status: 500 });

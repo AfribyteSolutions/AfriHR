@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     let query: FirebaseFirestore.Query = db.collection("resignations").where("companyId", "==", companyId);
     if (actor.role === "employee") query = query.where("employeeId", "==", actor.uid);
     const snapshot = await query.get();
-    return NextResponse.json({ success: true, resignations: snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })), total: snapshot.size });
+    return NextResponse.json({ success: true, resignations: snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })), total: snapshot.size });
   } catch (error) {
     console.error("Resignation GET failed:", error);
     return NextResponse.json({ success: false, error: "Failed to load resignations" }, { status: 500 });

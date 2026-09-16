@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     let query: FirebaseFirestore.Query = db.collection("offboardingCases").where("companyId", "==", companyId);
     if (actor.role === "employee") query = query.where("employeeId", "==", actor.uid);
     const snapshot = await query.get();
-    return NextResponse.json({ success: true, cases: snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) });
+    return NextResponse.json({ success: true, cases: snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) });
   } catch (error) {
     console.error("Offboarding GET failed:", error);
     return NextResponse.json({ success: false, error: "Failed to load offboarding cases" }, { status: 500 });

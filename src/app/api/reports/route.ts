@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     const snapshot = await query.orderBy('createdAt', 'desc').get();
 
-    const reports = snapshot.docs.map((doc) => ({
+    const reports = snapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data(),
       date: doc.data().date?.toDate?.()?.toISOString() || null,

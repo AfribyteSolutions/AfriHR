@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       .orderBy("purchaseDate", "desc")
       .get();
 
-    const expenses = snapshot.docs.map((doc) => {
+    const expenses = snapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,

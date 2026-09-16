@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     const snapshot = await query.orderBy('createdAt', 'desc').get();
 
-    const trainings = snapshot.docs.map((doc) => ({
+    const trainings = snapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || null,
