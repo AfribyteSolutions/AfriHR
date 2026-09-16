@@ -50,7 +50,7 @@ async function runTests() {
     "No signOut function"
   );
   assert(
-    !firebaseModule?.auth?._authInstance,
+    !(firebaseModule?.auth as any)?._authInstance,
     "auth is not a real Firebase auth instance",
     "Still using real Firebase auth"
   );
