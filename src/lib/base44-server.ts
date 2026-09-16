@@ -351,8 +351,13 @@ class Timestamp {
 
 // ── Firestore-compatible db object ──
 
-const db: any = {
-  collection(name: string): Base44CollectionRef {
+const db: {
+  collection(name: string): any;
+  batch(): Base44Batch;
+  runTransaction(cb: (tx: Base44Transaction) => Promise<void>): Promise<void>;
+  doc(path: string): DocRef;
+} = {
+  collection(name: string): any {
     return new Base44CollectionRef(name);
   },
   batch(): Base44Batch {
