@@ -42,7 +42,7 @@ async function runTests() {
   console.log("── Section 1: Firebase-free Runtime ──");
 
   // Check that firebase.tsx no longer imports the firebase package
-  const firebaseModule = await import("../src/lib/firebase.tsx").catch(() => null);
+  const firebaseModule = await import("../src/lib/firebase").catch(() => null);
   assert(firebaseModule !== null, "firebase.tsx module loads", "Module failed to load");
   assert(
     firebaseModule?.auth?.signOut && typeof firebaseModule?.auth?.signOut === "function",
