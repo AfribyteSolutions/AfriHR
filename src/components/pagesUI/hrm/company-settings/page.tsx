@@ -6,6 +6,7 @@ import { Upload, X, Save, Building2, Mail, Phone, MapPin, User } from "lucide-re
 import Image from "next/image";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "@/lib/storage-compat";
 import { storage } from "@/lib/firebase"; // Make sure you have this import
+import ComplianceReadinessPanel from "@/components/hrm/ComplianceReadinessPanel";
 
 // Utility to detect subdomain from host
 function getSubdomain(hostname: string): string | null {
@@ -372,6 +373,8 @@ const CompanySettingsPage: React.FC = () => {
             )}
           </div>
         </div>
+
+        <ComplianceReadinessPanel />
 
         {/* Company Logo Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
