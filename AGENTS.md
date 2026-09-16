@@ -33,3 +33,7 @@ docker compose -f docker-compose.base44.yml up -d
 - Puppeteer browser download is skipped (`PUPPETEER_SKIP_DOWNLOAD=true`) — only needed for server-side PDF generation
 - `functions/` directory contains Firebase Cloud Functions (not used in local dev)
 - `npm install --legacy-peer-deps` is required due to peer dependency conflicts
+
+## Afribyte Compliance Baseline
+
+For Afribyte development, the canonical standard is maintained in the Afribyte Solutions repository at `docs/AFRIBYTE_COMPLIANCE_AND_INTEROPERABILITY_STANDARD.md`. Treat its principles as primary requirements: configuration-driven jurisdiction rules; versioned/effective-dated regulatory logic; verified sources; privacy-by-design; minimized AI data exposure; explicit `external_org_key`; durable `external_event_id`/idempotency/reconciliation; clear sources of truth; and no unverified hardcoded statutory assumptions.
