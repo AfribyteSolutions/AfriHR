@@ -6,6 +6,9 @@ import { AlertTriangle, CheckCircle2, RefreshCw, ShieldCheck } from "lucide-reac
 
 export default function ComplianceReadinessPanel() {
   const [data, setData] = useState<any>(null);
+  const [config, setConfig] = useState<any>({ jurisdiction_code: "", compliance_status: "not_configured" });
+  const [aiPolicy, setAiPolicy] = useState<any>({ enabled: true, allow_aggregate_workforce_analytics: true, allow_employee_personal_data: false, allow_sensitive_hr_data: false, allow_payroll_line_items: false, allow_candidate_personal_data: false, require_human_review: true });
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -13,12 +16,17 @@ export default function ComplianceReadinessPanel() {
     setLoading(true); setError("");
     try {
       const res:any = await base44.functions.invoke("complianceReadiness", {});
-      setData(res?.data ?? res);
+      const d = res?.data ?? res;
+      setData(d);
+      if (d?.configuration) setConfig(d.configuration);
+      if (d?.ai_policy) setAiPolicy({ enabled: d.ai_policy.enabled !== false, allow_aggregate_workforce_analytics: d.ai_policy.allow_aggregate_workforce_analytics !== false, allow_employee_personal_data: d.ai_policy.allow_employee_personal_data === true, allow_sensitive_hr_data: d.ai_policy.allow_sensitive_hr_data === true, allow_payroll_line_items: d.ai_policy.allow_payroll_line_items === true, allow_candidate_personal_data: d.ai_policy.allow_candidate_personal_data === true, require_human_review: d.ai_policy.require_human_review !== false });
     } catch (e:any) { setError(e?.message || "Unable to load compliance readiness"); }
     finally { setLoading(false); }
   }
 
   useEffect(() => { load(); }, []);
+  async function saveConfiguration() { setSaving(true); setError(""); try { await base44.functions.invoke("complianceReadiness", { operation: "save_configuration", ...config }); await load(); } catch (e:any) { setError(e?.message || "Unable to save configuration"); } finally { setSaving(false); } }
+  async function saveAiPolicy() { setSaving(true); setError(""); try { await base44.functions.invoke("complianceReadiness", { operation: "save_ai_policy", ...aiPolicy }); await load(); } catch (e:any) { setError(e?.message || "Unable to save AI policy"); } finally { setSaving(false); } }
   const checks = data?.checks || [];
   async function remediate(check:any) {
     const r = check?.remediation;
