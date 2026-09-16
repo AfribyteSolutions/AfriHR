@@ -50,9 +50,10 @@ export default async function(req: Request) {
     await S.Tenant.update(tenantId, { external_org_key: externalOrgKey });
     return Response.json({ external_org_key: externalOrgKey, generated: true });
   }
-  const [rules, runs] = await Promise.all([
+  const [rules, runs, aiPolicies] = await Promise.all([
     S.StatutoryRuleSet.filter({ tenant_id: tenantId }).catch(() => []),
     S.PayrollRun.filter({ tenant_id: tenantId }, '-created_date', 50).catch(() => []),
+    S.AiUsagePolicy.filter({ tenant_id: tenantId }).catch(() => []),
   ]);
   const ruleList = (rules.data || rules).map(dataOf);
   const verifiedActive = ruleList.filter((r:any) => r.status === 'active' && r.verification_status === 'verified');
@@ -65,5 +66,5 @@ export default async function(req: Request) {
     { key: 'africount_reconciliation', label: 'Africount payroll reconciliation', ok: exportedPending.length === 0, detail: exportedPending.length ? `${exportedPending.length} exported payroll run(s) pending/failed reconciliation` : 'No unresolved exported payroll runs', remediation: { type: 'human_review', target: '/payroll/payroll', label: 'Review payroll exports' } },
   ];
   const blockers = checks.filter(c => !c.ok);
-  return Response.json({ tenant_id: tenantId, product: 'afrihr', readiness: blockers.length ? 'attention_required' : 'configured', legally_verified: false, checks, blockers: blockers.map(b => b.key), note: 'Technical readiness only; not legal certification.' });
+  return Response.json({ tenant_id: tenantId, product: 'afrihr', readiness: blockers.length ? 'attention_required' : 'configured', legally_verified: false, configuration: { jurisdiction_code: tenant.jurisdiction_code || '', compliance_status: tenant.compliance_status || 'not_configured' }, ai_policy: dataOf((aiPolicies.data || aiPolicies)[0] || null), checks, blockers: blockers.map(b => b.key), note: 'Technical readiness only; not legal certification.' });
 }
