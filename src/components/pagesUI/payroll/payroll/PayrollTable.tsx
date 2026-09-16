@@ -7,10 +7,8 @@ import {
 import Link from "next/link";
 import { IPaylist } from "@/interface/table.interface";
 import EditSalaryModal from "./EditSalaryModal";
-import { db, auth } from "@/lib/firebase";
-import { collection, doc, getDocs, query, where, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
-import { useAuthState } from "react-firebase-hooks/auth";
+import { useAuthUserContext } from "@/context/UserAuthContext";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 const MONTHS = [
@@ -30,7 +28,7 @@ interface PayrollTableProps {
 }
 
 const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
-  const [user, authLoading] = useAuthState(auth);
+  const { user, loading: authLoading } = useAuthUserContext();
   const [payrollData, setPayrollData] = useState<IPaylist[]>([]);
   const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -232,13 +230,11 @@ const PayrollTable: React.FC<PayrollTableProps> = ({ onRegisterRefresh }) => {
 
   useEffect(() => {
     if (user && !authLoading) {
-      getDoc(doc(db, "users", user.uid)).then(snap => {
-        if (snap.exists()) {
-          const cId = snap.data().companyId;
-          setCompanyId(cId);
-          fetchPayroll(cId);
-        }
-      });
+      const cId = user.companyId || user.tenantId || null;
+      if (cId) {
+        setCompanyId(cId);
+        fetchPayroll(cId);
+      }
     }
   }, [user, authLoading, fetchPayroll]);
 
