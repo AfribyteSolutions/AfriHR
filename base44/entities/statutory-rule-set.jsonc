@@ -75,6 +75,14 @@
     "source_reference": {
       "type": "string"
     },
+    "verified_by": {
+      "type": "string",
+      "description": "User id of the human reviewer who explicitly verified this rule set against its cited source."
+    },
+    "verification_note": {
+      "type": "string",
+      "description": "Human review note. Verification means source checked, not external legal/accounting certification."
+    },
     "jurisdiction_scope": {
       "type": "array",
       "items": {
