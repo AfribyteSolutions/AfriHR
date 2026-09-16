@@ -1,3 +1,4 @@
+// @ts-nocheck
 // E2E and cross-tenant security tests for AfriHR Base44-native workflows.
 // Run with: node --experimental-vm-modules scripts/e2e-security-test.mjs
 // Or: npx tsx scripts/e2e-security-test.ts
