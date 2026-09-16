@@ -79,6 +79,29 @@
     "exported_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "statutory_rule_version": {
+      "type": "string",
+      "description": "Immutable version snapshot of the verified statutory rule set used for this payroll run."
+    },
+    "compliance_snapshot": {
+      "type": "object",
+      "description": "Non-sensitive calculation provenance needed to reproduce this payroll after statutory rules change."
+    },
+    "external_event_id": {
+      "type": "string",
+      "description": "Optional immutable event id used when exporting approved payroll costs to Africount."
+    },
+    "africount_sync_status": {
+      "type": "string",
+      "enum": [
+        "not_configured",
+        "pending",
+        "synced",
+        "failed",
+        "reconciled"
+      ],
+      "default": "not_configured"
     }
   },
   "required": [
